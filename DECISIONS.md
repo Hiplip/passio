@@ -119,3 +119,29 @@ silence errors, no disabled rules).
   message; done so the two paths can never drift apart in validation.
 
 Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
+
+## Task 1.13 — tRPC vault and account routers
+
+- Vitest does not put `.env` values on `process.env` the way `next dev` does, and the
+  router tests import `~/env`, which validates `DATABASE_URL` at module load. `vitest.config.ts`
+  now calls `process.loadEnvFile(".env")` (Node built-in, no new dependency) before the
+  config is exported. No value is read or printed; the file is only loaded.
+- The plan's test helper used `appRouter.createCaller({ db, session } as never)`. Replaced
+  with a fully typed context — `Awaited<ReturnType<typeof createTRPCContext>>`, so `db`,
+  `session` and `headers` are all real — via the exported `createCaller`. `as never` would
+  have hidden any drift between the test's fake session and the real one.
+- NEEDS-REVIEW: the session fixture carries sentinel strings in its `protectedVaultKey` /
+  `recoveryWrappedVaultKey` / `recoveryVerifier` fields rather than the seeded values.
+  Better Auth's session embeds a copy of the user row, so a router could answer `getKeys`
+  from the session alone; the sentinels make the database the only source that can satisfy
+  the test. Slightly unrealistic fixture, deliberately.
+- Ownership is enforced in the SQL `WHERE` clause. Verified by mutation: deleting the
+  `.where(eq(user.id, ctx.session.user.id))` makes "never returns another user's key
+  material" fail, and nothing else changes.
+- `vault.getKeys` returns only `protectedVaultKey` and `kdfVersion`. `recoveryWrappedVaultKey`
+  and `recoveryVerifier` are selected nowhere in this router; they belong to the recovery flow.
+- `account.status` is presentation only. The authoritative single-account gate stays in the
+  Better Auth `databaseHooks.user.create.before` hook, which also covers the public
+  `/api/auth/sign-up/email` route.
+- Tests run against the real Neon dev database with ids `test-vault-user-a` / `-b` and clean
+  up in `afterEach`; the `user` table was verified empty before and after the full suite.
