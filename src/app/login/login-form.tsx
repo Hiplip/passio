@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -83,6 +84,10 @@ export function LoginForm() {
       <Button type="submit" disabled={busy || !email || !password}>
         {busy ? "Checking…" : "Sign in"}
       </Button>
+
+      <Link href="/recover" className="self-start text-sm text-[var(--muted)] underline">
+        Forgotten your master password?
+      </Link>
     </form>
   );
 }

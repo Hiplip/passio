@@ -29,6 +29,8 @@ ROUTES=(
   "/vault:307,302"
   "/vault/new:307,302"
   "/settings:307,302"
+  "/settings/security:307,302"
+  "/recover:200"
 )
 
 if [ ! -d ".next" ]; then
