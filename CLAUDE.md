@@ -56,4 +56,10 @@ These apply when designing or planning, before any code exists.
 
 ### Smoke routes
 
-Phase 1: `/`, `/signup`, `/login`, `/unlock`, `/vault`. Each later phase appends its own.
+Phase 1: `/`, `/signup`, `/login` expect **200**; `/unlock`, `/vault` expect a **redirect
+(307/302)** because they are protected — a protected route returning 200 to an anonymous request
+means the guard is missing. Each later phase appends its own routes.
+
+**What the smoke check does not catch:** a route can return 200 and still render a blank page from
+a hydration error, and an auth redirect loop looks healthy at the status-code level. It proves the
+app boots and the routes are wired, nothing more. Assertions about content belong in Vitest.
