@@ -8,5 +8,7 @@ export default {
   dbCredentials: {
     url: env.DATABASE_URL,
   },
-  tablesFilter: ["passio_*"],
+  // No tablesFilter: the T3 scaffold's "passio_*" prefix pattern was dropped
+  // along with pgTableCreator, so filtering would hide the Better Auth tables
+  // from introspection and make drizzle try to re-create them.
 } satisfies Config;
