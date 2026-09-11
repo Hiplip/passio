@@ -233,3 +233,18 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   supplied hash against a fixed placeholder hash before throwing. The error message is
   already identical to the wrong-key one; without the dummy verification the response time
   would still separate the two cases.
+
+## 2026-09-11 — End of run
+
+- **Vercel unblocked.** The token that returned HTTP 403 early in the run began working later.
+  The project was linked to the `hiplip` team, connected to `Hiplip/passio`, given `DATABASE_URL`
+  and `BETTER_AUTH_SECRET` (production, preview, development — names only recorded here), and
+  deployed to production successfully. The earlier BLOCKED note in the plan is corrected in place.
+- NEEDS-REVIEW: **Vercel Deployment Protection was left ON.** Every route currently redirects to
+  Vercel SSO, so the app is reachable only while signed in to Vercel. It was left enabled on
+  purpose: making a site publicly reachable is an outward-facing security decision for the owner,
+  not something to change unasked. Turn it off in Project Settings → Deployment Protection.
+- `BETTER_AUTH_URL` is no longer required. A Vercel project has no production domain until its
+  first deploy, so requiring it made the first deploy impossible without guessing the domain. It
+  now falls back to `VERCEL_PROJECT_PRODUCTION_URL`, and is only set explicitly for local dev.
+  It is therefore deliberately NOT set on Vercel.
