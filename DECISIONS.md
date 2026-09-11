@@ -184,3 +184,29 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   the unlock screen spinning forever.
 - Derivation inputs are length-checked against `ARGON2_HASH_LEN`: 32 zero bytes previously
   derived a working, attacker-reproducible key.
+
+## Task 2.2 — Item router
+
+- **Item ids are chosen by the client, not by Postgres.** An item's ciphertext is bound to
+  its id as AES-GCM additional authenticated data, so the id must exist before the
+  plaintext can be sealed; a server-generated id would need a decrypt-free re-encrypt round
+  trip that cannot work. `create` therefore takes `{ id, ciphertext }` with a Zod-validated
+  UUID, which is the one deviation from the plan's code.
+- **A guessed id is harmless.** `create` inserts with `onConflictDoNothing` and raises
+  `CONFLICT` when nothing came back, so a collision never overwrites a row and the response
+  is identical whether the id belongs to the caller or to somebody else. `update`, `delete`
+  and `restore` carry `eq(item.userId, session.user.id)` in the WHERE clause and answer
+  `NOT_FOUND` with no message, so another user's row is indistinguishable from one that
+  does not exist. Removing that clause was checked by mutation: the four isolation tests
+  fail, and only those.
+- **`create` writes `createdAt`/`updatedAt` from the application clock** rather than letting
+  `defaultNow()` fill them. `update` sets `updatedAt` from the same clock, and a test
+  asserts the timestamp advances; mixing the database clock with the process clock would
+  make that assertion depend on skew between the two.
+- NEEDS-REVIEW: **database tests now run one file at a time** (`vitest.config.ts`, project
+  `db`, `maxWorkers: 1`). Several server tests assert on table-wide state — `account.status`
+  answers "does any user exist?" — so two such files in parallel is a race, not a test.
+  Scoping it to `src/server/**` keeps the in-memory tests parallel: serialising the whole
+  suite instead costs about a minute a run (126 s against 70 s). This does not protect
+  against two `vitest` processes running against the same Neon database at once, which is
+  what happens when two agents run the suite simultaneously.
