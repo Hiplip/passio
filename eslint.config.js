@@ -16,7 +16,15 @@ export default tseslint.config(
     },
     plugins: { drizzle },
     rules: {
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          // Allows the "omit this key" idiom: const { secret, ...rest } = obj
+          ignoreRestSiblings: true,
+        },
+      ],
       "@typescript-eslint/consistent-type-imports": [
         "error",
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
