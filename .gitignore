@@ -1,5 +1,38 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# database
+# debug
+# dependencies
+# do not commit any .env files to git, except for the .env.example file. https://create.t3.gg/en/usage/env-variables#using-environment-variables
+# idea files
+# local env files
+# misc
+# next.js
+# production
+# testing
+# typescript
+# vercel
+*.pem
+*.tsbuildinfo
+.DS_Store
 .env
-.env.local
 .env*.local
-node_modules/
+.env.local
+.idea.env
 .next/
+.pnp.js
+.pnpm-debug.log*
+.vercel
+/.next/
+/.pnp
+/build
+/coverage
+/node_modules
+/out/
+/prisma/db.sqlite
+/prisma/db.sqlite-journal
+db.sqlite
+next-env.d.ts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

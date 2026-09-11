@@ -22,5 +22,38 @@ These apply when designing or planning, before any code exists.
 
 ## Codebase facts
 
-<empty until phase 1 — the agent fills this in with the real package.json scripts,
-key file paths, migration commands, and the routes the smoke check covers>
+### Commands (exact)
+
+| Purpose | Command |
+|---|---|
+| Typecheck gate | `pnpm typecheck` (`tsc --noEmit`) |
+| Lint gate | `pnpm lint` (`eslint .`) |
+| Build gate | `pnpm build` (`next build`) |
+| Test gate | `pnpm test` (`vitest run`) |
+| Smoke gate | `pnpm smoke` (`bash scripts/smoke.sh`) |
+| Push schema | `pnpm db:push` |
+| Dev server | `pnpm dev` |
+
+### Key paths
+
+- Drizzle schema: `src/server/db/schema.ts`; connection: `src/server/db/index.ts`
+  (uses `postgres-js`, not the Neon HTTP driver)
+- Better Auth config: `src/server/better-auth/config.ts`
+  (siblings: `client.ts`, `server.ts`, `index.ts`)
+- tRPC: `src/server/api/trpc.ts`, `src/server/api/root.ts`, `src/server/api/routers/*`
+- Env schema: `src/env.js` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
+- Crypto (trust-critical): `src/lib/crypto/*` — imports only `hash-wasm` + WebCrypto
+- Vitest config: `vitest.config.ts` (`environment: "node"`; component tests opt into jsdom with a
+  `// @vitest-environment jsdom` docblock, because jsdom lacks a full WebCrypto)
+- Test setup: `src/test/setup.ts`
+- Smoke script: `scripts/smoke.sh`
+
+### Environment notes
+
+- pnpm 11 requires build approvals in `pnpm-workspace.yaml` (`allowBuilds`), not `package.json`.
+- `eslint.config.js` is excluded from `tsconfig.json` (`eslint-plugin-drizzle` ships no types).
+- GitHub OAuth was removed from the scaffold: incompatible with the zero-knowledge model.
+
+### Smoke routes
+
+Phase 1: `/`, `/signup`, `/login`, `/unlock`, `/vault`. Each later phase appends its own.
