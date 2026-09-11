@@ -3,6 +3,7 @@ import {
   bytesToUtf8, fromBase64Url, fromCrockfordBase32,
   toBase64Url, toCrockfordBase32, utf8ToBytes,
 } from "./encoding";
+import { RecoveryKeyError } from "./errors";
 
 describe("utf8", () => {
   it("round-trips including multi-byte characters", () => {
@@ -55,6 +56,26 @@ describe("crockford base32", () => {
   });
 
   it("rejects characters outside the alphabet", () => {
-    expect(() => fromCrockfordBase32("ABC!DEF")).toThrow();
+    expect(() => fromCrockfordBase32("ABC!DEF")).toThrow(RecoveryKeyError);
+  });
+
+  it("never echoes the offending character, which is key material", () => {
+    try {
+      fromCrockfordBase32("ABCWDEFU");
+      throw new Error("expected a rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RecoveryKeyError);
+      expect((error as Error).message).not.toContain("U");
+    }
+  });
+
+  it("maps I and L to 1 and O to 0, as Crockford's decoder specifies", () => {
+    const aliased = Array.from(fromCrockfordBase32("IL0O"));
+    expect(aliased).toEqual(Array.from(fromCrockfordBase32("1100")));
+    expect(Array.from(fromCrockfordBase32("il0o"))).toEqual(aliased);
+  });
+
+  it("still rejects U, which Crockford excludes and does not alias", () => {
+    expect(() => fromCrockfordBase32("ABCU")).toThrow(RecoveryKeyError);
   });
 });

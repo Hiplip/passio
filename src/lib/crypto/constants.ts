@@ -1,4 +1,5 @@
-/** Bump when any KDF parameter below changes, so old ciphertexts stay migratable. */
+/** Bump when any KDF parameter below changes, so existing accounts stay
+ *  migratable. Persisted as `user.kdf_version`; it never appears in a ciphertext. */
 export const KDF_VERSION = 1;
 
 export const ARGON2_MEMORY_KIB = 65_536; // 64 MiB
@@ -26,7 +27,19 @@ export const VAULT_KEY_BYTES = 32;
 
 export const CIPHER_VERSION = "v1";
 
+/** Every ciphertext is bound to the slot it belongs in, as AES-GCM additional
+ *  authenticated data. Without it any ciphertext decrypts in any slot, so a
+ *  malicious server could swap or roll back rows undetectably. */
+export const AAD_ITEM_PREFIX = "passio-item-v1";
+/** The two vault-key wrappings hold identical plaintext, so only the AAD keeps a
+ *  recovery-wrapped key from being accepted where a master-wrapped one belongs. */
+export const AAD_VAULT_KEY_MASTER = "passio-vault-key-v1:master";
+export const AAD_VAULT_KEY_RECOVERY = "passio-vault-key-v1:recovery";
+
 /** 30 bytes → exactly 48 base32 characters → 8 groups of 6. 240 bits of entropy. */
 export const RECOVERY_KEY_BYTES = 30;
 export const RECOVERY_GROUP_SIZE = 6;
 export const RECOVERY_PREFIX = "PASSIO-1";
+/** ceil(30 * 8 / 5). Checked before decoding, so a key with characters appended
+ *  is rejected rather than silently decoding to the same bytes. */
+export const RECOVERY_PAYLOAD_CHARS = Math.ceil((RECOVERY_KEY_BYTES * 8) / 5);

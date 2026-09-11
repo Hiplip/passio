@@ -1,4 +1,11 @@
+import { RecoveryKeyError } from "./errors";
+
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** Crockford's decoder reads I and L as 1, and O as 0, so a key read off paper
+ *  survives the letters people habitually confuse. U stays invalid: Crockford
+ *  excludes it from the alphabet and gives it no alias. */
+const CROCKFORD_ALIASES: Record<string, string> = { I: "1", L: "1", O: "0" };
 
 /** Returns bytes backed by a plain (non-shared) ArrayBuffer, which is what
  *  WebCrypto's BufferSource parameters require. */
@@ -25,6 +32,10 @@ export function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+// In both loops only the low 12 bits of `accumulator` are ever significant: at
+// most 4 (encode) or 7 (decode) left over, plus the 8 or 5 just shifted in. Every
+// read masks down to those, so the stale high bits that `<<` drags along — and
+// eventually shifts past 32 — can never corrupt a result, at any input length.
 export function toCrockfordBase32(bytes: Uint8Array): string {
   let bits = 0;
   let accumulator = 0;
@@ -47,8 +58,9 @@ export function fromCrockfordBase32(value: string): Uint8Array<ArrayBuffer> {
   let accumulator = 0;
   const out: number[] = [];
   for (const char of value.toUpperCase()) {
-    const index = CROCKFORD.indexOf(char);
-    if (index === -1) throw new Error(`invalid base32 character: ${char}`);
+    const index = CROCKFORD.indexOf(CROCKFORD_ALIASES[char] ?? char);
+    // The character itself is never named: the input is a recovery key.
+    if (index === -1) throw new RecoveryKeyError("recovery key contains an invalid character");
     accumulator = (accumulator << 5) | index;
     bits += 5;
     if (bits >= 8) {
