@@ -74,6 +74,12 @@ These apply when designing or planning, before any code exists.
   `process.env` the way `next dev` does, and DB-backed tests import `~/env`, which
   validates `DATABASE_URL` at module load.
 - Tests hit the real Neon dev database. Each test creates its own rows and cleans up.
+- **The DB tests assume exclusive access to that database.** `vitest.config.ts` splits the
+  suite into two projects: `unit` (in-memory, files in parallel) and `db` (single fork, one
+  file at a time). That ordering holds *within* one vitest run. It does NOT hold across two
+  vitest runs at once - `account.status` answers "does any user exist?", so a second process
+  seeding rows makes it fail. Run `pnpm test` on its own; never alongside another test run.
+  `pnpm vitest run --project unit` is safe to run at any time.
 
 ### Smoke routes
 
