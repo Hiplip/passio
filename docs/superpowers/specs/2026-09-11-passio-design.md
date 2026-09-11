@@ -102,6 +102,7 @@ ARGON2_PARALLEL  = 4
 ARGON2_HASH_LEN  = 32           // bytes
 HKDF_INFO_VAULT  = "passio-vault-key-v1"
 HKDF_INFO_RECOV  = "passio-recovery-key-v1"   -- domain separation from the vault path
+HKDF_INFO_RECOV_AUTH = "passio-recovery-auth-v1"  -- the server-facing verifier
 AES_IV_BYTES     = 12           // 96-bit, fresh per encryption
 AES_TAG_BITS     = 128
 CIPHER_VERSION   = "v1"
@@ -173,17 +174,28 @@ not re-encrypt the vault.**
 
 ### 3.6 Recovery key
 
-256 bits from `crypto.getRandomValues`, rendered as Crockford base32 in hyphenated groups for
-transcription, prefixed with a version marker:
+240 bits (30 bytes) from `crypto.getRandomValues`, rendered as Crockford base32 in hyphenated
+groups for transcription, prefixed with a version marker. 30 bytes encodes to exactly 48 base32
+characters, giving 8 even groups of 6 — a 32-byte key would leave a ragged final group:
 
 ```
-PASSIO-1-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX
+PASSIO-1-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX
 ```
 
 Its wrapping key is `HKDF-SHA256(ikm = decoded recovery key, info = HKDF_INFO_RECOV)`. The info
 string differs from the vault path deliberately, for domain separation. It is displayed
 **exactly once**, at signup, on a printable page. It is never stored in plaintext, never logged,
 and never recoverable afterwards.
+
+**The recovery verifier.** The recovery key cannot authenticate to the server on its own — the
+server holds only ciphertext and cannot tell a correct recovery key from a wrong one, so it cannot
+authorise the password change that recovery requires. A third derivation,
+`deriveRecoveryAuthHash(recoveryKey)` under `HKDF_INFO_RECOV_AUTH`, is sent at signup and stored as
+`user.recoveryVerifier`, hashed again server-side with Better Auth's password hasher. Presenting it
+proves possession without revealing the key.
+
+This is created **at signup**, because the recovery key is displayed exactly once and can never be
+reconstructed. An account created without it would be permanently unrecoverable.
 
 **Threat note:** the recovery key plus database access is equivalent to owning the vault. This is
 the same bargain 1Password's Emergency Kit makes, and it is accepted deliberately.
@@ -213,19 +225,17 @@ row timestamps.
 Drizzle + Neon Postgres.
 
 ```
-user                     -- Better Auth managed
+user                     -- Better Auth managed, extended with additionalFields
   id, email (unique, immutable), name, emailVerified, createdAt, updatedAt
-  password hash          -- a hash of authHash, managed by Better Auth
-
-session, account, verification   -- Better Auth managed, unmodified
-
-userVaultKey
-  userId                   text  PK, FK → user.id, cascade delete
   protectedVaultKey        text  not null
   recoveryWrappedVaultKey  text  not null
-  recoveryKeyCreatedAt     timestamptz not null
+  recoveryVerifier         text  not null   -- hashed server-side
   kdfVersion               integer not null default 1
-  createdAt, updatedAt
+
+account                  -- Better Auth managed. The credential row holds a hash
+                            of authHash. The raw master password never arrives.
+
+session, verification    -- Better Auth managed, unmodified
 
 item
   id          uuid  PK
@@ -238,6 +248,12 @@ item
 invite                   -- table created, UNUSED at MVP (see note below)
   id, email, token, createdAt, expiresAt, acceptedAt
 ```
+
+**On the `user` table:** the vault key material lives here as Better Auth `additionalFields` with
+`required: true`, rather than in a separate table. Better Auth mounts a public
+`/api/auth/sign-up/email` route, so a separate table written by application code could be bypassed,
+producing a user row with no key material — a permanently un-unlockable account. Putting the columns
+on `user` makes that state unrepresentable.
 
 **On `invite`:** the table is created in Phase 1 as schema groundwork for the future
 multi-user direction, but **nothing at MVP reads or writes it**. There is no invite UI and no
@@ -270,11 +286,25 @@ scoped to `ctx.session.user.id`.
 
 ```
 account.status     query     → { registrationOpen: boolean }
-account.register   mutation  ← { email, authHash, protectedVaultKey, recoveryWrappedVaultKey }
-                             Creates user (via Better Auth server API) and userVaultKey
-                             in ONE transaction. 403 if any account already exists.
-                             See the invite note in §4 — at MVP this is an unconditional
-                             close, not an invite check.
+                             Decides what the signup page renders. The authoritative
+                             gate is a databaseHooks.user.create.before hook that counts
+                             users and aborts — it holds for every entry point, including
+                             Better Auth's own public sign-up route.
+                             Registration is an unconditional close once any account
+                             exists; see the invite note in §4.
+
+Signup itself goes through Better Auth's signUp.email carrying protectedVaultKey,
+recoveryWrappedVaultKey and recoveryVerifier as additional fields. There is no
+separate register mutation — it would be a second, weaker path to the same place.
+
+recovery.getWrappedKey query → { recoveryWrappedVaultKey }   (public; returns a decoy
+                             for an unknown email so it is not an enumeration oracle)
+recovery.recover   mutation  ← { email, recoveryAuthHash, newAuthHash,
+                                 newProtectedVaultKey, newRecoveryWrappedVaultKey,
+                                 newRecoveryVerifier }
+                             Verifies the recovery verifier, rotates credentials and
+                             both wrapped copies, revokes all sessions. Locks out for
+                             15 minutes after 5 failures.
 vault.getKeys      query     → { protectedVaultKey, kdfVersion }
 vault.rewrap       mutation  ← { authHash, protectedVaultKey }   (Phase 6, master password change)
 
