@@ -41,10 +41,14 @@ describe("buildSignupPayload", () => {
     const payload = await buildSignupPayload(EMAIL, PASSWORD);
 
     const { stretchedKey } = await performDerivation(PASSWORD, EMAIL);
-    const viaMaster = await unwrapVaultKey(payload.protectedVaultKey, stretchedKey);
+    const viaMaster = await unwrapVaultKey(
+      payload.protectedVaultKey, stretchedKey, "master", true,
+    );
     const viaRecovery = await unwrapVaultKey(
       payload.recoveryWrappedVaultKey,
       await deriveRecoveryWrappingKey(payload.recoveryDisplay),
+      "recovery",
+      true,
     );
 
     const raw = async (k: CryptoKey) =>
@@ -61,6 +65,24 @@ describe("buildSignupPayload", () => {
     expect(payload.protectedVaultKey).toMatch(/^v1\./);
     expect(payload.recoveryWrappedVaultKey).toMatch(/^v1\./);
   });
+
+  it("binds each wrapping to its own purpose, so neither can stand in for the other",
+    async () => {
+      const payload = await buildSignupPayload(EMAIL, PASSWORD);
+      const { stretchedKey } = await performDerivation(PASSWORD, EMAIL);
+
+      // The two wrappings hold identical bytes; only the AAD separates them.
+      await expect(
+        unwrapVaultKey(payload.protectedVaultKey, stretchedKey, "recovery"),
+      ).rejects.toThrow();
+      await expect(
+        unwrapVaultKey(
+          payload.recoveryWrappedVaultKey,
+          await deriveRecoveryWrappingKey(payload.recoveryDisplay),
+          "master",
+        ),
+      ).rejects.toThrow();
+    });
 
   it("produces an auth hash Better Auth will accept", async () => {
     const { password } = await buildSignupPayload(EMAIL, PASSWORD);
@@ -82,7 +104,7 @@ describe("buildSignupPayload", () => {
 
     const { stretchedKey } = await performDerivation(PASSWORD, EMAIL);
     await expect(
-      unwrapVaultKey(payload.protectedVaultKey, stretchedKey),
+      unwrapVaultKey(payload.protectedVaultKey, stretchedKey, "master"),
     ).resolves.toBeDefined();
   });
 });

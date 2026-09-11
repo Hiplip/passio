@@ -43,8 +43,8 @@ export async function buildSignupPayload(
   return {
     email: normalized,
     password: authHash,
-    protectedVaultKey: await wrapVaultKey(vaultKey, stretchedKey),
-    recoveryWrappedVaultKey: await wrapVaultKey(vaultKey, recovery.key),
+    protectedVaultKey: await wrapVaultKey(vaultKey, stretchedKey, "master"),
+    recoveryWrappedVaultKey: await wrapVaultKey(vaultKey, recovery.key, "recovery"),
     recoveryVerifier: await deriveRecoveryAuthHash(recovery.display),
     recoveryDisplay: recovery.display,
   };

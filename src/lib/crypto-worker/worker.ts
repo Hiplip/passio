@@ -1,3 +1,5 @@
+import type { WrappingKey } from "~/lib/crypto/types";
+
 import { type DerivationResult, performDerivation } from "./derive";
 
 export interface DeriveRequest {
@@ -7,7 +9,7 @@ export interface DeriveRequest {
 }
 
 export type DeriveResponse =
-  | { id: string; ok: true; authHash: string; stretchedKey: CryptoKey }
+  | { id: string; ok: true; authHash: string; stretchedKey: WrappingKey }
   | { id: string; ok: false; error: string };
 
 export type { DerivationResult };

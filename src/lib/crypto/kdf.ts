@@ -4,6 +4,16 @@ import {
   AUTH_HASH_ITERATIONS, AUTH_HASH_LEN, HKDF_INFO_VAULT, SALT_DOMAIN,
 } from "./constants";
 import { toBase64Url, utf8ToBytes } from "./encoding";
+import type { WrappingKey } from "./types";
+
+/** Guards the two functions that take raw key material. An input of the wrong
+ *  length is never a real master key: 32 zero bytes would otherwise derive a
+ *  perfectly usable — and attacker-reproducible — key. */
+function assertMasterKeyBytes(masterKey: Uint8Array): void {
+  if (masterKey.length !== ARGON2_HASH_LEN) {
+    throw new Error(`master key must be ${ARGON2_HASH_LEN} bytes`);
+  }
+}
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -41,6 +51,7 @@ export async function deriveAuthHash(
   masterKey: Uint8Array,
   masterPassword: string,
 ): Promise<string> {
+  assertMasterKeyBytes(masterKey);
   const bytes = await pbkdf2({
     password: masterKey,
     salt: utf8ToBytes(masterPassword),
@@ -53,16 +64,21 @@ export async function deriveAuthHash(
 }
 
 /** Expands the master key into the AES-GCM key that wraps the vault key. */
-export async function stretchMasterKey(masterKey: Uint8Array): Promise<CryptoKey> {
+export async function stretchMasterKey(masterKey: Uint8Array): Promise<WrappingKey> {
+  assertMasterKeyBytes(masterKey);
+
   // Copied into a plain (non-shared) ArrayBuffer: hash-wasm hands back a Uint8Array
-  // whose buffer type is wider than WebCrypto's BufferSource accepts.
-  const material = await crypto.subtle.importKey(
-    "raw",
-    new Uint8Array(masterKey),
-    "HKDF",
-    false,
-    ["deriveKey"],
-  );
+  // whose buffer type is wider than WebCrypto's BufferSource accepts. importKey
+  // takes its own copy, so this one is zeroed as soon as it has been read —
+  // otherwise the caller's `fill(0)` would leave this duplicate behind.
+  const copy = new Uint8Array(masterKey);
+  let material: CryptoKey;
+  try {
+    material = await crypto.subtle.importKey("raw", copy, "HKDF", false, ["deriveKey"]);
+  } finally {
+    copy.fill(0);
+  }
+
   return crypto.subtle.deriveKey(
     {
       name: "HKDF",
@@ -74,5 +90,5 @@ export async function stretchMasterKey(masterKey: Uint8Array): Promise<CryptoKey
     { name: "AES-GCM", length: AES_KEY_BITS },
     false, // non-extractable: this key must never leave the worker
     ["encrypt", "decrypt"],
-  );
+  ) as Promise<WrappingKey>;
 }

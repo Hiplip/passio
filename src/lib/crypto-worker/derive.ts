@@ -1,10 +1,13 @@
-import { deriveAuthHash, deriveMasterKey, stretchMasterKey } from "~/lib/crypto";
+// Imported from the module directly, not the public barrel: these three touch
+// raw master-key material, which never leaves this worker.
+import { deriveAuthHash, deriveMasterKey, stretchMasterKey } from "~/lib/crypto/kdf";
+import type { WrappingKey } from "~/lib/crypto/types";
 
 export interface DerivationResult {
   /** Sent to Better Auth in place of a password. */
   authHash: string;
   /** Non-extractable AES-GCM key that wraps and unwraps the vault key. */
-  stretchedKey: CryptoKey;
+  stretchedKey: WrappingKey;
 }
 
 /**
@@ -24,7 +27,9 @@ export async function performDerivation(
       stretchedKey: await stretchMasterKey(masterKey),
     };
   } finally {
-    // Do not leave the master key sitting in memory after derivation.
+    // Best-effort only: this clears one copy of several. hash-wasm keeps its own
+    // material in the wasm heap, and the browser may have copied the buffer
+    // during the derivations above. It costs nothing and shortens the window.
     masterKey.fill(0);
   }
 }

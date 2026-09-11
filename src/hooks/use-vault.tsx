@@ -8,10 +8,12 @@ import {
   useState,
 } from "react";
 
+import type { VaultKey } from "~/lib/crypto";
+
 interface VaultContextValue {
-  vaultKey: CryptoKey | null;
+  vaultKey: VaultKey | null;
   isUnlocked: boolean;
-  unlock: (key: CryptoKey) => void;
+  unlock: (key: VaultKey) => void;
   lock: () => void;
 }
 
@@ -25,9 +27,9 @@ const VaultContext = createContext<VaultContextValue | null>(null);
  * copy of the key lives in memory, so closing the tab genuinely ends access.
  */
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const [vaultKey, setVaultKey] = useState<CryptoKey | null>(null);
+  const [vaultKey, setVaultKey] = useState<VaultKey | null>(null);
 
-  const unlock = useCallback((key: CryptoKey) => setVaultKey(key), []);
+  const unlock = useCallback((key: VaultKey) => setVaultKey(key), []);
   const lock = useCallback(() => setVaultKey(null), []);
 
   const value = useMemo<VaultContextValue>(

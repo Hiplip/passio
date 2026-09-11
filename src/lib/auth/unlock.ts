@@ -1,8 +1,8 @@
-import { normalizeEmail, unwrapVaultKey } from "~/lib/crypto";
+import { normalizeEmail, unwrapVaultKey, type VaultKey } from "~/lib/crypto";
 import { deriveInWorker } from "~/lib/crypto-worker/client";
 
 export type UnlockResult =
-  | { ok: true; vaultKey: CryptoKey }
+  | { ok: true; vaultKey: VaultKey }
   | { ok: false };
 
 /**
@@ -28,7 +28,12 @@ export async function attemptUnlock(
   );
 
   try {
-    return { ok: true, vaultKey: await unwrapVaultKey(protectedVaultKey, stretchedKey) };
+    // Left non-extractable: unlocking never needs the raw bytes back, so an
+    // XSS payload that reaches the key still cannot export it.
+    return {
+      ok: true,
+      vaultKey: await unwrapVaultKey(protectedVaultKey, stretchedKey, "master"),
+    };
   } catch {
     return { ok: false };
   }

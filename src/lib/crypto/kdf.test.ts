@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ARGON2_HASH_LEN } from "./constants";
 import { deriveAuthHash, deriveMasterKey, stretchMasterKey } from "./kdf";
 
 const PASSWORD = "correct horse battery staple";
@@ -61,6 +62,17 @@ describe("deriveAuthHash", () => {
     expect(authHash.length).toBeGreaterThanOrEqual(8);
     expect(authHash.length).toBeLessThanOrEqual(128);
   });
+
+  it("rejects a zero-length master key", async () => {
+    await expect(deriveAuthHash(new Uint8Array(0), PASSWORD)).rejects.toThrow(/master key/i);
+  });
+
+  it("rejects a master key that is not the derived length", async () => {
+    await expect(deriveAuthHash(new Uint8Array(ARGON2_HASH_LEN - 1), PASSWORD))
+      .rejects.toThrow(/master key/i);
+    await expect(deriveAuthHash(new Uint8Array(ARGON2_HASH_LEN + 1), PASSWORD))
+      .rejects.toThrow(/master key/i);
+  });
 });
 
 describe("stretchMasterKey", () => {
@@ -70,5 +82,16 @@ describe("stretchMasterKey", () => {
     expect(key.algorithm.name).toBe("AES-GCM");
     expect(key.extractable).toBe(false);
     await expect(crypto.subtle.exportKey("raw", key)).rejects.toThrow();
+  });
+
+  it("rejects a zero-length master key rather than deriving from nothing", async () => {
+    await expect(stretchMasterKey(new Uint8Array(0))).rejects.toThrow(/master key/i);
+  });
+
+  it("rejects a master key that is not the derived length", async () => {
+    await expect(stretchMasterKey(new Uint8Array(ARGON2_HASH_LEN - 1)))
+      .rejects.toThrow(/master key/i);
+    await expect(stretchMasterKey(new Uint8Array(ARGON2_HASH_LEN + 1)))
+      .rejects.toThrow(/master key/i);
   });
 });

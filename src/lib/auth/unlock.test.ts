@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { encryptItem, decryptItem, generateVaultKey, wrapVaultKey } from "~/lib/crypto";
+import {
+  decryptItem, encryptItem, generateVaultKey, itemAad, wrapVaultKey,
+} from "~/lib/crypto";
 import { performDerivation } from "~/lib/crypto-worker/derive";
 
 import { attemptUnlock } from "./unlock";
@@ -11,6 +13,7 @@ vi.mock("~/lib/crypto-worker/client", async () => {
 });
 
 const EMAIL = "owner@example.com";
+const AAD = itemAad("item-1");
 const RIGHT = "the right master password";
 const WRONG = "the wrong master password";
 
@@ -19,23 +22,33 @@ async function makeAccount(password: string) {
   const vaultKey = await generateVaultKey();
   return {
     vaultKey,
-    protectedVaultKey: await wrapVaultKey(vaultKey, stretchedKey),
+    protectedVaultKey: await wrapVaultKey(vaultKey, stretchedKey, "master"),
   };
 }
 
 describe("attemptUnlock", () => {
   it("returns a vault key that decrypts existing items", async () => {
     const { vaultKey, protectedVaultKey } = await makeAccount(RIGHT);
-    const cipher = await encryptItem({ type: "login", title: "GitHub" }, vaultKey);
+    const cipher = await encryptItem({ type: "login", title: "GitHub" }, vaultKey, AAD);
 
     const result = await attemptUnlock(EMAIL, RIGHT, protectedVaultKey);
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("expected unlock to succeed");
-    expect(await decryptItem(cipher, result.vaultKey)).toEqual({
+    expect(await decryptItem(cipher, result.vaultKey, AAD)).toEqual({
       type: "login",
       title: "GitHub",
     });
+  });
+
+  it("leaves the unwrapped key non-extractable", async () => {
+    const { protectedVaultKey } = await makeAccount(RIGHT);
+
+    const result = await attemptUnlock(EMAIL, RIGHT, protectedVaultKey);
+
+    if (!result.ok) throw new Error("expected unlock to succeed");
+    expect(result.vaultKey.extractable).toBe(false);
+    await expect(crypto.subtle.exportKey("raw", result.vaultKey)).rejects.toThrow();
   });
 
   it("reports failure for the wrong password without throwing", async () => {
