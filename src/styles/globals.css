@@ -1,6 +1,165 @@
 @import "tailwindcss";
 
+/*
+ * passio design tokens
+ *
+ * One idea carries this interface: colour appears only when the vault is
+ * unlocked. The locked screen is deliberately monochrome, so the return of the
+ * accent is the visible signal that the vault opened. That means the accent is
+ * never decoration - it always reports state.
+ *
+ * Two families, clearly distinct:
+ *   Archivo        UI text. A grotesque with enough width variation to build
+ *                  hierarchy from weight alone.
+ *   JetBrains Mono EVERY secret, without exception. Chosen for a slashed zero
+ *                  and unambiguous 1/l/I, which matters the moment someone
+ *                  hand-copies a recovery key off a printed page.
+ *
+ * Mono is for transcribable data only. It is never used as a label texture.
+ */
+
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Modular scale, base 16, ratio 1.25 (major third). */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.9375rem;
+  --text-3xl: 2.4375rem;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+}
+
+:root {
+  color-scheme: light;
+
+  --paper: #fbfbfa;
+  --surface: #ffffff;
+  --ink: #16191d;
+  --muted: #5c646e;
+  --line: #e2e5e9;
+
+  /* The single accent. Present only when unlocked. */
+  --accent: #0b6e6e;
+  --accent-ink: #ffffff;
+
+  /* Reserved exclusively for irreversible actions. Never for emphasis. */
+  --danger: #9a3412;
+  --danger-surface: #fdf4ef;
+
+  --focus: #0b6e6e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --paper: #0f1216;
+    --surface: #161a1f;
+    --ink: #e8ebee;
+    --muted: #8a939e;
+    --line: #262c33;
+
+    --accent: #3fbfb5;
+    --accent-ink: #06201f;
+
+    --danger: #e8815a;
+    --danger-surface: #23160f;
+
+    --focus: #3fbfb5;
+  }
+}
+
+/*
+ * The locked vault drops to monochrome. Applied to a wrapper, so unlocking
+ * restores colour everywhere at once rather than component by component.
+ */
+.vault-locked {
+  --accent: var(--muted);
+  --accent-ink: var(--surface);
+  --focus: var(--muted);
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hierarchy comes from weight and size, not colour. */
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Body copy stays inside a comfortable measure. */
+  p {
+    max-width: 68ch;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+}
+
+@layer components {
+  /*
+   * Every secret renders through this: passwords, TOTP codes, recovery keys.
+   * Tabular figures keep a ticking TOTP code from shifting width digit to
+   * digit, which is otherwise very distracting once per second.
+   */
+  .secret {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: 0.01em;
+  }
+
+  .hairline {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
