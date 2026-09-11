@@ -210,3 +210,26 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   suite instead costs about a minute a run (126 s against 70 s). This does not protect
   against two `vitest` processes running against the same Neon database at once, which is
   what happens when two agents run the suite simultaneously.
+- **The recovery columns were applied by hand, because `pnpm db:push` cannot run.**
+  `drizzle-kit@0.30.6` against this Neon server emits a `DROP CONSTRAINT
+  "<table>_<column>_not_null"` for every non-null column in the schema before it gets to
+  any real change, and the first one it tries is on a primary key, so Postgres rejects it
+  (`42P16: column "id" is in a primary key`) and the push aborts having applied nothing.
+  The three `ALTER TABLE "user" ADD COLUMN` statements drizzle-kit generated for
+  `recovery_key_created_at`, `recovery_failed_attempts` and `recovery_locked_until` were
+  therefore executed directly, verbatim, and the schema now matches `schema.ts`. Nothing
+  else was touched: every column that was `NOT NULL` before still is.
+  NEEDS-REVIEW: every future schema change hits this same wall until drizzle-kit is
+  upgraded. It is not specific to these columns.
+- **An unknown email gets a decoy `recoveryWrappedVaultKey`, not an error.**
+  `recovery.getWrappedKey` has to be public — someone who lost their master password has
+  no session — so an error for an unknown address would make it a user-enumeration oracle.
+  The decoy is HMAC-SHA256 of the normalised email under `BETTER_AUTH_SECRET`, expanded to
+  60 bytes over two counter-separated blocks and formatted as the same `v1.<12 bytes>.<48
+  bytes>` envelope `wrapVaultKey` emits. Deriving it rather than randomising it is the
+  point: it is stable across calls, so asking twice is not a tell, and unpredictable
+  without the secret, so it cannot be recomputed offline and recognised as a decoy.
+- **`recovery.recover` spends scrypt on an email that has no account.** It verifies the
+  supplied hash against a fixed placeholder hash before throwing. The error message is
+  already identical to the wrong-key one; without the dummy verification the response time
+  would still separate the two cases.

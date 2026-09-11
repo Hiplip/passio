@@ -35,6 +35,15 @@ export const user = pgTable("user", {
   // recovery key without the server ever holding it.
   recoveryVerifier: text("recovery_verifier").notNull(),
   kdfVersion: integer("kdf_version").notNull().default(1),
+
+  // --- recovery-key redemption state ---
+  // Nullable on purpose: accounts created before this column existed have no
+  // value, and "unknown" is the honest answer for them.
+  recoveryKeyCreatedAt: timestamp("recovery_key_created_at", { withTimezone: true }),
+  // The recovery verifier is the one credential a remote attacker can grind
+  // without a session, so redemption is rate limited per account.
+  recoveryFailedAttempts: integer("recovery_failed_attempts").notNull().default(0),
+  recoveryLockedUntil: timestamp("recovery_locked_until", { withTimezone: true }),
 });
 
 export const session = pgTable("session", {
