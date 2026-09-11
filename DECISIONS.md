@@ -90,3 +90,30 @@ so spec and plan do not contradict each other.
   `BETTER_AUTH_URL`
 - Variables set on Vercel: **none — BLOCKED**, see the run blockers section above. When the token
   is replaced, mirror exactly those three names to production and preview.
+
+## 2026-09-11 — Crypto module (Tasks 1.3–1.9)
+
+Three deviations from the plan's verbatim code, all forced by this repo's compiler and
+lint settings. No behaviour changed; nothing was weakened (no `any`, no assertions to
+silence errors, no disabled rules).
+
+- `encoding.ts` uses `CROCKFORD.charAt(i)` instead of `CROCKFORD[i]`. Under
+  `noUncheckedIndexedAccess` the index form is `string | undefined`, which
+  `restrict-plus-operands` rejects in `out += …`. `charAt` is typed `string`.
+- Byte-producing helpers (`utf8ToBytes`, `fromBase64Url`, `fromCrockfordBase32`,
+  `decryptBytes`) now declare `Uint8Array<ArrayBuffer>`, and `encryptBytes` takes the
+  same. TypeScript 5.8's `BufferSource` excludes `SharedArrayBuffer`-backed views, so the
+  bare `Uint8Array` the plan used is not assignable to WebCrypto parameters.
+  `stretchMasterKey` copies its input (`new Uint8Array(masterKey)`) because hash-wasm
+  returns the wider type.
+- `cipher.test.ts`: `bytes[0] ^= 1` became `bytes[0] = (bytes[0] ?? 0) ^ 1`, and the
+  three-part split goes through a small tuple-asserting helper — both because
+  `noUncheckedIndexedAccess` makes the plan's forms type errors in tests, which `tsc`
+  also checks.
+
+- NEEDS-REVIEW: `recovery.ts` factors the plan's duplicated "decode and length-check the
+  displayed key" block into one private `recoveryKeyBytes` helper used by both
+  `deriveRecoveryWrappingKey` and `deriveRecoveryAuthHash`. Identical behaviour and error
+  message; done so the two paths can never drift apart in validation.
+
+Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
