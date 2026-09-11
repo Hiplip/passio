@@ -145,3 +145,42 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   `/api/auth/sign-up/email` route.
 - Tests run against the real Neon dev database with ids `test-vault-user-a` / `-b` and clean
   up in `afterEach`; the `user` table was verified empty before and after the full suite.
+
+## Crypto module review fixes
+
+- **AAD is required, not optional.** `encryptBytes`/`decryptBytes` and
+  `encryptItem`/`decryptItem` take a mandatory `aad: string`. A caller that cannot name
+  the context does not know where the data belongs. Items use `itemAad(itemId)`
+  (`passio-item-v1:<id>`); the vault key uses `AAD_VAULT_KEY_MASTER` /
+  `AAD_VAULT_KEY_RECOVERY`, selected by the `VaultKeyPurpose` argument to
+  `wrapVaultKey`/`unwrapVaultKey`. Before this, any ciphertext decrypted in any slot: a
+  malicious server could swap or roll back rows undetectably, and the two vault-key
+  wrappings (identical plaintext) were interchangeable. The vault has no production rows,
+  so the format changed now rather than never.
+- **Branded `VaultKey` / `WrappingKey`** (`src/lib/crypto/types.ts`). Every key here is an
+  AES-GCM `CryptoKey`, so `encryptItem(item, stretchedKey)` used to compile and round-trip
+  while producing items that die at the next password change. One cast per construction
+  site; the brands exist only at compile time.
+- **The public barrel no longer exports `deriveMasterKey`, `deriveAuthHash` or
+  `stretchMasterKey`.** Raw master-key material never leaves the worker, so
+  `crypto-worker/derive.ts` imports them from `~/lib/crypto/kdf` directly.
+- NEEDS-REVIEW: `unwrapVaultKey` now returns a **non-extractable** key unless the caller
+  passes `extractable: true`. Unlock takes the default; only signup and the (still
+  unwritten) recovery re-wrap need the raw bytes. A future "change master password" flow
+  must remember to opt in.
+- **Crockford aliasing.** The decoder now reads `I`/`L` as `1` and `O` as `0`, which is the
+  point of a printed key. That made prefix-stripping ambiguous, so `extractPayload` detects
+  the `PASSIO-1` prefix by total length (7 + 48 characters) rather than `startsWith`, and
+  rejects anything else. The character count is also validated before decoding, so a junk
+  character appended to a key no longer decodes to the same bytes.
+- **Error taxonomy.** `DecryptionError` now means only "the tag did not verify" — the one
+  error a UI may read as "wrong password". Authentic-but-unreadable data (bad JSON, a
+  vault key of the wrong length) is a `CipherFormatError`. A mistyped recovery key is a
+  `RecoveryKeyError`, which lives in its own module because `encoding.ts` throws it and
+  `recovery.ts` imports `encoding.ts`.
+- **Worker client.** `deriveInWorker` takes an injectable worker factory (defaulting to the
+  real `Worker`), so its message plumbing is now tested; it rejects after
+  `DERIVATION_TIMEOUT_MS` (30 s) and on a reply carrying an unknown id, instead of leaving
+  the unlock screen spinning forever.
+- Derivation inputs are length-checked against `ARGON2_HASH_LEN`: 32 zero bytes previously
+  derived a working, attacker-reproducible key.
