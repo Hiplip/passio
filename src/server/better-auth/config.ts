@@ -7,6 +7,23 @@ import { db } from "~/server/db";
 import { user as userTable } from "~/server/db/schema";
 
 /**
+ * Where this instance answers.
+ *
+ * Locally that comes from BETTER_AUTH_URL. On Vercel the production domain is
+ * not known until the project's first deploy, so fall back to the value Vercel
+ * injects rather than requiring a URL that does not exist yet.
+ */
+function resolveBaseURL(): string {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
+  if (env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  throw new Error(
+    "Set BETTER_AUTH_URL: no explicit base URL and not running on Vercel.",
+  );
+}
+
+/**
  * Better Auth never sees a master password.
  *
  * The client derives an `authHash` from the master password and sends that in
@@ -17,7 +34,7 @@ import { user as userTable } from "~/server/db/schema";
  */
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: resolveBaseURL(),
   database: drizzleAdapter(db, {
     provider: "pg",
   }),

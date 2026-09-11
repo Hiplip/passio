@@ -8,7 +8,11 @@ export const env = createEnv({
    */
   server: {
     BETTER_AUTH_SECRET: z.string().min(1),
-    BETTER_AUTH_URL: z.string().url(),
+    // Optional: on Vercel it falls back to the production domain Vercel injects,
+    // which avoids a chicken-and-egg where the build needs a URL that only
+    // exists after the first deploy. Set it explicitly for local development.
+    BETTER_AUTH_URL: z.string().url().optional(),
+    VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
     DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"]) 
@@ -31,6 +35,7 @@ export const env = createEnv({
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
