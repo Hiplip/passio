@@ -68,3 +68,25 @@ so spec and plan do not contradict each other.
   shipping a wordlist of our own or fetching one.
 - Password generator uses rejection sampling. `getRandomValues() % alphabet.length` biases toward
   the start of the alphabet and would quietly weaken every generated password.
+
+## 2026-09-11 — Run blockers
+
+- **BLOCKED: Vercel.** `VERCEL_TOKEN` returns HTTP 403 from `api.vercel.com/v2/user` and there is
+  no stored CLI session (`vercel whoami` → "Logged out"). Token is revoked or expired. Recovery
+  requires `vercel login` (browser) or a newly issued token — both human-only, and the standing
+  rules forbid re-authenticating. Vercel linking, env mirroring, and deploy verification are
+  skipped for the whole run. All other work proceeds.
+- Decision: **still create the GitHub repo and push each gated phase.** Pushing is safe while no
+  Vercel project is connected — there is no deploy to break — and it protects the work from loss.
+  The rule against pushing blocked work is about not publishing broken code; the code itself is
+  fully gated, and only external infrastructure is blocked.
+
+## 2026-09-11 — Provisioning (Task 1.1)
+
+- Neon project ID: `tiny-rain-06343556`
+- Neon region: `aws-us-east-2`
+- GitHub repo: `Hiplip/passio` (private), `origin` set, branch `main`
+- Variables set in local `.env` (NAMES only): `DATABASE_URL`, `BETTER_AUTH_SECRET`,
+  `BETTER_AUTH_URL`
+- Variables set on Vercel: **none — BLOCKED**, see the run blockers section above. When the token
+  is replaced, mirror exactly those three names to production and preview.
