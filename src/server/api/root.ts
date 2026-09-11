@@ -1,5 +1,6 @@
 import { accountRouter } from "~/server/api/routers/account";
 import { itemRouter } from "~/server/api/routers/item";
+import { recoveryRouter } from "~/server/api/routers/recovery";
 import { vaultRouter } from "~/server/api/routers/vault";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -11,6 +12,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   account: accountRouter,
   item: itemRouter,
+  recovery: recoveryRouter,
   vault: vaultRouter,
 });
 

@@ -31,7 +31,7 @@ These apply when designing or planning, before any code exists.
 | Build gate | `pnpm build` (`next build`) |
 | Test gate | `pnpm test` (`vitest run`) |
 | Smoke gate | `pnpm smoke` (`bash scripts/smoke.sh`) |
-| Push schema | `pnpm db:push` |
+| Push schema | **BROKEN — see below** |
 | Dev server | `pnpm dev` |
 
 ### Key paths
@@ -63,6 +63,20 @@ These apply when designing or planning, before any code exists.
   between them, the change is wrong.
 - A reload re-locks the vault. The key is in memory only - never localStorage,
   sessionStorage, IndexedDB or a cookie.
+
+### `pnpm db:push` is broken (NEEDS-REVIEW)
+
+`drizzle-kit@0.30.6` against this Neon server emits
+`DROP CONSTRAINT "<table>_<col>_not_null"` for every non-null column before any real
+change. The first target is a primary key, Postgres rejects it
+(`42P16: column "id" is in a primary key`), and the push aborts having applied nothing —
+**while still exiting 0**, so an exit-code check does not catch it. It also prompts
+interactively when it cannot tell a created table from a renamed one, and `--force` does
+not suppress that; redirect stdin from `/dev/null` or it hangs forever.
+
+Until drizzle-kit is upgraded, apply schema changes by taking the `ADD COLUMN` statements
+drizzle-kit generates and executing them directly, then verifying the result against
+`schema.ts`. Both schema changes in this project were applied that way.
 
 ### Environment notes
 
