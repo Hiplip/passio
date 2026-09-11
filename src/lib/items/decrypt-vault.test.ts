@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { encryptItem, generateVaultKey, itemAad } from "~/lib/crypto";
+import { encryptItem, generateVaultKey, itemAad, type VaultKey } from "~/lib/crypto";
 
 import { decryptVault, type EncryptedRow } from "./decrypt-vault";
 
 const now = new Date();
 
-async function row(id: string, data: unknown, key: CryptoKey): Promise<EncryptedRow> {
+async function row(id: string, data: unknown, key: VaultKey): Promise<EncryptedRow> {
   return {
     id,
-    ciphertext: await encryptItem(data, key as never, itemAad(id)),
+    ciphertext: await encryptItem(data, key, itemAad(id)),
     createdAt: now,
     updatedAt: now,
   };
