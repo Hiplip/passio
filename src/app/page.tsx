@@ -1,19 +1,17 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-// Replaced in Task 1.18 with real routing by auth/lock state.
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-4xl font-semibold tracking-tight">passio</h1>
-      <p className="text-sm opacity-70">A zero-knowledge password manager.</p>
-      <div className="flex gap-4">
-        <Link className="underline" href="/signup">
-          Create account
-        </Link>
-        <Link className="underline" href="/login">
-          Log in
-        </Link>
-      </div>
-    </main>
-  );
+import { api } from "~/trpc/server";
+import { getSession } from "~/server/better-auth/server";
+
+/**
+ * Routes by state. Locked versus unlocked is a client-side distinction - the
+ * server cannot know whether the vault key is in memory - so a signed-in user
+ * is sent to /vault, which redirects onward to /unlock if it is locked.
+ */
+export default async function Home() {
+  const session = await getSession();
+  if (session) redirect("/vault");
+
+  const { registrationOpen } = await api.account.status();
+  redirect(registrationOpen ? "/signup" : "/login");
 }

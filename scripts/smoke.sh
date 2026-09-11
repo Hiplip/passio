@@ -20,7 +20,9 @@ READY_TIMEOUT=30
 # route:expected-status. Protected routes must NOT return 200 to an anonymous
 # request - that would mean the guard is missing. Accept only a redirect.
 ROUTES=(
-  "/:200"
+  # "/" is purely a router: it redirects to /signup, /login or /vault by state,
+  # so a redirect is the healthy response, not 200.
+  "/:307,302"
   "/signup:200"
   "/login:200"
   "/unlock:307,302"
