@@ -16,8 +16,8 @@ describe("performDerivation", () => {
     expect(authHash.length).toBeLessThanOrEqual(128);
 
     const vaultKey = await generateVaultKey();
-    const wrapped = await wrapVaultKey(vaultKey, stretchedKey);
-    await expect(unwrapVaultKey(wrapped, stretchedKey)).resolves.toBeDefined();
+    const wrapped = await wrapVaultKey(vaultKey, stretchedKey, "master");
+    await expect(unwrapVaultKey(wrapped, stretchedKey, "master")).resolves.toBeDefined();
   });
 
   it("is deterministic for the same password and email", async () => {
@@ -41,9 +41,9 @@ describe("performDerivation", () => {
   it("yields keys that cannot unwrap each other across passwords", async () => {
     const right = await performDerivation(PASSWORD, EMAIL);
     const wrong = await performDerivation("a different password", EMAIL);
-    const wrapped = await wrapVaultKey(await generateVaultKey(), right.stretchedKey);
+    const wrapped = await wrapVaultKey(await generateVaultKey(), right.stretchedKey, "master");
 
-    await expect(unwrapVaultKey(wrapped, wrong.stretchedKey)).rejects.toThrow();
+    await expect(unwrapVaultKey(wrapped, wrong.stretchedKey, "master")).rejects.toThrow();
   });
 
   it("propagates a rejected empty email", async () => {

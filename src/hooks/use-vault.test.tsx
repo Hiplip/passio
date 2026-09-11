@@ -2,11 +2,11 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { generateVaultKey } from "~/lib/crypto";
+import { generateVaultKey, type VaultKey } from "~/lib/crypto";
 
 import { useVault, VaultProvider } from "./use-vault";
 
-let key: CryptoKey;
+let key: VaultKey;
 beforeAll(async () => {
   key = await generateVaultKey();
 });

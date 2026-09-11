@@ -50,17 +50,18 @@ export function deriveInWorker(
     const id = crypto.randomUUID();
 
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
 
+    // `timer` is declared below: settle only ever runs from a listener or from
+    // the timeout itself, both of which exist after that line has run.
     const settle = (fn: () => void) => {
       if (settled) return; // a terminated worker may still have messages queued
       settled = true;
-      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(timer);
       worker.terminate();
       fn();
     };
 
-    timer = setTimeout(
+    const timer = setTimeout(
       () => settle(() => reject(new Error("key derivation timed out"))),
       timeoutMs,
     );
