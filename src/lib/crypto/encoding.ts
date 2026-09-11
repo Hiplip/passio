@@ -1,6 +1,8 @@
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-export function utf8ToBytes(value: string): Uint8Array {
+/** Returns bytes backed by a plain (non-shared) ArrayBuffer, which is what
+ *  WebCrypto's BufferSource parameters require. */
+export function utf8ToBytes(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value);
 }
 
@@ -14,7 +16,7 @@ export function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function fromBase64Url(value: string): Uint8Array {
+export function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64.length % 4 === 0 ? base64 : base64 + "=".repeat(4 - (base64.length % 4));
   const binary = atob(padded);
@@ -40,7 +42,7 @@ export function toCrockfordBase32(bytes: Uint8Array): string {
   return out;
 }
 
-export function fromCrockfordBase32(value: string): Uint8Array {
+export function fromCrockfordBase32(value: string): Uint8Array<ArrayBuffer> {
   let bits = 0;
   let accumulator = 0;
   const out: number[] = [];
