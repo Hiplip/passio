@@ -113,12 +113,14 @@ CIPHER_VERSION   = "v1"
 ```
 normalizedEmail = email.trim().toLowerCase()
 
+argonSalt    = SHA-256( utf8("passio-salt-v1:" + normalizedEmail) )   -- 32 bytes
+
 masterKey    = Argon2id(
                  password = masterPassword,
-                 salt     = utf8(normalizedEmail),
+                 salt     = argonSalt,
                  memory   = 65536, iterations = 3, parallelism = 4, hashLength = 32)
 
-authHash     = base64( PBKDF2-SHA256(
+authHash     = base64url( PBKDF2-SHA256(
                  password   = masterKey,
                  salt       = utf8(masterPassword),
                  iterations = 1,
@@ -133,6 +135,11 @@ vaultKey     = crypto.getRandomValues(32 bytes)   // generated once, at signup o
 `authHash` is what Better Auth receives in its `password` field. Better Auth hashes it again
 with its own algorithm before storage, so the database holds a hash of a hash. The raw master
 password and `masterKey` never leave the Web Worker.
+
+**Why the email is hashed rather than used directly.** Argon2 requires a salt of at least 8 bytes,
+and a short address such as `a@b.co` is only 6 — it would fail outright. Hashing to a fixed 32 bytes
+also domain-separates the salt, so the value is derived from the email without ever being the email.
+The security property is unchanged: the salt is still a deterministic function of the address alone.
 
 ### 3.3 Why the email is the salt
 

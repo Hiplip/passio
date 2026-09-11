@@ -19,7 +19,9 @@ Agent defaults:
 - NEEDS-REVIEW: Registration closes after the first account. The app sits on a public Vercel
   URL and open signup on a password manager invites strangers' vaults into the database.
   Reversible in a few lines if the intent was ever an open instance.
-- NEEDS-REVIEW: KDF parameters are an app-wide constant and the salt is the normalized email.
+- NEEDS-REVIEW: KDF parameters are an app-wide constant and the salt is derived from the normalized
+  email — specifically `SHA-256("passio-salt-v1:" + normalizedEmail)`, not the raw address, because
+  Argon2 requires >= 8 salt bytes and a short email like `a@b.co` is only 6.
   This deletes the `/prelogin` endpoint and its user-enumeration oracle. Cost: the email address
   becomes immutable, because it is part of the derivation. Email change is a non-goal at MVP.
 - NEEDS-REVIEW: Soft delete (`item.deletedAt`) included in the MVP schema. One column and a
