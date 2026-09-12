@@ -1,14 +1,19 @@
 "use client";
 
+import { Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import { GeneratorDialog } from "~/components/vault/generator-dialog";
 import { SecretField } from "~/components/vault/secret-field";
 import { TotpDisplay } from "~/components/vault/totp-display";
 import { digitsOnly, formatCardNumber, maskCardNumber } from "~/lib/items/mask";
-import { type CardItem, type Item, type LoginItem, type NoteItem } from "~/lib/items/schema";
+import type { CardItem, Item, LoginItem, NoteItem } from "~/lib/items/schema";
 import { parseTotpInput } from "~/lib/items/totp";
 
 interface ItemFormProps {
@@ -32,51 +37,55 @@ export function ItemForm({
 }: ItemFormProps) {
   return (
     <form
-      className="flex max-w-xl flex-col gap-5"
       onSubmit={(event) => {
         event.preventDefault();
         onSave();
       }}
     >
-      <Field
-        label="Name"
-        value={value.title}
-        onChange={(e) => onChange({ ...value, title: e.target.value })}
-        required
-      />
+      <Card>
+        <CardContent className="grid gap-5">
+          <Field
+            label="Name"
+            value={value.title}
+            onChange={(e) => onChange({ ...value, title: e.target.value })}
+            required
+          />
 
-      {value.type === "login" ? (
-        <LoginFields value={value} onChange={onChange} />
-      ) : value.type === "note" ? (
-        <NoteFields value={value} onChange={onChange} />
-      ) : (
-        <CardFields value={value} onChange={onChange} />
-      )}
+          {value.type === "login" ? (
+            <LoginFields value={value} onChange={onChange} />
+          ) : value.type === "note" ? (
+            <NoteFields value={value} onChange={onChange} />
+          ) : (
+            <CardFields value={value} onChange={onChange} />
+          )}
 
-      {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
 
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={saving || value.title.trim().length === 0}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-        <Button type="button" variant="quiet" onClick={onCancel}>
-          Cancel
-        </Button>
-        {onDelete ? (
-          <Button
-            type="button"
-            variant="danger"
-            className="ml-auto"
-            onClick={onDelete}
-          >
-            Delete
+        <CardFooter className="gap-2 border-t">
+          <Button type="submit" disabled={saving || value.title.trim().length === 0}>
+            {saving ? "Saving…" : "Save"}
           </Button>
-        ) : null}
-      </div>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="destructive"
+              className="ml-auto"
+              onClick={onDelete}
+            >
+              <Trash2 />
+              Delete
+            </Button>
+          ) : null}
+        </CardFooter>
+      </Card>
     </form>
   );
 }
@@ -118,19 +127,22 @@ function LoginFields({
         autoComplete="off"
       />
 
-      <div className="flex flex-col gap-2">
+      <div className="grid gap-2">
         <SecretField
           label="Password"
           value={value.password ?? ""}
           onChange={(password) => onChange({ ...value, password })}
         />
-        <button
+        <Button
           type="button"
-          className="self-start text-sm text-[var(--accent)] underline"
+          variant="ghost"
+          size="sm"
+          className="justify-self-start"
           onClick={() => setGenerating(true)}
         >
-          Generate a password
-        </button>
+          <Sparkles />
+          Generate
+        </Button>
       </div>
 
       <Field
@@ -141,9 +153,9 @@ function LoginFields({
         autoComplete="off"
       />
 
-      <div className="flex flex-col gap-2">
+      <div className="grid gap-2">
         <Field
-          label="Authenticator (TOTP)"
+          label="Authenticator (one-time codes)"
           value={totpInput}
           onChange={(e) => applyTotp(e.target.value)}
           placeholder="Paste an otpauth:// link or the secret"
@@ -158,21 +170,24 @@ function LoginFields({
         {value.totp ? <TotpDisplay config={value.totp} /> : null}
       </div>
 
-      <Field
-        label="Notes"
-        value={value.notes ?? ""}
-        onChange={(e) => onChange({ ...value, notes: e.target.value })}
-      />
-
-      {generating ? (
-        <GeneratorDialog
-          onClose={() => setGenerating(false)}
-          onUse={(password) => {
-            onChange({ ...value, password });
-            setGenerating(false);
-          }}
+      <div className="grid gap-2">
+        <Label htmlFor="login-notes">Notes</Label>
+        <Textarea
+          id="login-notes"
+          rows={3}
+          value={value.notes ?? ""}
+          onChange={(e) => onChange({ ...value, notes: e.target.value })}
         />
-      ) : null}
+      </div>
+
+      <GeneratorDialog
+        open={generating}
+        onOpenChange={setGenerating}
+        onUse={(password) => {
+          onChange({ ...value, password });
+          setGenerating(false);
+        }}
+      />
     </>
   );
 }
@@ -185,16 +200,13 @@ function NoteFields({
   onChange: (next: Item) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor="note-body" className="text-sm font-medium">
-        Note
-      </label>
-      <textarea
+    <div className="grid gap-2">
+      <Label htmlFor="note-body">Note</Label>
+      <Textarea
         id="note-body"
-        rows={10}
+        rows={12}
         value={value.body ?? ""}
         onChange={(e) => onChange({ ...value, body: e.target.value })}
-        className="w-full rounded-[5px] border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-base"
       />
     </div>
   );
@@ -225,12 +237,13 @@ function CardFields({
         placeholder={formatCardNumber("4111111111111111")}
       />
 
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Field
           label="Expiry month"
           type="number"
           min={1}
           max={12}
+          placeholder="12"
           value={value.expMonth ?? ""}
           onChange={(e) =>
             onChange({
@@ -244,6 +257,7 @@ function CardFields({
           type="number"
           min={2000}
           max={2100}
+          placeholder="2030"
           value={value.expYear ?? ""}
           onChange={(e) =>
             onChange({
@@ -260,11 +274,15 @@ function CardFields({
         onChange={(cvv) => onChange({ ...value, cvv })}
       />
 
-      <Field
-        label="Notes"
-        value={value.notes ?? ""}
-        onChange={(e) => onChange({ ...value, notes: e.target.value })}
-      />
+      <div className="grid gap-2">
+        <Label htmlFor="card-notes">Notes</Label>
+        <Textarea
+          id="card-notes"
+          rows={3}
+          value={value.notes ?? ""}
+          onChange={(e) => onChange({ ...value, notes: e.target.value })}
+        />
+      </div>
     </>
   );
 }

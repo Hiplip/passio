@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecoveryKit } from "~/components/recovery-kit";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { buildRecoveryPayload } from "~/lib/auth/recovery";
 import { api } from "~/trpc/react";
@@ -68,46 +70,51 @@ export function RecoverForm() {
 
   if (newRecoveryKey) {
     return (
-      <div className="flex flex-col gap-6">
-        <div>
-          <h1>Save your new recovery key</h1>
-          <p className="mt-2 text-[var(--muted)]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Save your new recovery key</CardTitle>
+          <CardDescription>
             Your old recovery key no longer works. Everything in your vault is
             unchanged.
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
 
-        <RecoveryKit recoveryKey={newRecoveryKey} email={email} />
+        <CardContent className="grid gap-5">
+          <RecoveryKit recoveryKey={newRecoveryKey} email={email} />
 
-        <label className="flex items-start gap-3 text-sm print:hidden">
-          <input
-            type="checkbox"
-            checked={saved}
-            onChange={(e) => setSaved(e.target.checked)}
-            className="mt-1"
-          />
-          <span>I have saved this recovery key somewhere safe.</span>
-        </label>
+          <label className="flex items-start gap-3 text-sm print:hidden">
+            <input
+              type="checkbox"
+              checked={saved}
+              onChange={(e) => setSaved(e.target.checked)}
+              className="accent-primary mt-0.5 size-4"
+            />
+            <span>I have saved this recovery key somewhere safe.</span>
+          </label>
 
-        <Button
-          disabled={!saved}
-          onClick={() => router.push("/login")}
-          className="print:hidden"
-        >
-          Sign in with my new password
-        </Button>
-      </div>
+          <Button
+            disabled={!saved}
+            onClick={() => router.push("/login")}
+            className="w-full print:hidden"
+          >
+            Sign in with my new password
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-      <div>
-        <h1>Use your recovery key</h1>
-        <p className="mt-2 text-[var(--muted)]">
+    <Card>
+      <CardHeader>
+        <CardTitle>Use your recovery key</CardTitle>
+        <CardDescription>
           This sets a new master password. Your vault contents are not affected.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
 
       <Field
         label="Email"
@@ -153,14 +160,16 @@ export function RecoverForm() {
       />
 
       {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <Button type="submit" disabled={!canSubmit}>
+      <Button type="submit" disabled={!canSubmit} className="w-full">
         {busy ? "Checking your recovery key…" : "Set a new master password"}
       </Button>
-    </form>
+      </form>
+      </CardContent>
+    </Card>
   );
 }

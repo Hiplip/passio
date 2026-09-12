@@ -1,6 +1,8 @@
 "use client";
 
+import { Check, Copy, Printer } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 
@@ -12,9 +14,8 @@ interface RecoveryKitProps {
 /**
  * Shows the recovery key exactly once.
  *
- * The key is rendered in the monospace face, grouped, and large enough to
- * transcribe by hand, because that is what people actually do with it. It is
- * never sent to the server and cannot be shown again.
+ * Rendered large, grouped, and in the monospace face, because what people
+ * actually do with this is copy it onto paper by hand.
  */
 export function RecoveryKit({ recoveryKey, email }: RecoveryKitProps) {
   const [copied, setCopied] = useState(false);
@@ -24,39 +25,42 @@ export function RecoveryKit({ recoveryKey, email }: RecoveryKitProps) {
       await navigator.clipboard.writeText(recoveryKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success("Recovery key copied");
     } catch {
-      setCopied(false);
+      toast.error("Could not copy", { description: "Write it down instead." });
     }
   };
 
-  const groups = recoveryKey.split("-");
-  const prefix = groups.slice(0, 2).join("-");
-  const body = groups.slice(2);
+  const [, version, ...groups] = recoveryKey.split("-");
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="rounded-[5px] border border-[var(--line)] bg-[var(--surface)] p-6 print:border-black">
-        <p className="mb-4 text-sm text-[var(--muted)] print:text-black">
+    <div className="grid gap-4">
+      <div className="bg-muted/50 grid gap-3 rounded-xl border p-5 print:border-black print:bg-white">
+        <p className="text-muted-foreground text-xs print:text-black">
           Recovery key for {email}
         </p>
 
-        <div className="secret flex flex-wrap gap-x-3 gap-y-2 text-lg leading-relaxed print:text-black">
-          <span className="text-[var(--muted)] print:text-black">{prefix}</span>
-          {body.map((group, i) => (
-            <span key={`${group}-${i}`}>{group}</span>
+        <div className="secret grid grid-cols-2 gap-x-4 gap-y-1.5 text-[15px] sm:grid-cols-4 print:text-black">
+          <span className="text-muted-foreground col-span-2 sm:col-span-4 print:text-black">
+            PASSIO-{version}
+          </span>
+          {groups.map((g, i) => (
+            <span key={`${g}-${i}`}>{g}</span>
           ))}
         </div>
 
-        <p className="mt-4 text-sm text-[var(--muted)] print:text-black">
+        <p className="text-muted-foreground text-xs print:text-black">
           Written {new Date().toLocaleDateString()}
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3 print:hidden">
-        <Button variant="quiet" onClick={() => void copy()} type="button">
-          {copied ? "Copied" : "Copy key"}
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={() => void copy()} type="button">
+          {copied ? <Check /> : <Copy />}
+          {copied ? "Copied" : "Copy"}
         </Button>
-        <Button variant="quiet" onClick={() => window.print()} type="button">
+        <Button variant="outline" size="sm" onClick={() => window.print()} type="button">
+          <Printer />
           Print
         </Button>
       </div>

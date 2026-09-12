@@ -1,95 +1,93 @@
 "use client";
 
+import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import { useId, useState } from "react";
+import { toast } from "sonner";
 
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { copyWithAutoClear } from "~/lib/clipboard";
 
 interface SecretFieldProps {
   label: string;
   value: string;
   onChange?: (value: string) => void;
-  /** Renders a masked display string instead of dots, e.g. a masked card number. */
+  /** A masked display string, e.g. a masked card number, shown while hidden. */
   maskedDisplay?: string;
-  readOnly?: boolean;
   placeholder?: string;
 }
 
 /**
  * A field holding something secret: masked by default, revealed deliberately,
- * copied without ever being shown.
+ * copied without ever needing to be shown.
  *
- * Copy states the 30 second auto-clear rather than just saying "copied", so the
- * clipboard emptying later is expected behaviour rather than a surprise.
+ * The copy toast names the 30 second auto-clear rather than just saying
+ * "copied", so the clipboard emptying later is expected rather than a surprise.
  */
 export function SecretField({
   label,
   value,
   onChange,
   maskedDisplay,
-  readOnly = false,
   placeholder,
 }: SecretFieldProps) {
   const id = useId();
   const [revealed, setRevealed] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
 
   async function copy() {
-    const ok = await copyWithAutoClear(value);
-    setStatus(ok ? "Copied. Clipboard clears in 30 seconds." : "Could not copy.");
-    setTimeout(() => setStatus(null), 4000);
+    if (await copyWithAutoClear(value)) {
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 2000);
+      toast.success(`${label} copied`, {
+        description: "Your clipboard clears in 30 seconds.",
+      });
+    } else {
+      toast.error("Could not copy", {
+        description: "Your browser blocked clipboard access.",
+      });
+    }
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
 
-      <div className="flex items-stretch gap-2">
-        {revealed || !maskedDisplay ? (
-          <input
-            id={id}
-            type={revealed ? "text" : "password"}
-            value={value}
-            readOnly={readOnly}
-            placeholder={placeholder}
-            onChange={(e) => onChange?.(e.target.value)}
-            autoComplete="off"
-            className="secret w-full rounded-[5px] border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-base"
-          />
-        ) : (
-          <output
-            id={id}
-            className="secret w-full rounded-[5px] border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-base"
-          >
-            {maskedDisplay}
-          </output>
-        )}
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          type={revealed ? "text" : "password"}
+          value={revealed || !maskedDisplay ? value : maskedDisplay}
+          readOnly={!revealed && !!maskedDisplay}
+          placeholder={placeholder}
+          onChange={(e) => onChange?.(e.target.value)}
+          autoComplete="off"
+          className="secret"
+        />
 
-        <button
+        <Button
           type="button"
-          onClick={() => setRevealed((r) => !r)}
-          className="rounded-[5px] border border-[var(--line)] px-3 text-sm hover:border-[var(--muted)]"
+          variant="outline"
+          size="icon"
           aria-pressed={revealed}
+          onClick={() => setRevealed((r) => !r)}
         >
-          {revealed ? "Hide" : "Show"}
-        </button>
+          {revealed ? <EyeOff /> : <Eye />}
+          <span className="sr-only">{revealed ? `Hide ${label}` : `Show ${label}`}</span>
+        </Button>
 
-        <button
+        <Button
           type="button"
-          onClick={() => void copy()}
+          variant="outline"
+          size="icon"
           disabled={value.length === 0}
-          className="rounded-[5px] border border-[var(--line)] px-3 text-sm hover:border-[var(--muted)] disabled:opacity-50"
+          onClick={() => void copy()}
         >
-          Copy
-        </button>
+          {justCopied ? <Check className="text-primary" /> : <Copy />}
+          <span className="sr-only">Copy {label}</span>
+        </Button>
       </div>
-
-      {status ? (
-        <p role="status" className="text-sm text-[var(--muted)]">
-          {status}
-        </p>
-      ) : null}
     </div>
   );
 }

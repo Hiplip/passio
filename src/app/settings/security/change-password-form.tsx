@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { buildPasswordChangePayload } from "~/lib/auth/recovery";
 import { api } from "~/trpc/react";
@@ -58,25 +60,33 @@ export function ChangePasswordForm({ email }: { email: string }) {
 
   if (done) {
     return (
-      <div className="flex max-w-xl flex-col gap-4">
-        <h2>Master password changed</h2>
-        <p className="text-[var(--muted)]">
-          Everything in your vault is unchanged. Other devices will need to sign
-          in again. Your recovery key still works.
-        </p>
-        <Button className="self-start" onClick={() => router.push("/unlock")}>
-          Unlock with my new password
-        </Button>
-      </div>
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Master password changed</CardTitle>
+          <CardDescription>
+            Everything in your vault is unchanged. Other devices will need to sign
+            in again, and your recovery key still works.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => router.push("/unlock")}>
+            Unlock with my new password
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex max-w-xl flex-col gap-6">
-      <p className="text-[var(--muted)]">
-        Changing your master password re-encrypts only the key to your vault, so
-        it is fast and nothing inside is touched.
-      </p>
+    <Card className="max-w-xl">
+      <CardHeader>
+        <CardDescription>
+          Changing your master password re-encrypts only the key to your vault, so
+          it is fast and nothing inside is touched.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
 
       <Field
         label="Current master password"
@@ -113,14 +123,16 @@ export function ChangePasswordForm({ email }: { email: string }) {
       />
 
       {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <Button type="submit" disabled={!canSubmit}>
         {busy ? "Re-wrapping your vault key…" : "Change master password"}
       </Button>
-    </form>
+      </form>
+      </CardContent>
+    </Card>
   );
 }

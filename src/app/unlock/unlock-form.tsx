@@ -1,9 +1,12 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { useVault } from "~/hooks/use-vault";
 import { attemptUnlock } from "~/lib/auth/unlock";
@@ -30,9 +33,8 @@ export function UnlockForm({ email }: { email: string }) {
     setBusy(true);
     setError(null);
 
-    // Backoff exists to stop a phone melting its CPU on a typo, not as a
-    // security control: unlock is entirely local, so there is nothing to
-    // rate-limit server-side.
+    // Backoff stops a phone melting its CPU on a typo. Unlock is entirely
+    // local, so there is nothing to rate-limit server-side.
     if (failures >= BACKOFF_AFTER) {
       await new Promise((resolve) => setTimeout(resolve, BACKOFF_MS));
     }
@@ -52,43 +54,52 @@ export function UnlockForm({ email }: { email: string }) {
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-      <div>
-        <h1>Unlock your vault</h1>
-        <p className="mt-2 text-[var(--muted)]">
-          Signed in as {email}. Your vault is still locked.
-        </p>
-      </div>
+    <Card>
+      <CardHeader>
+        <div className="bg-muted text-muted-foreground mb-1 grid size-9 place-items-center rounded-lg">
+          <Lock className="size-4" />
+        </div>
+        <CardTitle>Your vault is locked</CardTitle>
+        <CardDescription>Signed in as {email}</CardDescription>
+      </CardHeader>
 
-      <Field
-        label="Master password"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        autoFocus
-        required
-      />
+      <CardContent>
+        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+          <Field
+            label="Master password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+            required
+          />
 
-      {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
 
-      <Button type="submit" disabled={busy || !password || keys.isPending}>
-        {busy ? "Unlocking…" : "Unlock"}
-      </Button>
+          <Button
+            type="submit"
+            disabled={busy || !password || keys.isPending}
+            className="w-full"
+          >
+            {busy ? "Unlocking…" : "Unlock"}
+          </Button>
 
-      <button
-        type="button"
-        className="self-start text-sm text-[var(--muted)] underline"
-        onClick={() => {
-          void authClient.signOut().then(() => router.push("/login"));
-        }}
-      >
-        Sign out instead
-      </button>
-    </form>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground justify-self-center text-sm underline-offset-4 hover:underline"
+            onClick={() => {
+              void authClient.signOut().then(() => router.push("/login"));
+            }}
+          >
+            Sign out instead
+          </button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

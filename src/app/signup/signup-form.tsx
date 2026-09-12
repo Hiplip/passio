@@ -1,10 +1,13 @@
 "use client";
 
+import { ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecoveryKit } from "~/components/recovery-kit";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { buildSignupPayload } from "~/lib/auth/signup-payload";
 import { authClient } from "~/server/better-auth/client";
@@ -14,8 +17,7 @@ const MIN_MASTER_PASSWORD = 10;
 /**
  * The recovery key is held in component state between the two steps rather than
  * passed through a route. A query string would put it in browser history and
- * server logs, and a store would keep it alive longer than the screen that
- * shows it.
+ * server logs.
  */
 export function SignupForm() {
   const router = useRouter();
@@ -73,106 +75,113 @@ export function SignupForm() {
 
   if (recoveryKey) {
     return (
-      <div className="flex flex-col gap-6">
-        <div>
-          <h1>Save your recovery key</h1>
-          <p className="mt-2 text-[var(--muted)]">
-            This is the only way back into your vault if you forget your master
-            password. It is shown once and cannot be shown again.
-          </p>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Save your recovery key</CardTitle>
+          <CardDescription>
+            This is the only way back in if you forget your master password. It is
+            shown once and cannot be shown again.
+          </CardDescription>
+        </CardHeader>
 
-        <RecoveryKit recoveryKey={recoveryKey} email={email} />
+        <CardContent className="grid gap-5">
+          <RecoveryKit recoveryKey={recoveryKey} email={email} />
 
-        <label className="flex items-start gap-3 text-sm print:hidden">
-          <input
-            type="checkbox"
-            checked={saved}
-            onChange={(e) => setSaved(e.target.checked)}
-            className="mt-1"
-          />
-          <span>I have saved this recovery key somewhere safe.</span>
-        </label>
+          <label className="flex items-start gap-3 text-sm print:hidden">
+            <input
+              type="checkbox"
+              checked={saved}
+              onChange={(e) => setSaved(e.target.checked)}
+              className="accent-primary mt-0.5 size-4"
+            />
+            <span>I have saved this recovery key somewhere safe.</span>
+          </label>
 
-        <Button
-          disabled={!saved}
-          onClick={() => router.push("/vault")}
-          className="print:hidden"
-        >
-          Open my vault
-        </Button>
-      </div>
+          <Button
+            disabled={!saved}
+            onClick={() => router.push("/vault")}
+            className="w-full print:hidden"
+          >
+            Open my vault
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-      <div>
-        <h1>Create your vault</h1>
-        <p className="mt-2 text-[var(--muted)]">
+    <Card>
+      <CardHeader>
+        <CardTitle>Create your vault</CardTitle>
+        <CardDescription>
           Your master password never leaves this device. It unlocks everything.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <Field
-        label="Email"
-        type="email"
-        autoComplete="username"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-
-      <Field
-        label="Master password"
-        type="password"
-        autoComplete="new-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        error={tooShort ? `Use at least ${MIN_MASTER_PASSWORD} characters.` : undefined}
-        hint="Long and memorable beats short and complicated."
-        required
-      />
-
-      <Field
-        label="Confirm master password"
-        type="password"
-        autoComplete="new-password"
-        value={confirm}
-        onChange={(e) => setConfirm(e.target.value)}
-        error={mismatch ? "These do not match." : undefined}
-        required
-      />
-
-      <div className="rounded-[5px] border border-[var(--danger)] bg-[var(--danger-surface)] p-4">
-        <p className="text-sm font-medium text-[var(--danger)]">
-          There is no password reset
-        </p>
-        <p className="mt-1 text-sm">
-          Your vault is encrypted on this device, so nobody, including this
-          server, can unlock it for you. If you forget your master password and
-          lose your recovery key, everything in the vault is gone permanently.
-        </p>
-        <label className="mt-3 flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={understood}
-            onChange={(e) => setUnderstood(e.target.checked)}
-            className="mt-1"
+      <CardContent>
+        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+          <Field
+            label="Email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
           />
-          <span>I understand my vault cannot be recovered without these.</span>
-        </label>
-      </div>
 
-      {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+          <Field
+            label="Master password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={tooShort ? `Use at least ${MIN_MASTER_PASSWORD} characters.` : undefined}
+            hint="Long and memorable beats short and complicated."
+            required
+          />
 
-      <Button type="submit" disabled={!canSubmit}>
-        {busy ? "Encrypting your vault…" : "Create vault"}
-      </Button>
-    </form>
+          <Field
+            label="Confirm master password"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            error={mismatch ? "These do not match." : undefined}
+            required
+          />
+
+          <Alert variant="destructive">
+            <ShieldAlert />
+            <AlertTitle>There is no password reset</AlertTitle>
+            <AlertDescription>
+              <p>
+                Your vault is encrypted on this device, so nobody, including this
+                server, can unlock it for you. Forget your master password and lose
+                your recovery key, and everything in the vault is gone permanently.
+              </p>
+              <label className="mt-3 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={understood}
+                  onChange={(e) => setUnderstood(e.target.checked)}
+                  className="accent-destructive mt-0.5 size-4"
+                />
+                <span>I understand my vault cannot be recovered without these.</span>
+              </label>
+            </AlertDescription>
+          </Alert>
+
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Button type="submit" disabled={!canSubmit} className="w-full">
+            {busy ? "Encrypting your vault…" : "Create vault"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

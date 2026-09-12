@@ -1,30 +1,48 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { ItemEditor } from "~/app/vault/item-editor";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
+
+function BackToVault() {
+  return (
+    <Button variant="ghost" size="sm" render={<Link href="/vault" />} className="justify-self-start">
+      <ArrowLeft />
+      Back to your vault
+    </Button>
+  );
+}
 
 export function EditItem({ itemId }: { itemId: string }) {
   const { vaultKey } = useVault();
   const { items, damaged, isLoading } = useVaultItems(vaultKey);
 
   if (isLoading) {
-    return <p className="text-[var(--muted)]">Decrypting…</p>;
+    return (
+      <div className="grid gap-4">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-72 w-full rounded-xl" />
+      </div>
+    );
   }
 
   if (damaged.includes(itemId)) {
     return (
-      <div className="flex flex-col gap-3">
-        <h1>This item could not be decrypted</h1>
-        <p className="text-[var(--muted)]">
-          It is still stored, so nothing has been lost. This usually means the
-          stored data was altered.
-        </p>
-        <Link href="/vault" className="underline">
-          Back to your vault
-        </Link>
+      <div className="grid gap-4">
+        <Alert variant="destructive">
+          <AlertTitle>This item could not be decrypted</AlertTitle>
+          <AlertDescription>
+            It is still stored, so nothing has been lost. This usually means the
+            stored data was altered.
+          </AlertDescription>
+        </Alert>
+        <BackToVault />
       </div>
     );
   }
@@ -33,21 +51,24 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (!item) {
     return (
-      <div className="flex flex-col gap-3">
-        <h1>Item not found</h1>
-        <p className="text-[var(--muted)]">
-          It may have been deleted from another device.
-        </p>
-        <Link href="/vault" className="underline">
-          Back to your vault
-        </Link>
+      <div className="grid gap-4">
+        <div>
+          <h1>Item not found</h1>
+          <p className="text-muted-foreground text-sm">
+            It may have been deleted from another device.
+          </p>
+        </div>
+        <BackToVault />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1>{item.data.title}</h1>
+    <div className="grid gap-6">
+      <div className="grid gap-2">
+        <BackToVault />
+        <h1>{item.data.title}</h1>
+      </div>
       <ItemEditor itemId={item.id} initial={item.data} isNew={false} />
     </div>
   );

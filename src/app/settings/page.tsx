@@ -11,7 +11,9 @@ export default async function SettingsPage() {
 
   return (
     <VaultShell>
-      <h1 className="mb-8">Settings</h1>
+      <div className="mb-6">
+        <h1>Settings</h1>
+      </div>
       <SettingsForm email={session.user.email} />
     </VaultShell>
   );

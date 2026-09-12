@@ -1,5 +1,9 @@
 import { type InputHTMLAttributes, forwardRef, useId } from "react";
 
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { cn } from "~/lib/utils";
+
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   hint?: string;
@@ -8,43 +12,39 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   secret?: boolean;
 }
 
+/**
+ * A labelled input with room for a hint or an error.
+ *
+ * Hint and error occupy the same slot and the error wins, so a field never
+ * shows advice and a correction at once - and the layout does not jump when
+ * one replaces the other.
+ */
 export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, hint, error, secret = false, className = "", ...props },
+  { label, hint, error, secret = false, className, ...props },
   ref,
 ) {
   const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
 
-      <input
+      <Input
         ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className={[
-          "w-full rounded-[5px] border bg-[var(--surface)] px-3 py-2.5 text-base",
-          "placeholder:text-[var(--muted)]",
-          secret ? "secret" : "",
-          error ? "border-[var(--danger)]" : "border-[var(--line)]",
-          className,
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        aria-describedby={describedBy}
+        className={cn(secret && "secret", className)}
         {...props}
       />
 
       {error ? (
-        <p id={errorId} role="alert" className="text-sm text-[var(--danger)]">
+        <p id={`${id}-error`} role="alert" className="text-destructive text-sm">
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-sm text-[var(--muted)]">
+        <p id={`${id}-hint`} className="text-muted-foreground text-sm">
           {hint}
         </p>
       ) : null}

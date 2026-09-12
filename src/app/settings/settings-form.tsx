@@ -1,8 +1,19 @@
 "use client";
 
+import { KeyRound, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import {
   describeLockTimeout,
   LOCK_TIMEOUT_CHOICES,
@@ -15,49 +26,59 @@ export function SettingsForm({ email }: { email: string }) {
   const [minutes, setMinutes] = useLockTimeout();
 
   return (
-    <div className="flex max-w-xl flex-col gap-10">
-      <section className="flex flex-col gap-3">
-        <h2>Lock the vault when idle</h2>
-        <p className="text-[var(--muted)]">
-          Locking clears the key from memory. You will need your master password
-          to unlock again, but you stay signed in.
-        </p>
+    <div className="grid max-w-xl gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Auto-lock</CardTitle>
+          <CardDescription>
+            Locking clears the key from memory. You stay signed in, but need your
+            master password to unlock again.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          <Label htmlFor="lock-timeout">Lock when idle</Label>
+          <Select
+            value={String(minutes)}
+            onValueChange={(v) => setMinutes(Number(v))}
+          >
+            <SelectTrigger id="lock-timeout" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCK_TIMEOUT_CHOICES.map((choice) => (
+                <SelectItem key={choice} value={String(choice)}>
+                  {describeLockTimeout(choice)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
-        <div className="flex flex-col gap-2">
-          {LOCK_TIMEOUT_CHOICES.map((choice) => (
-            <label key={choice} className="flex items-center gap-3 text-sm">
-              <input
-                type="radio"
-                name="lock-timeout"
-                checked={minutes === choice}
-                onChange={() => setMinutes(choice)}
-              />
-              <span>{describeLockTimeout(choice)}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2>Account</h2>
-        <p className="text-[var(--muted)]">
-          Signed in as <span className="secret">{email}</span>. Your email cannot
-          be changed: it is part of how your vault key is derived.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="quiet" onClick={() => router.push("/settings/security")}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Account</CardTitle>
+          <CardDescription>
+            Signed in as <span className="secret">{email}</span>. Your email cannot be
+            changed: it is part of how your vault key is derived.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" render={<Link href="/settings/security" />}>
+            <KeyRound />
             Change master password
           </Button>
           <Button
-            variant="quiet"
+            variant="ghost"
             onClick={() => {
               void authClient.signOut().then(() => router.push("/login"));
             }}
           >
+            <LogOut />
             Sign out
           </Button>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }

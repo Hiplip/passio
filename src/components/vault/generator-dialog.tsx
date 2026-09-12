@@ -1,8 +1,21 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { Slider } from "~/components/ui/slider";
+import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   DEFAULT_GENERATOR_OPTIONS,
   generatePassphrase,
@@ -11,13 +24,33 @@ import {
 } from "~/lib/items/generator";
 
 interface GeneratorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onUse: (password: string) => void;
-  onClose: () => void;
 }
 
 type Mode = "password" | "passphrase";
 
-export function GeneratorDialog({ onUse, onClose }: GeneratorDialogProps) {
+/**
+ * The shadcn Slider wrapper is not generic over its value, so Base UI hands the
+ * change handler an untyped value. Narrowing here keeps `any` out of the app
+ * without asserting a type we have not actually checked.
+ */
+function firstNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number") return value;
+  if (Array.isArray(value) && typeof value[0] === "number") return value[0];
+  return fallback;
+}
+
+const TOGGLES = [
+  ["lowercase", "Lowercase (a-z)"],
+  ["uppercase", "Uppercase (A-Z)"],
+  ["digits", "Digits (0-9)"],
+  ["symbols", "Symbols"],
+  ["excludeAmbiguous", "Avoid look-alikes (I l 1 O 0)"],
+] as const;
+
+export function GeneratorDialog({ open, onOpenChange, onUse }: GeneratorDialogProps) {
   const [mode, setMode] = useState<Mode>("password");
   const [options, setOptions] = useState<GeneratorOptions>(DEFAULT_GENERATOR_OPTIONS);
   const [wordCount, setWordCount] = useState(6);
@@ -40,109 +73,97 @@ export function GeneratorDialog({ onUse, onClose }: GeneratorDialogProps) {
 
   useEffect(regenerate, [regenerate]);
 
-  const toggle = (key: keyof GeneratorOptions) => (event: React.ChangeEvent<HTMLInputElement>) =>
-    setOptions((current) => ({ ...current, [key]: event.target.checked }));
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Generate a password"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-[5px] border border-[var(--line)] bg-[var(--surface)] p-6"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 className="mb-4">Generate a password</h2>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Generate a password</DialogTitle>
+          <DialogDescription>
+            Generated on this device. Nothing is sent anywhere.
+          </DialogDescription>
+        </DialogHeader>
 
         <div
-          className="secret mb-4 min-h-[3.5rem] rounded-[5px] border border-[var(--line)] bg-[var(--paper)] p-3 break-all"
           aria-live="polite"
+          className="bg-muted secret grid min-h-16 place-items-center rounded-lg border px-4 py-3 text-center text-[15px] leading-relaxed break-all"
         >
-          {candidate || <span className="text-[var(--danger)]">{error}</span>}
+          {candidate || <span className="text-destructive text-sm">{error}</span>}
         </div>
 
-        <div className="mb-4 flex gap-2">
-          {(["password", "passphrase"] as const).map((option) => (
-            <Button
-              key={option}
-              type="button"
-              variant={mode === option ? "primary" : "quiet"}
-              className="px-3 py-1.5 text-xs"
-              onClick={() => setMode(option)}
-            >
-              {option === "password" ? "Random" : "Passphrase"}
-            </Button>
-          ))}
-        </div>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="password" className="flex-1">
+              Random
+            </TabsTrigger>
+            <TabsTrigger value="passphrase" className="flex-1">
+              Passphrase
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {mode === "password" ? (
-          <div className="flex flex-col gap-3">
-            <label className="flex items-center justify-between gap-4 text-sm">
-              <span>Length</span>
-              <span className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={8}
-                  max={64}
-                  value={options.length}
-                  onChange={(e) =>
-                    setOptions((c) => ({ ...c, length: Number(e.target.value) }))
-                  }
-                />
-                <span className="secret w-8 text-right">{options.length}</span>
-              </span>
-            </label>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Length</Label>
+                <span className="secret text-muted-foreground text-sm">
+                  {options.length}
+                </span>
+              </div>
+              <Slider
+                min={8}
+                max={64}
+                value={[options.length]}
+                onValueChange={(v: unknown) =>
+                  setOptions((c) => ({ ...c, length: firstNumber(v, c.length) }))
+                }
+              />
+            </div>
 
-            {(
-              [
-                ["lowercase", "a-z"],
-                ["uppercase", "A-Z"],
-                ["digits", "0-9"],
-                ["symbols", "Symbols"],
-                ["excludeAmbiguous", "Avoid look-alikes (I l 1 O 0)"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={options[key]}
-                  onChange={toggle(key)}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
+            <div className="grid gap-3">
+              {TOGGLES.map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <Label htmlFor={`gen-${key}`} className="font-normal">
+                    {label}
+                  </Label>
+                  <Switch
+                    id={`gen-${key}`}
+                    checked={options[key]}
+                    onCheckedChange={(checked) =>
+                      setOptions((c) => ({ ...c, [key]: checked }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <label className="flex items-center justify-between gap-4 text-sm">
-            <span>Words</span>
-            <span className="flex items-center gap-3">
-              <input
-                type="range"
-                min={3}
-                max={10}
-                value={wordCount}
-                onChange={(e) => setWordCount(Number(e.target.value))}
-              />
-              <span className="secret w-8 text-right">{wordCount}</span>
-            </span>
-          </label>
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Words</Label>
+              <span className="secret text-muted-foreground text-sm">{wordCount}</span>
+            </div>
+            <Slider
+              min={3}
+              max={10}
+              value={[wordCount]}
+              onValueChange={(v: unknown) =>
+                setWordCount((current) => firstNumber(v, current))
+              }
+            />
+          </div>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={regenerate}>
+            <RefreshCw />
+            Regenerate
+          </Button>
           <Button type="button" disabled={!candidate} onClick={() => onUse(candidate)}>
             Use this password
           </Button>
-          <Button type="button" variant="quiet" onClick={regenerate}>
-            Generate another
-          </Button>
-          <Button type="button" variant="quiet" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

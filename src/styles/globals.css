@@ -1,156 +1,177 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /*
  * passio design tokens
+ * ────────────────────
+ * One token system: shadcn's names, our values. An earlier version ran two
+ * parallel systems and they fought each other.
  *
- * One idea carries this interface: colour appears only when the vault is
- * unlocked. The locked screen is deliberately monochrome, so the return of the
- * accent is the visible signal that the vault opened. That means the accent is
- * never decoration - it always reports state.
+ * Palette: a warm-neutral base rather than clinical grey, and a single deep
+ * teal that carries every primary action. Teal reads as considered rather than
+ * alarming - a password manager should feel calm, not like a fire alarm. Red is
+ * reserved strictly for irreversible actions, so it still means something.
  *
- * Two families, clearly distinct:
- *   Archivo        UI text. A grotesque with enough width variation to build
- *                  hierarchy from weight alone.
- *   JetBrains Mono EVERY secret, without exception. Chosen for a slashed zero
- *                  and unambiguous 1/l/I, which matters the moment someone
- *                  hand-copies a recovery key off a printed page.
- *
- * Mono is for transcribable data only. It is never used as a label texture.
+ * Type: Archivo for the interface. JetBrains Mono for EVERY secret, chosen
+ * because it slashes the zero and keeps 1/l/I distinct - which is what makes a
+ * recovery key safe to copy off a printed page by hand.
  */
 
-@theme {
+:root {
+  --radius: 0.7rem;
+
+  --background: oklch(0.994 0.002 95);
+  --foreground: oklch(0.22 0.012 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.012 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.012 250);
+
+  --primary: oklch(0.52 0.088 195);
+  --primary-foreground: oklch(0.99 0.002 195);
+
+  --secondary: oklch(0.965 0.004 100);
+  --secondary-foreground: oklch(0.28 0.012 250);
+
+  --muted: oklch(0.968 0.003 100);
+  --muted-foreground: oklch(0.515 0.013 250);
+
+  --accent: oklch(0.955 0.012 195);
+  --accent-foreground: oklch(0.34 0.06 195);
+
+  --destructive: oklch(0.553 0.196 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.912 0.005 250);
+  --input: oklch(0.9 0.006 250);
+  --ring: oklch(0.52 0.088 195);
+
+  --sidebar: oklch(0.978 0.003 100);
+  --sidebar-foreground: oklch(0.22 0.012 250);
+  --sidebar-primary: oklch(0.52 0.088 195);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.955 0.012 195);
+  --sidebar-accent-foreground: oklch(0.34 0.06 195);
+  --sidebar-border: oklch(0.912 0.005 250);
+  --sidebar-ring: oklch(0.52 0.088 195);
+}
+
+.dark {
+  --background: oklch(0.168 0.008 250);
+  --foreground: oklch(0.945 0.004 250);
+
+  --card: oklch(0.212 0.009 250);
+  --card-foreground: oklch(0.945 0.004 250);
+
+  --popover: oklch(0.212 0.009 250);
+  --popover-foreground: oklch(0.945 0.004 250);
+
+  --primary: oklch(0.735 0.106 190);
+  --primary-foreground: oklch(0.19 0.03 195);
+
+  --secondary: oklch(0.268 0.009 250);
+  --secondary-foreground: oklch(0.945 0.004 250);
+
+  --muted: oklch(0.262 0.009 250);
+  --muted-foreground: oklch(0.685 0.011 250);
+
+  --accent: oklch(0.3 0.032 195);
+  --accent-foreground: oklch(0.86 0.07 190);
+
+  --destructive: oklch(0.68 0.175 24);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.735 0.106 190);
+
+  --sidebar: oklch(0.192 0.009 250);
+  --sidebar-foreground: oklch(0.945 0.004 250);
+  --sidebar-primary: oklch(0.735 0.106 190);
+  --sidebar-primary-foreground: oklch(0.19 0.03 195);
+  --sidebar-accent: oklch(0.3 0.032 195);
+  --sidebar-accent-foreground: oklch(0.86 0.07 190);
+  --sidebar-border: oklch(1 0 0 / 11%);
+  --sidebar-ring: oklch(0.735 0.106 190);
+}
+
+@theme inline {
   --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Modular scale, base 16, ratio 1.25 (major third). */
-  --text-xs: 0.8125rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.5625rem;
-  --text-2xl: 1.9375rem;
-  --text-3xl: 2.4375rem;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: 3px;
-  --radius-md: 5px;
-}
-
-:root {
-  color-scheme: light;
-
-  --paper: #fbfbfa;
-  --surface: #ffffff;
-  --ink: #16191d;
-  --muted: #5c646e;
-  --line: #e2e5e9;
-
-  /* The single accent. Present only when unlocked. */
-  --accent: #0b6e6e;
-  --accent-ink: #ffffff;
-
-  /* Reserved exclusively for irreversible actions. Never for emphasis. */
-  --danger: #9a3412;
-  --danger-surface: #fdf4ef;
-
-  --focus: #0b6e6e;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --paper: #0f1216;
-    --surface: #161a1f;
-    --ink: #e8ebee;
-    --muted: #8a939e;
-    --line: #262c33;
-
-    --accent: #3fbfb5;
-    --accent-ink: #06201f;
-
-    --danger: #e8815a;
-    --danger-surface: #23160f;
-
-    --focus: #3fbfb5;
-  }
-}
-
-/*
- * The locked vault drops to monochrome. Applied to a wrapper, so unlocking
- * restores colour everywhere at once rather than component by component.
- */
-.vault-locked {
-  --accent: var(--muted);
-  --accent-ink: var(--surface);
-  --focus: var(--muted);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
 @layer base {
   * {
-    border-color: var(--line);
+    @apply border-border outline-ring/50;
   }
 
   body {
-    background: var(--paper);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: var(--text-base);
+    @apply bg-background text-foreground font-sans antialiased;
     line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
   }
 
-  /* Hierarchy comes from weight and size, not colour. */
+  /* Hierarchy from weight and size. Colour is reserved for meaning. */
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: 620;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
-  }
-
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    @apply text-2xl font-semibold tracking-tight;
     line-height: 1.2;
   }
 
+  h2 {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
   h3 {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  /* Body copy stays inside a comfortable measure. */
-  p {
-    max-width: 68ch;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
-  }
-
-  ::selection {
-    background: var(--accent);
-    color: var(--accent-ink);
+    @apply text-base font-semibold;
   }
 }
 
 @layer components {
   /*
    * Every secret renders through this: passwords, TOTP codes, recovery keys.
-   * Tabular figures keep a ticking TOTP code from shifting width digit to
-   * digit, which is otherwise very distracting once per second.
+   * Tabular figures stop a ticking TOTP code shifting width once a second.
    */
   .secret {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums slashed-zero;
     letter-spacing: 0.01em;
-  }
-
-  .hairline {
-    border-bottom: 1px solid var(--line);
   }
 }
 

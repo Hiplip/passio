@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { normalizeEmail } from "~/lib/crypto";
 import { deriveInWorker } from "~/lib/crypto-worker/client";
@@ -27,7 +29,6 @@ export function LoginForm() {
     try {
       const normalized = normalizeEmail(email);
       const { authHash } = await deriveInWorker(password, normalized);
-
       const result = await authClient.signIn.email({
         email: normalized,
         password: authHash,
@@ -49,45 +50,52 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-      <div>
-        <h1>Sign in</h1>
-        <p className="mt-2 text-[var(--muted)]">
+    <Card>
+      <CardHeader>
+        <CardTitle>Welcome back</CardTitle>
+        <CardDescription>
           Your master password is used on this device only.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <Field
-        label="Email"
-        type="email"
-        autoComplete="username"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
+      <CardContent>
+        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+          <Field
+            label="Email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-      <Field
-        label="Master password"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
+          <Field
+            label="Master password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-      {error ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
 
-      <Button type="submit" disabled={busy || !email || !password}>
-        {busy ? "Checking…" : "Sign in"}
-      </Button>
+          <Button type="submit" disabled={busy || !email || !password} className="w-full">
+            {busy ? "Checking…" : "Sign in"}
+          </Button>
 
-      <Link href="/recover" className="self-start text-sm text-[var(--muted)] underline">
-        Forgotten your master password?
-      </Link>
-    </form>
+          <Link
+            href="/recover"
+            className="text-muted-foreground hover:text-foreground justify-self-center text-sm underline-offset-4 hover:underline"
+          >
+            Forgotten your master password?
+          </Link>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
