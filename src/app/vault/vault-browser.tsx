@@ -13,6 +13,7 @@ import { ItemList } from "~/components/vault/item-list";
 import { VaultOverview } from "~/components/vault/vault-overview";
 import { VaultSidebar } from "~/components/vault/vault-sidebar";
 import { useFolders, type DecryptedFolder } from "~/hooks/use-folders";
+import type { DecryptedItem } from "~/lib/items/decrypt-vault";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
 import {
@@ -51,6 +52,7 @@ export function VaultBrowser() {
   const utils = api.useUtils();
   const removeFolder = api.folder.delete.useMutation();
   const restoreItem = api.item.restore.useMutation();
+  const deleteItem = api.item.delete.useMutation();
 
   const [view, setView] = useState<VaultView>("overview");
   const [query, setQuery] = useState("");
@@ -106,6 +108,23 @@ export function VaultBrowser() {
     }
   }
 
+  async function softDelete(item: DecryptedItem) {
+    if (!window.confirm(`Delete “${item.data.title}”? You can restore it from Trash.`)) {
+      return;
+    }
+
+    try {
+      await deleteItem.mutateAsync({ id: item.id });
+      await Promise.all([
+        utils.item.list.invalidate(),
+        utils.item.listDeleted.invalidate(),
+      ]);
+      toast.success("Item deleted", { description: "You can restore it from Trash." });
+    } catch {
+      toast.error("Could not delete that item.");
+    }
+  }
+
   async function deleteFolder(folder: DecryptedFolder) {
     if (
       !window.confirm(
@@ -136,6 +155,7 @@ export function VaultBrowser() {
       damaged={inTrash ? deleted.damaged : damaged}
       query={query}
       onRestore={inTrash ? (item) => void restore(item.id) : undefined}
+      onDelete={inTrash ? undefined : (item) => void softDelete(item)}
       emptyMessage={inTrash ? "Nothing deleted." : "Nothing here yet."}
     />
   );

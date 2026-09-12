@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronRight, CreditCard, KeyRound, RotateCcw, StickyNote } from "lucide-react";
+import { CreditCard, KeyRound, StickyNote } from "lucide-react";
 import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
+import { ItemRowActions } from "~/components/vault/item-row-actions";
 import type { DecryptedItem } from "~/lib/items/decrypt-vault";
 import type { ItemType } from "~/lib/items/schema";
 
@@ -26,8 +26,9 @@ interface ItemListProps {
   /** Ids that failed to decrypt. Surfaced, never silently hidden. */
   damaged: string[];
   query: string;
-  /** Present only in trash: rows stop opening the editor and offer restore. */
+  /** Present only in trash: rows offer restore instead of the usual actions. */
   onRestore?: (item: DecryptedItem) => void;
+  onDelete?: (item: DecryptedItem) => void;
   emptyMessage?: string;
 }
 
@@ -36,6 +37,7 @@ export function ItemList({
   damaged,
   query,
   onRestore,
+  onDelete,
   emptyMessage,
 }: ItemListProps) {
   return (
@@ -64,45 +66,38 @@ export function ItemList({
         <ul className="divide-border bg-card divide-y overflow-hidden rounded-xl border">
           {items.map((item) => {
             const Icon = TYPE_ICON[item.data.type];
-
-            const body = (
-              <>
-                <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">
-                  <Icon className="size-4" />
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">
-                    {item.data.title}
-                  </span>
-                  {/* Never a password: the list is the most
-                      over-the-shoulder-visible surface in the app. */}
-                  <span className="text-muted-foreground block truncate text-xs">
-                    {subtitle(item)}
-                  </span>
-                </span>
-              </>
-            );
-
             return (
-              <li key={item.id}>
-                {onRestore ? (
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    {body}
-                    <Button variant="outline" size="sm" onClick={() => onRestore(item)}>
-                      <RotateCcw />
-                      Restore
-                    </Button>
-                  </div>
-                ) : (
-                  <Link
-                    href={`/vault/${item.id}`}
-                    className="hover:bg-muted/60 focus-visible:bg-muted/60 flex items-center gap-3 px-4 py-3 transition-colors outline-none"
-                  >
-                    {body}
-                    <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                  </Link>
-                )}
+              <li
+                key={item.id}
+                className="hover:bg-muted/40 flex items-center gap-2 pr-2 transition-colors"
+              >
+                {/* The link covers the text only. The action buttons beside it
+                    must not be nested inside an anchor. */}
+                <Link
+                  href={`/vault/${item.id}`}
+                  className="focus-visible:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-4 py-3 outline-none"
+                >
+                  <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">
+                    <Icon className="size-4" />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {item.data.title}
+                    </span>
+                    {/* Never a password: the list is the most
+                        over-the-shoulder-visible surface in the app. */}
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {subtitle(item)}
+                    </span>
+                  </span>
+                </Link>
+
+                <ItemRowActions
+                  item={item}
+                  onRestore={onRestore ? () => onRestore(item) : undefined}
+                  onDelete={onDelete ? () => onDelete(item) : undefined}
+                />
               </li>
             );
           })}
