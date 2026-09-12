@@ -77,9 +77,27 @@ Local `.env` points at `dev`. Production's URL is set on Vercel only and is deli
 not in any local file. The test suite creates and deletes rows, so it must never run
 against `main`.
 
-`pnpm db:push` applies to whichever branch `.env` names — so a schema change has to be
-pushed **twice**: once locally against `dev`, and once against `main` for production
-(`neon connection-string main --project-id tiny-rain-06343556`, then push with that URL).
+#### RULE: every schema change is pushed TWICE, always
+
+`pnpm db:push` only ever applies to the branch `.env` names. Pushing once updates `dev` and
+leaves **production running against a schema missing its columns** — which fails at runtime,
+not at build time, so no gate catches it.
+
+After any edit to `src/server/db/schema.ts`, run both:
+
+```bash
+# 1. dev (what local .env points at)
+pnpm db:push --force < /dev/null
+
+# 2. production (main branch)
+DATABASE_URL="$(neon connection-string main --project-id tiny-rain-06343556)" \
+  pnpm db:push --force < /dev/null
+```
+
+Then **verify the column actually landed on each branch** by querying
+`information_schema.columns`. Do not trust the exit code: drizzle-kit has reported success
+on a no-op before. Always redirect stdin from `/dev/null`, or it hangs on a rename prompt
+that `--force` does not suppress.
 
 ### `pnpm db:push` — fixed, was broken on drizzle-kit 0.30.x
 
