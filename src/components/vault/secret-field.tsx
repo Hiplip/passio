@@ -16,14 +16,17 @@ interface SecretFieldProps {
   /** A masked display string, e.g. a masked card number, shown while hidden. */
   maskedDisplay?: string;
   placeholder?: string;
+  /** Rendered opposite the label, for things like "Generate". */
+  action?: React.ReactNode;
 }
 
 /**
  * A field holding something secret: masked by default, revealed deliberately,
  * copied without ever needing to be shown.
  *
- * The copy toast names the 30 second auto-clear rather than just saying
- * "copied", so the clipboard emptying later is expected rather than a surprise.
+ * Reveal and copy sit inside the field rather than beside it. As siblings they
+ * shortened the input, so secret fields no longer lined up with every other
+ * field on the form.
  */
 export function SecretField({
   label,
@@ -31,6 +34,7 @@ export function SecretField({
   onChange,
   maskedDisplay,
   placeholder,
+  action,
 }: SecretFieldProps) {
   const id = useId();
   const [revealed, setRevealed] = useState(false);
@@ -52,9 +56,12 @@ export function SecretField({
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        {action}
+      </div>
 
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <Input
           id={id}
           type={revealed ? "text" : "password"}
@@ -63,30 +70,32 @@ export function SecretField({
           placeholder={placeholder}
           onChange={(e) => onChange?.(e.target.value)}
           autoComplete="off"
-          className="secret"
+          className="secret pr-18"
         />
 
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-pressed={revealed}
-          onClick={() => setRevealed((r) => !r)}
-        >
-          {revealed ? <EyeOff /> : <Eye />}
-          <span className="sr-only">{revealed ? `Hide ${label}` : `Show ${label}`}</span>
-        </Button>
+        <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-pressed={revealed}
+            aria-label={revealed ? `Hide ${label}` : `Show ${label}`}
+            onClick={() => setRevealed((r) => !r)}
+          >
+            {revealed ? <EyeOff /> : <Eye />}
+          </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          disabled={value.length === 0}
-          onClick={() => void copy()}
-        >
-          {justCopied ? <Check className="text-primary" /> : <Copy />}
-          <span className="sr-only">Copy {label}</span>
-        </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Copy ${label}`}
+            disabled={value.length === 0}
+            onClick={() => void copy()}
+          >
+            {justCopied ? <Check className="text-primary" /> : <Copy />}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CreditCard, KeyRound, StickyNote } from "lucide-react";
 import Link from "next/link";
 
 import { ItemEditor } from "~/app/vault/item-editor";
@@ -9,13 +9,46 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
+import type { DecryptedItem } from "~/lib/items/decrypt-vault";
+import type { ItemType } from "~/lib/items/schema";
+import { relativeTime } from "~/lib/relative-time";
+
+const TYPE_META: Record<ItemType, { label: string; Icon: typeof KeyRound }> = {
+  login: { label: "Login", Icon: KeyRound },
+  note: { label: "Secure note", Icon: StickyNote },
+  card: { label: "Card", Icon: CreditCard },
+};
 
 function BackToVault() {
   return (
-    <Button variant="ghost" size="sm" render={<Link href="/vault" />} className="justify-self-start">
+    <Button
+      variant="ghost"
+      size="sm"
+      render={<Link href="/vault" />}
+      className="text-muted-foreground -ml-2 justify-self-start"
+    >
       <ArrowLeft />
       Back to your vault
     </Button>
+  );
+}
+
+/** Title block: the type icon and last-changed line orient you at a glance. */
+function ItemHeader({ item }: { item: DecryptedItem }) {
+  const { label, Icon } = TYPE_META[item.data.type];
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-xl">
+        <Icon className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <h1 className="truncate">{item.data.title}</h1>
+        <p className="text-muted-foreground text-sm">
+          {label} · Updated {relativeTime(item.updatedAt)}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -25,16 +58,17 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-72 w-full rounded-xl" />
+      <div className="mx-auto grid max-w-2xl gap-5">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-80 w-full rounded-xl" />
       </div>
     );
   }
 
   if (damaged.includes(itemId)) {
     return (
-      <div className="grid gap-4">
+      <div className="mx-auto grid max-w-2xl gap-4">
+        <BackToVault />
         <Alert variant="destructive">
           <AlertTitle>This item could not be decrypted</AlertTitle>
           <AlertDescription>
@@ -42,7 +76,6 @@ export function EditItem({ itemId }: { itemId: string }) {
             stored data was altered.
           </AlertDescription>
         </Alert>
-        <BackToVault />
       </div>
     );
   }
@@ -51,24 +84,22 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (!item) {
     return (
-      <div className="grid gap-4">
+      <div className="mx-auto grid max-w-2xl gap-4">
+        <BackToVault />
         <div>
           <h1>Item not found</h1>
           <p className="text-muted-foreground text-sm">
             It may have been deleted from another device.
           </p>
         </div>
-        <BackToVault />
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-2">
-        <BackToVault />
-        <h1>{item.data.title}</h1>
-      </div>
+    <div className="mx-auto grid max-w-2xl gap-5">
+      <BackToVault />
+      <ItemHeader item={item} />
       <ItemEditor itemId={item.id} initial={item.data} isNew={false} />
     </div>
   );

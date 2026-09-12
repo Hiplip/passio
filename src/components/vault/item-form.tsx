@@ -16,11 +16,11 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
-import { useFolders } from "~/hooks/use-folders";
-import { useVault } from "~/hooks/use-vault";
 import { GeneratorDialog } from "~/components/vault/generator-dialog";
 import { SecretField } from "~/components/vault/secret-field";
 import { TotpDisplay } from "~/components/vault/totp-display";
+import { useFolders } from "~/hooks/use-folders";
+import { useVault } from "~/hooks/use-vault";
 import { digitsOnly, formatCardNumber, maskCardNumber } from "~/lib/items/mask";
 import type { CardItem, Item, LoginItem, NoteItem } from "~/lib/items/schema";
 import { parseTotpInput } from "~/lib/items/totp";
@@ -33,6 +33,16 @@ interface ItemFormProps {
   onDelete?: () => void;
   saving: boolean;
   error: string | null;
+}
+
+/** A labelled break between groups of fields, so the form reads in chunks. */
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+      <span className="bg-border h-px flex-1" />
+    </div>
+  );
 }
 
 export function ItemForm({
@@ -51,16 +61,19 @@ export function ItemForm({
         onSave();
       }}
     >
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="grid gap-5">
-          <Field
-            label="Name"
-            value={value.title}
-            onChange={(e) => onChange({ ...value, title: e.target.value })}
-            required
-          />
-
-          <FolderPicker value={value} onChange={onChange} />
+          {/* Short fields share a row on wider screens: one tall column of
+              full-width inputs reads as a form dump. */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Name"
+              value={value.title}
+              onChange={(e) => onChange({ ...value, title: e.target.value })}
+              required
+            />
+            <FolderPicker value={value} onChange={onChange} />
+          </div>
 
           {value.type === "login" ? (
             <LoginFields value={value} onChange={onChange} />
@@ -77,7 +90,7 @@ export function ItemForm({
           ) : null}
         </CardContent>
 
-        <CardFooter className="gap-2 border-t">
+        <CardFooter className="bg-muted/40 gap-2 border-t">
           <Button type="submit" disabled={saving || value.title.trim().length === 0}>
             {saving ? "Saving…" : "Save"}
           </Button>
@@ -85,10 +98,12 @@ export function ItemForm({
             Cancel
           </Button>
           {onDelete ? (
+            // Quiet by default: a heavy red button on a screen you open just to
+            // read a password is an easy mis-click.
             <Button
               type="button"
-              variant="destructive"
-              className="ml-auto"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 ml-auto"
               onClick={onDelete}
             >
               <Trash2 />
@@ -114,10 +129,18 @@ function FolderPicker({
   const { vaultKey } = useVault();
   const { folders } = useFolders(vaultKey);
 
+  // Base UI renders the raw value unless the root is told how to label it,
+  // which is why this field used to show a bare folder uuid.
+  const labels: Record<string, string> = { [NO_FOLDER]: "No folder" };
+  for (const folder of folders) labels[folder.id] = folder.name;
+
   return (
     <div className="grid gap-2">
-      <Label htmlFor="item-folder">Folder</Label>
+      <div className="flex min-h-6 items-center">
+        <Label htmlFor="item-folder">Folder</Label>
+      </div>
       <Select
+        items={labels}
         value={value.folderId ?? NO_FOLDER}
         onValueChange={(next: string | null) =>
           onChange({
@@ -174,6 +197,8 @@ function LoginFields({
 
   return (
     <>
+      <Divider label="Sign in" />
+
       <Field
         label="Username"
         value={value.username ?? ""}
@@ -181,58 +206,53 @@ function LoginFields({
         autoComplete="off"
       />
 
-      <div className="grid gap-2">
-        <SecretField
-          label="Password"
-          value={value.password ?? ""}
-          onChange={(password) => onChange({ ...value, password })}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="justify-self-start"
-          onClick={() => setGenerating(true)}
-        >
-          <Sparkles />
-          Generate
-        </Button>
-      </div>
+      <SecretField
+        label="Password"
+        value={value.password ?? ""}
+        onChange={(password) => onChange({ ...value, password })}
+        action={
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => setGenerating(true)}
+          >
+            <Sparkles />
+            Generate
+          </Button>
+        }
+      />
 
       <Field
         label="Website"
         value={value.uri ?? ""}
         onChange={(e) => onChange({ ...value, uri: e.target.value })}
-        placeholder="https://"
+        placeholder="example.com"
         autoComplete="off"
       />
 
-      <div className="grid gap-2">
-        <Field
-          label="Authenticator (one-time codes)"
-          value={totpInput}
-          onChange={(e) => applyTotp(e.target.value)}
-          placeholder="Paste an otpauth:// link or the secret"
-          error={totpError ?? undefined}
-          hint={
-            value.totp
-              ? undefined
-              : "Optional. Codes are generated on this device, never on the server."
-          }
-          autoComplete="off"
-        />
-        {value.totp ? <TotpDisplay config={value.totp} /> : null}
-      </div>
+      <Divider label="One-time codes" />
 
-      <div className="grid gap-2">
-        <Label htmlFor="login-notes">Notes</Label>
-        <Textarea
-          id="login-notes"
-          rows={3}
-          value={value.notes ?? ""}
-          onChange={(e) => onChange({ ...value, notes: e.target.value })}
-        />
-      </div>
+      <Field
+        label="Authenticator"
+        value={totpInput}
+        onChange={(e) => applyTotp(e.target.value)}
+        placeholder="Paste an otpauth:// link or the secret"
+        error={totpError ?? undefined}
+        hint={value.totp ? undefined : "Generated on this device, never on the server."}
+        autoComplete="off"
+      />
+      {value.totp ? <TotpDisplay config={value.totp} /> : null}
+
+      <Divider label="Notes" />
+
+      <Textarea
+        aria-label="Notes"
+        rows={3}
+        value={value.notes ?? ""}
+        onChange={(e) => onChange({ ...value, notes: e.target.value })}
+        placeholder="Anything else worth keeping with this login"
+      />
 
       <GeneratorDialog
         open={generating}
@@ -254,15 +274,16 @@ function NoteFields({
   onChange: (next: Item) => void;
 }) {
   return (
-    <div className="grid gap-2">
-      <Label htmlFor="note-body">Note</Label>
+    <>
+      <Divider label="Note" />
       <Textarea
-        id="note-body"
-        rows={12}
+        aria-label="Note"
+        rows={14}
         value={value.body ?? ""}
         onChange={(e) => onChange({ ...value, body: e.target.value })}
+        placeholder="Encrypted on this device before it is saved"
       />
-    </div>
+    </>
   );
 }
 
@@ -275,6 +296,8 @@ function CardFields({
 }) {
   return (
     <>
+      <Divider label="Card" />
+
       <Field
         label="Name on card"
         value={value.cardholderName ?? ""}
@@ -291,7 +314,7 @@ function CardFields({
         placeholder={formatCardNumber("4111111111111111")}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-5 sm:grid-cols-3">
         <Field
           label="Expiry month"
           type="number"
@@ -320,23 +343,21 @@ function CardFields({
             })
           }
         />
-      </div>
-
-      <SecretField
-        label="Security code"
-        value={value.cvv ?? ""}
-        onChange={(cvv) => onChange({ ...value, cvv })}
-      />
-
-      <div className="grid gap-2">
-        <Label htmlFor="card-notes">Notes</Label>
-        <Textarea
-          id="card-notes"
-          rows={3}
-          value={value.notes ?? ""}
-          onChange={(e) => onChange({ ...value, notes: e.target.value })}
+        <SecretField
+          label="Security code"
+          value={value.cvv ?? ""}
+          onChange={(cvv) => onChange({ ...value, cvv })}
         />
       </div>
+
+      <Divider label="Notes" />
+
+      <Textarea
+        aria-label="Notes"
+        rows={3}
+        value={value.notes ?? ""}
+        onChange={(e) => onChange({ ...value, notes: e.target.value })}
+      />
     </>
   );
 }

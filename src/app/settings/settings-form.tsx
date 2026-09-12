@@ -38,6 +38,11 @@ export function SettingsForm({ email }: { email: string }) {
         <CardContent className="grid gap-2">
           <Label htmlFor="lock-timeout">Lock when idle</Label>
           <Select
+            // Without `items`, Base UI renders the raw value - "15" instead of
+            // "After 15 minutes".
+            items={Object.fromEntries(
+              LOCK_TIMEOUT_CHOICES.map((c) => [String(c), describeLockTimeout(c)]),
+            )}
             value={String(minutes)}
             onValueChange={(v) => setMinutes(Number(v))}
           >

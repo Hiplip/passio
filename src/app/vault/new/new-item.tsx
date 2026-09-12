@@ -50,7 +50,7 @@ export function NewItem() {
 
   if (!type) {
     return (
-      <div className="grid gap-6">
+      <div className="mx-auto grid max-w-2xl gap-6">
         <div>
           <h1>What are you saving?</h1>
           <p className="text-muted-foreground text-sm">
@@ -88,11 +88,16 @@ export function NewItem() {
 
   const choice = CHOICES.find((c) => c.type === type);
 
+  const Icon = choice?.Icon ?? KeyRound;
+
   return (
-    <div className="grid gap-6">
+    <div className="mx-auto grid max-w-2xl gap-5">
       <div className="flex items-center gap-3">
-        <div>
-          <h1>New {choice?.label.toLowerCase()}</h1>
+        <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-xl">
+          <Icon className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <h1 className="truncate">New {choice?.label.toLowerCase()}</h1>
           <p className="text-muted-foreground text-sm">{choice?.describe}</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setType(null)} className="ml-auto">
