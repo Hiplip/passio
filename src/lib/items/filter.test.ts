@@ -6,8 +6,10 @@ import {
   applyFilter,
   countByFolder,
   countByType,
+  countTotp,
   filtersEqual,
   type VaultFilter,
+  viewsEqual,
 } from "./filter";
 
 const now = new Date();
@@ -135,5 +137,53 @@ describe("trash", () => {
     expect(filtersEqual({ kind: "trash" }, ALL_ITEMS)).toBe(false);
     expect(filtersEqual({ kind: "trash" }, { kind: "unfiled" })).toBe(false);
     expect(filtersEqual({ kind: "trash" }, { kind: "trash" })).toBe(true);
+  });
+});
+
+describe("verification codes", () => {
+  const withCodes = [
+    make("a", {
+      type: "login",
+      title: "GitHub",
+      totp: { secret: "GEZDGNBVGY3TQOJQ" },
+    }),
+    make("b", { type: "login", title: "Bank" }),
+    make("c", { type: "note", title: "Wifi" }),
+  ];
+
+  it("selects only logins that carry an authenticator secret", () => {
+    expect(applyFilter(withCodes, { kind: "totp" }, known).map((i) => i.id)).toEqual([
+      "a",
+    ]);
+  });
+
+  it("counts them", () => {
+    expect(countTotp(withCodes)).toBe(1);
+    expect(countTotp([])).toBe(0);
+  });
+
+  it("never counts a non-login, even if it somehow carried a totp field", () => {
+    const odd = [make("x", { type: "note", title: "N", totp: { secret: "AAAA" } })];
+    expect(countTotp(odd)).toBe(0);
+  });
+
+  it("is distinguishable from the login type filter", () => {
+    expect(filtersEqual({ kind: "totp" }, { kind: "type", type: "login" })).toBe(false);
+    expect(filtersEqual({ kind: "totp" }, { kind: "totp" })).toBe(true);
+  });
+});
+
+describe("viewsEqual", () => {
+  it("matches the overview only with itself", () => {
+    expect(viewsEqual("overview", "overview")).toBe(true);
+    expect(viewsEqual("overview", ALL_ITEMS)).toBe(false);
+    expect(viewsEqual(ALL_ITEMS, "overview")).toBe(false);
+  });
+
+  it("falls through to filter comparison for real filters", () => {
+    expect(viewsEqual({ kind: "totp" }, { kind: "totp" })).toBe(true);
+    expect(
+      viewsEqual({ kind: "folder", folderId: WORK }, { kind: "folder", folderId: HOME }),
+    ).toBe(false);
   });
 });

@@ -12,6 +12,9 @@ export type VaultFilter =
   | { kind: "all" }
   | { kind: "type"; type: ItemType }
   | { kind: "folder"; folderId: string }
+  /** Logins carrying an authenticator secret. Reaching a code is the most
+   *  time-critical thing anyone does in a password manager. */
+  | { kind: "totp" }
   | { kind: "unfiled" }
   /** Deleted items. The caller supplies the deleted list; this kind does no
    *  filtering of its own, because trash is a different data source rather
@@ -19,6 +22,23 @@ export type VaultFilter =
   | { kind: "trash" };
 
 export const ALL_ITEMS: VaultFilter = { kind: "all" };
+
+/** What the vault screen is showing: the browse screen, or one filter. */
+export type VaultView = VaultFilter | "overview";
+
+export function viewsEqual(a: VaultView, b: VaultView): boolean {
+  if (a === "overview" || b === "overview") return a === b;
+  return filtersEqual(a, b);
+}
+
+/** True when an item can produce a one-time code. */
+export function hasTotp(item: DecryptedItem): boolean {
+  return item.data.type === "login" && item.data.totp !== undefined;
+}
+
+export function countTotp(items: DecryptedItem[]): number {
+  return items.filter(hasTotp).length;
+}
 
 export function filtersEqual(a: VaultFilter, b: VaultFilter): boolean {
   if (a.kind !== b.kind) return false;
@@ -45,6 +65,8 @@ export function applyFilter(
       return items;
     case "type":
       return items.filter((item) => item.data.type === filter.type);
+    case "totp":
+      return items.filter(hasTotp);
     case "folder":
       return items.filter((item) => item.data.folderId === filter.folderId);
     case "unfiled":

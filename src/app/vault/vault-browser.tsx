@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search } from "lucide-react";
+import { ArrowLeft, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { FolderDialog } from "~/components/vault/folder-dialog";
 import { ItemList } from "~/components/vault/item-list";
+import { VaultOverview } from "~/components/vault/vault-overview";
 import { VaultSidebar } from "~/components/vault/vault-sidebar";
 import { useFolders, type DecryptedFolder } from "~/hooks/use-folders";
 import { useVault } from "~/hooks/use-vault";
@@ -19,17 +20,23 @@ import {
   applyFilter,
   countByFolder,
   countByType,
+  countTotp,
   type VaultFilter,
 } from "~/lib/items/filter";
 import { searchItems } from "~/lib/items/search";
 import { api } from "~/trpc/react";
+
+/** The vault lands on a browse screen; a filter is only chosen from there. */
+type View = VaultFilter | "overview";
 
 function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {
   switch (filter.kind) {
     case "all":
       return "All items";
     case "type":
-      return { login: "Logins", note: "Notes", card: "Cards" }[filter.type];
+      return { login: "Logins", note: "Secure notes", card: "Cards" }[filter.type];
+    case "totp":
+      return "Verification codes";
     case "unfiled":
       return "No folder";
     case "folder":
@@ -47,33 +54,35 @@ export function VaultBrowser() {
   const removeFolder = api.folder.delete.useMutation();
   const restoreItem = api.item.restore.useMutation();
 
-  const [filter, setFilter] = useState<VaultFilter>(ALL_ITEMS);
+  const [view, setView] = useState<View>("overview");
   const [query, setQuery] = useState("");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<DecryptedFolder | undefined>();
 
-  const knownFolderIds = useMemo(
-    () => new Set(folders.map((f) => f.id)),
-    [folders],
-  );
+  const knownFolderIds = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
+
+  const searching = query.trim().length > 0;
+  // Searching from the browse screen jumps straight to results: someone who has
+  // started typing a name is not still browsing.
+  const showOverview = view === "overview" && !searching;
+  const filter: VaultFilter = view === "overview" ? ALL_ITEMS : view;
 
   const inTrash = filter.kind === "trash";
-  // Only fetched while trash is open, so the deleted rows are not decrypted on
+  // Fetched only while trash is open, so deleted rows are not decrypted on
   // every visit to the vault.
   const deleted = useVaultItems(vaultKey, { deleted: inTrash });
 
   const source = inTrash ? deleted.items : items;
-  const sourceDamaged = inTrash ? deleted.damaged : damaged;
   const loading = inTrash ? deleted.isLoading : isLoading;
 
   // Both run in memory over the already-decrypted vault, so neither needs a
   // debounce and neither tells the server anything.
-  const filtered = applyFilter(source, filter, knownFolderIds);
-  const visible = searchItems(filtered, query);
+  const visible = searchItems(applyFilter(source, filter, knownFolderIds), query);
 
   const folderCounts = countByFolder(items);
   const typeCounts = countByType(items);
   const unfiledCount = applyFilter(items, { kind: "unfiled" }, knownFolderIds).length;
+  const trashCount = deleted.items.length;
 
   async function restore(itemId: string) {
     try {
@@ -100,45 +109,47 @@ export function VaultBrowser() {
     try {
       await removeFolder.mutateAsync({ id: folder.id });
       await utils.folder.list.invalidate();
-      setFilter(ALL_ITEMS);
+      setView("overview");
       toast.success("Folder deleted", { description: "Its items are now unfiled." });
     } catch {
       toast.error("Could not delete that folder.");
     }
   }
 
+  const openFolderDialog = (existing?: DecryptedFolder) => {
+    setEditingFolder(existing);
+    setFolderDialogOpen(true);
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-[13rem_1fr] md:gap-8">
       <VaultSidebar
-        filter={filter}
-        onFilterChange={setFilter}
+        view={view}
+        onViewChange={setView}
         folders={folders}
         totalCount={items.length}
+        totpCount={countTotp(items)}
         typeCounts={typeCounts}
         folderCounts={folderCounts}
         unfiledCount={unfiledCount}
-        trashCount={deleted.items.length}
-        onNewFolder={() => {
-          setEditingFolder(undefined);
-          setFolderDialogOpen(true);
-        }}
-        onRenameFolder={(folder) => {
-          setEditingFolder(folder);
-          setFolderDialogOpen(true);
-        }}
+        trashCount={trashCount}
+        onNewFolder={() => openFolderDialog()}
+        onRenameFolder={openFolderDialog}
         onDeleteFolder={(folder) => void deleteFolder(folder)}
       />
 
       <div className="grid min-w-0 gap-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
-            <h1 className="truncate">{describeFilter(filter, folders)}</h1>
+            <h1 className="truncate">
+              {showOverview ? "Your vault" : describeFilter(filter, folders)}
+            </h1>
             <p className="text-muted-foreground text-sm">
               {loading
                 ? "Decrypting…"
-                : inTrash
-                  ? `${filtered.length} deleted ${filtered.length === 1 ? "item" : "items"}, still encrypted`
-                  : `${filtered.length} ${filtered.length === 1 ? "item" : "items"}, encrypted on this device`}
+                : showOverview
+                  ? `${items.length} ${items.length === 1 ? "item" : "items"}, encrypted on this device`
+                  : `${visible.length} ${visible.length === 1 ? "item" : "items"}`}
             </p>
           </div>
 
@@ -154,11 +165,27 @@ export function VaultBrowser() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, username or site"
+            placeholder="Search your vault"
             aria-label="Search your vault"
             className="pl-9"
           />
         </div>
+
+        {/* On a phone there is no sidebar, so this is the only way back up. */}
+        {!showOverview ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-self-start md:hidden"
+            onClick={() => {
+              setQuery("");
+              setView("overview");
+            }}
+          >
+            <ArrowLeft />
+            All categories
+          </Button>
+        ) : null}
 
         {loading ? (
           <div className="grid gap-px overflow-hidden rounded-xl border">
@@ -172,13 +199,25 @@ export function VaultBrowser() {
               </div>
             ))}
           </div>
+        ) : showOverview ? (
+          <VaultOverview
+            onSelect={setView}
+            folders={folders}
+            totalCount={items.length}
+            totpCount={countTotp(items)}
+            typeCounts={typeCounts}
+            folderCounts={folderCounts}
+            unfiledCount={unfiledCount}
+            trashCount={trashCount}
+            onNewFolder={() => openFolderDialog()}
+          />
         ) : (
           <ItemList
             items={visible}
-            damaged={sourceDamaged}
+            damaged={inTrash ? deleted.damaged : damaged}
             query={query}
             onRestore={inTrash ? (item) => void restore(item.id) : undefined}
-            emptyMessage={inTrash ? "Nothing deleted." : undefined}
+            emptyMessage={inTrash ? "Nothing deleted." : "Nothing here yet."}
           />
         )}
       </div>

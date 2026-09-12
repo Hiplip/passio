@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  Clock,
   CreditCard,
   Folder,
   FolderPlus,
   Inbox,
   KeyRound,
   LayoutGrid,
+  LayoutList,
   MoreHorizontal,
   Pencil,
   StickyNote,
@@ -20,15 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import type { DecryptedFolder } from "~/hooks/use-folders";
-import { filtersEqual, type VaultFilter } from "~/lib/items/filter";
+import { viewsEqual, type VaultView } from "~/lib/items/filter";
 import type { ItemType } from "~/lib/items/schema";
 import { cn } from "~/lib/utils";
 
@@ -36,21 +31,22 @@ interface Entry {
   key: string;
   label: string;
   count?: number;
-  filter: VaultFilter;
+  view: VaultView;
   Icon: typeof KeyRound;
 }
 
 const TYPE_ENTRIES: Array<{ type: ItemType; label: string; Icon: typeof KeyRound }> = [
   { type: "login", label: "Logins", Icon: KeyRound },
-  { type: "note", label: "Notes", Icon: StickyNote },
+  { type: "note", label: "Secure notes", Icon: StickyNote },
   { type: "card", label: "Cards", Icon: CreditCard },
 ];
 
 interface VaultSidebarProps {
-  filter: VaultFilter;
-  onFilterChange: (filter: VaultFilter) => void;
+  view: VaultView;
+  onViewChange: (view: VaultView) => void;
   folders: DecryptedFolder[];
   totalCount: number;
+  totpCount: number;
   typeCounts: Map<ItemType, number>;
   folderCounts: Map<string, number>;
   unfiledCount: number;
@@ -58,67 +54,6 @@ interface VaultSidebarProps {
   onNewFolder: () => void;
   onRenameFolder: (folder: DecryptedFolder) => void;
   onDeleteFolder: (folder: DecryptedFolder) => void;
-}
-
-function buildEntries({
-  folders,
-  totalCount,
-  typeCounts,
-  folderCounts,
-  unfiledCount,
-  trashCount,
-}: Pick<
-  VaultSidebarProps,
-  | "folders"
-  | "totalCount"
-  | "typeCounts"
-  | "folderCounts"
-  | "unfiledCount"
-  | "trashCount"
->): { primary: Entry[]; types: Entry[]; folders: Entry[]; trash: Entry[] } {
-  return {
-    primary: [
-      {
-        key: "all",
-        label: "All items",
-        count: totalCount,
-        filter: { kind: "all" },
-        Icon: LayoutGrid,
-      },
-    ],
-    types: TYPE_ENTRIES.map(({ type, label, Icon }) => ({
-      key: `type:${type}`,
-      label,
-      count: typeCounts.get(type) ?? 0,
-      filter: { kind: "type", type },
-      Icon,
-    })),
-    folders: [
-      ...folders.map((f) => ({
-        key: `folder:${f.id}`,
-        label: f.name,
-        count: folderCounts.get(f.id) ?? 0,
-        filter: { kind: "folder" as const, folderId: f.id },
-        Icon: Folder,
-      })),
-      {
-        key: "unfiled",
-        label: "No folder",
-        count: unfiledCount,
-        filter: { kind: "unfiled" },
-        Icon: Inbox,
-      },
-    ],
-    trash: [
-      {
-        key: "trash",
-        label: "Trash",
-        count: trashCount,
-        filter: { kind: "trash" },
-        Icon: Trash2,
-      },
-    ],
-  };
 }
 
 function SidebarButton({
@@ -158,137 +93,168 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function VaultSidebar(props: VaultSidebarProps) {
-  const { filter, onFilterChange, folders, onNewFolder, onRenameFolder, onDeleteFolder } =
-    props;
-  const entries = buildEntries(props);
-  const flat = [
-    ...entries.primary,
-    ...entries.types,
-    ...entries.folders,
-    ...entries.trash,
+/**
+ * Desktop navigation.
+ *
+ * Hidden on phones on purpose: there the browse screen is the navigation, and a
+ * duplicate control would be two ways to do one thing on the smallest screen.
+ */
+export function VaultSidebar({
+  view,
+  onViewChange,
+  folders,
+  totalCount,
+  totpCount,
+  typeCounts,
+  folderCounts,
+  unfiledCount,
+  trashCount,
+  onNewFolder,
+  onRenameFolder,
+  onDeleteFolder,
+}: VaultSidebarProps) {
+  const primary: Entry[] = [
+    { key: "overview", label: "Overview", view: "overview", Icon: LayoutGrid },
+    {
+      key: "all",
+      label: "All items",
+      count: totalCount,
+      view: { kind: "all" },
+      Icon: LayoutList,
+    },
+  ];
+  if (totpCount > 0) {
+    primary.push({
+      key: "totp",
+      label: "Verification codes",
+      count: totpCount,
+      view: { kind: "totp" },
+      Icon: Clock,
+    });
+  }
+
+  const types: Entry[] = TYPE_ENTRIES.map(({ type, label, Icon }) => ({
+    key: `type:${type}`,
+    label,
+    count: typeCounts.get(type) ?? 0,
+    view: { kind: "type", type },
+    Icon,
+  }));
+
+  const folderEntries: Entry[] = [
+    ...folders.map((f) => ({
+      key: `folder:${f.id}`,
+      label: f.name,
+      count: folderCounts.get(f.id) ?? 0,
+      view: { kind: "folder" as const, folderId: f.id },
+      Icon: Folder,
+    })),
+    {
+      key: "unfiled",
+      label: "No folder",
+      count: unfiledCount,
+      view: { kind: "unfiled" },
+      Icon: Inbox,
+    },
   ];
 
   return (
-    <>
-      {/* Mobile: one compact control, so a long folder list does not push the
-          vault off the screen. */}
-      <div className="md:hidden">
-        <Select
-          value={flat.find((e) => filtersEqual(e.filter, filter))?.key ?? "all"}
-          onValueChange={(key) => {
-            const match = flat.find((e) => e.key === key);
-            if (match) onFilterChange(match.filter);
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {flat.map((entry) => (
-              <SelectItem key={entry.key} value={entry.key}>
-                {entry.label}
-                {entry.count !== undefined ? ` (${entry.count})` : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <nav aria-label="Filter your vault" className="hidden w-52 shrink-0 md:block">
-        <div className="sticky top-20 grid gap-5">
-          <div className="grid gap-0.5">
-            {entries.primary.map((entry) => (
-              <SidebarButton
-                key={entry.key}
-                entry={entry}
-                active={filtersEqual(entry.filter, filter)}
-                onSelect={() => onFilterChange(entry.filter)}
-              />
-            ))}
-          </div>
-
-          <div className="grid gap-0.5">
-            <SectionLabel>Types</SectionLabel>
-            {entries.types.map((entry) => (
-              <SidebarButton
-                key={entry.key}
-                entry={entry}
-                active={filtersEqual(entry.filter, filter)}
-                onSelect={() => onFilterChange(entry.filter)}
-              />
-            ))}
-          </div>
-
-          <div className="grid gap-0.5">
-            <div className="flex items-center justify-between pr-1">
-              <SectionLabel>Folders</SectionLabel>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onNewFolder}
-                aria-label="New folder"
-              >
-                <FolderPlus />
-              </Button>
-            </div>
-
-            {entries.folders.map((entry) => {
-              const folder = folders.find((f) => `folder:${f.id}` === entry.key);
-              return (
-                <div key={entry.key} className="group/row flex items-center gap-1">
-                  <SidebarButton
-                    entry={entry}
-                    active={filtersEqual(entry.filter, filter)}
-                    onSelect={() => onFilterChange(entry.filter)}
-                  />
-
-                  {folder ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label={`Manage ${folder.name}`}
-                            className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
-                          />
-                        }
-                      >
-                        <MoreHorizontal />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onRenameFolder(folder)}>
-                          <Pencil />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => onDeleteFolder(folder)}
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid gap-0.5 border-t pt-4">
-            {entries.trash.map((entry) => (
-              <SidebarButton
-                key={entry.key}
-                entry={entry}
-                active={filtersEqual(entry.filter, filter)}
-                onSelect={() => onFilterChange(entry.filter)}
-              />
-            ))}
-          </div>
+    <nav aria-label="Filter your vault" className="hidden w-52 shrink-0 md:block">
+      <div className="sticky top-20 grid gap-5">
+        <div className="grid gap-0.5">
+          {primary.map((entry) => (
+            <SidebarButton
+              key={entry.key}
+              entry={entry}
+              active={viewsEqual(entry.view, view)}
+              onSelect={() => onViewChange(entry.view)}
+            />
+          ))}
         </div>
-      </nav>
-    </>
+
+        <div className="grid gap-0.5">
+          <SectionLabel>Types</SectionLabel>
+          {types.map((entry) => (
+            <SidebarButton
+              key={entry.key}
+              entry={entry}
+              active={viewsEqual(entry.view, view)}
+              onSelect={() => onViewChange(entry.view)}
+            />
+          ))}
+        </div>
+
+        <div className="grid gap-0.5">
+          <div className="flex items-center justify-between pr-1">
+            <SectionLabel>Folders</SectionLabel>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={onNewFolder}
+              aria-label="New folder"
+            >
+              <FolderPlus />
+            </Button>
+          </div>
+
+          {folderEntries.map((entry) => {
+            const folder = folders.find((f) => `folder:${f.id}` === entry.key);
+            return (
+              <div key={entry.key} className="group/row flex items-center gap-1">
+                <SidebarButton
+                  entry={entry}
+                  active={viewsEqual(entry.view, view)}
+                  onSelect={() => onViewChange(entry.view)}
+                />
+
+                {folder ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Manage ${folder.name}`}
+                          className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
+                        />
+                      }
+                    >
+                      <MoreHorizontal />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onRenameFolder(folder)}>
+                        <Pencil />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => onDeleteFolder(folder)}
+                      >
+                        <Trash2 />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-0.5 border-t pt-4">
+          <SidebarButton
+            entry={{
+              key: "trash",
+              label: "Trash",
+              count: trashCount,
+              view: { kind: "trash" },
+              Icon: Trash2,
+            }}
+            active={viewsEqual({ kind: "trash" }, view)}
+            onSelect={() => onViewChange({ kind: "trash" })}
+          />
+        </div>
+      </div>
+    </nav>
   );
 }
