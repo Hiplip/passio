@@ -22,12 +22,10 @@ import {
   countByType,
   countTotp,
   type VaultFilter,
+  type VaultView,
 } from "~/lib/items/filter";
 import { searchItems } from "~/lib/items/search";
 import { api } from "~/trpc/react";
-
-/** The vault lands on a browse screen; a filter is only chosen from there. */
-type View = VaultFilter | "overview";
 
 function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {
   switch (filter.kind) {
@@ -54,7 +52,7 @@ export function VaultBrowser() {
   const removeFolder = api.folder.delete.useMutation();
   const restoreItem = api.item.restore.useMutation();
 
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<VaultView>("overview");
   const [query, setQuery] = useState("");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<DecryptedFolder | undefined>();
@@ -62,9 +60,19 @@ export function VaultBrowser() {
   const knownFolderIds = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
 
   const searching = query.trim().length > 0;
-  // Searching from the browse screen jumps straight to results: someone who has
-  // started typing a name is not still browsing.
-  const showOverview = view === "overview" && !searching;
+
+  /**
+   * Desktop and phones browse differently on purpose.
+   *
+   * A phone opens on the category screen, because a flat list is hard to
+   * navigate with no room for a sidebar. A desktop has the sidebar permanently
+   * in view, so a category screen there would be a redundant extra click
+   * between the user and their items - it opens straight on all items.
+   *
+   * Both share one `view` state; the split is pure CSS, so there is no
+   * breakpoint guessing during hydration.
+   */
+  const atLanding = view === "overview" && !searching;
   const filter: VaultFilter = view === "overview" ? ALL_ITEMS : view;
 
   const inTrash = filter.kind === "trash";
@@ -81,6 +89,7 @@ export function VaultBrowser() {
 
   const folderCounts = countByFolder(items);
   const typeCounts = countByType(items);
+  const totpCount = countTotp(items);
   const unfiledCount = applyFilter(items, { kind: "unfiled" }, knownFolderIds).length;
   const trashCount = deleted.items.length;
 
@@ -121,14 +130,27 @@ export function VaultBrowser() {
     setFolderDialogOpen(true);
   };
 
+  const itemList = (
+    <ItemList
+      items={visible}
+      damaged={inTrash ? deleted.damaged : damaged}
+      query={query}
+      onRestore={inTrash ? (item) => void restore(item.id) : undefined}
+      emptyMessage={inTrash ? "Nothing deleted." : "Nothing here yet."}
+    />
+  );
+
   return (
-    <div className="grid gap-6 md:grid-cols-[13rem_1fr] md:gap-8">
+    // items-start stops the sidebar's height stretching this pane, and
+    // content-start stops each row inside it stretching to fill that height -
+    // which is what put the search icon below its own input.
+    <div className="grid items-start gap-6 md:grid-cols-[13rem_1fr] md:gap-8">
       <VaultSidebar
         view={view}
         onViewChange={setView}
         folders={folders}
         totalCount={items.length}
-        totpCount={countTotp(items)}
+        totpCount={totpCount}
         typeCounts={typeCounts}
         folderCounts={folderCounts}
         unfiledCount={unfiledCount}
@@ -138,16 +160,23 @@ export function VaultBrowser() {
         onDeleteFolder={(folder) => void deleteFolder(folder)}
       />
 
-      <div className="grid min-w-0 gap-5">
+      <div className="grid min-w-0 content-start gap-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
             <h1 className="truncate">
-              {showOverview ? "Your vault" : describeFilter(filter, folders)}
+              {atLanding ? (
+                <>
+                  <span className="md:hidden">Your vault</span>
+                  <span className="hidden md:inline">All items</span>
+                </>
+              ) : (
+                describeFilter(filter, folders)
+              )}
             </h1>
             <p className="text-muted-foreground text-sm">
               {loading
                 ? "Decrypting…"
-                : showOverview
+                : atLanding
                   ? `${items.length} ${items.length === 1 ? "item" : "items"}, encrypted on this device`
                   : `${visible.length} ${visible.length === 1 ? "item" : "items"}`}
             </p>
@@ -159,8 +188,8 @@ export function VaultBrowser() {
           </Button>
         </div>
 
-        <div className="relative">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <div className="relative flex items-center">
+          <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
           <Input
             type="search"
             value={query}
@@ -172,7 +201,7 @@ export function VaultBrowser() {
         </div>
 
         {/* On a phone there is no sidebar, so this is the only way back up. */}
-        {!showOverview ? (
+        {!atLanding ? (
           <Button
             variant="ghost"
             size="sm"
@@ -199,26 +228,25 @@ export function VaultBrowser() {
               </div>
             ))}
           </div>
-        ) : showOverview ? (
-          <VaultOverview
-            onSelect={setView}
-            folders={folders}
-            totalCount={items.length}
-            totpCount={countTotp(items)}
-            typeCounts={typeCounts}
-            folderCounts={folderCounts}
-            unfiledCount={unfiledCount}
-            trashCount={trashCount}
-            onNewFolder={() => openFolderDialog()}
-          />
+        ) : atLanding ? (
+          <>
+            <div className="md:hidden">
+              <VaultOverview
+                onSelect={setView}
+                folders={folders}
+                totalCount={items.length}
+                totpCount={totpCount}
+                typeCounts={typeCounts}
+                folderCounts={folderCounts}
+                unfiledCount={unfiledCount}
+                trashCount={trashCount}
+                onNewFolder={() => openFolderDialog()}
+              />
+            </div>
+            <div className="hidden md:block">{itemList}</div>
+          </>
         ) : (
-          <ItemList
-            items={visible}
-            damaged={inTrash ? deleted.damaged : damaged}
-            query={query}
-            onRestore={inTrash ? (item) => void restore(item.id) : undefined}
-            emptyMessage={inTrash ? "Nothing deleted." : "Nothing here yet."}
-          />
+          itemList
         )}
       </div>
 

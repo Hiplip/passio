@@ -7,7 +7,6 @@ import {
   FolderPlus,
   Inbox,
   KeyRound,
-  LayoutGrid,
   LayoutList,
   MoreHorizontal,
   Pencil,
@@ -113,8 +112,13 @@ export function VaultSidebar({
   onRenameFolder,
   onDeleteFolder,
 }: VaultSidebarProps) {
+  // The landing state shows all items on desktop, so that is what should read
+  // as selected - "overview" is a phone-only screen.
+  const selected: VaultView = view === "overview" ? { kind: "all" } : view;
+  // No "Overview" entry: on desktop the sidebar IS the overview, and the
+  // landing state already shows all items, so it would be a row that changes
+  // nothing.
   const primary: Entry[] = [
-    { key: "overview", label: "Overview", view: "overview", Icon: LayoutGrid },
     {
       key: "all",
       label: "All items",
@@ -166,7 +170,7 @@ export function VaultSidebar({
             <SidebarButton
               key={entry.key}
               entry={entry}
-              active={viewsEqual(entry.view, view)}
+              active={viewsEqual(entry.view, selected)}
               onSelect={() => onViewChange(entry.view)}
             />
           ))}
@@ -178,7 +182,7 @@ export function VaultSidebar({
             <SidebarButton
               key={entry.key}
               entry={entry}
-              active={viewsEqual(entry.view, view)}
+              active={viewsEqual(entry.view, selected)}
               onSelect={() => onViewChange(entry.view)}
             />
           ))}
@@ -203,7 +207,7 @@ export function VaultSidebar({
               <div key={entry.key} className="group/row flex items-center gap-1">
                 <SidebarButton
                   entry={entry}
-                  active={viewsEqual(entry.view, view)}
+                  active={viewsEqual(entry.view, selected)}
                   onSelect={() => onViewChange(entry.view)}
                 />
 
@@ -250,7 +254,7 @@ export function VaultSidebar({
               view: { kind: "trash" },
               Icon: Trash2,
             }}
-            active={viewsEqual({ kind: "trash" }, view)}
+            active={viewsEqual({ kind: "trash" }, selected)}
             onSelect={() => onViewChange({ kind: "trash" })}
           />
         </div>
