@@ -136,6 +136,7 @@ function FolderPicker({
 
   return (
     <div className="grid gap-2">
+      {/* Same fixed-height label row as Field, so the two align side by side. */}
       <div className="flex min-h-6 items-center">
         <Label htmlFor="item-folder">Folder</Label>
       </div>

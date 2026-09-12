@@ -10,6 +10,8 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   /** Renders the value in the monospace face. Use for anything secret. */
   secret?: boolean;
+  /** Rendered opposite the label, matching SecretField. */
+  action?: React.ReactNode;
 }
 
 /**
@@ -20,7 +22,7 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
  * one replaces the other.
  */
 export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, hint, error, secret = false, className, ...props },
+  { label, hint, error, secret = false, action, className, ...props },
   ref,
 ) {
   const id = useId();
@@ -28,7 +30,13 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      {/* Fixed-height label row. Fields that put an action beside the label
+          (SecretField's "Generate", say) are taller than a bare label, so
+          without this two fields side by side start at different heights. */}
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        {action}
+      </div>
 
       <Input
         ref={ref}
