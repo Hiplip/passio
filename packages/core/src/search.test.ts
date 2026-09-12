@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DecryptedItem } from "./decrypt-vault";
-import { searchItems } from "./search";
+import { searchItems, searchSummaries } from "./search";
 
 const now = new Date();
 const make = (id: string, data: Record<string, unknown>): DecryptedItem =>
@@ -72,5 +72,34 @@ describe("searchItems", () => {
 
   it("trims the query", () => {
     expect(searchItems(items, "  github  ").map((i) => i.id)).toEqual(["1"]);
+  });
+});
+
+describe("searchSummaries", () => {
+  const items = [
+    { id: "1", title: "GitHub", username: "ada", uri: "https://github.com/" },
+    { id: "2", title: "Bank", username: "ada@example.com" },
+    { id: "3", title: "Note" },
+  ];
+
+  it("returns everything for an empty query", () => {
+    expect(searchSummaries(items, "  ")).toHaveLength(3);
+  });
+
+  it("matches on title, username and uri", () => {
+    expect(searchSummaries(items, "github").map((i) => i.id)).toEqual(["1"]);
+    expect(searchSummaries(items, "example.com").map((i) => i.id)).toEqual(["2"]);
+    expect(searchSummaries(items, "ada").map((i) => i.id)).toEqual(["1", "2"]);
+  });
+
+  it("tolerates items missing every searchable field", () => {
+    expect(searchSummaries(items, "zzz")).toEqual([]);
+  });
+
+  it("never matches on a field it was not given", () => {
+    // The extension's ItemSummary carries no secrets at all, but the shared
+    // haystack is what guarantees neither client can start matching on one.
+    const withSecret = [{ title: "X", password: "s3cret" } as never];
+    expect(searchSummaries(withSecret, "s3cret")).toEqual([]);
   });
 });

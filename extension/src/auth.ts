@@ -2,6 +2,7 @@ import { performDerivation } from "@passio/crypto/worker/derive";
 import type { WrappingKey } from "@passio/crypto/types";
 
 const TOKEN_KEY = "passio.session-token";
+const EMAIL_KEY = "passio.email";
 
 /**
  * The slice of chrome.storage.local this module uses.
@@ -27,6 +28,28 @@ export const chromeTokenStore: TokenStore = {
     await chrome.storage.local.remove(TOKEN_KEY);
   },
 };
+
+/**
+ * The signed-in email address.
+ *
+ * Stored because unlocking re-derives the key, and derivation salts on the
+ * email - so a locked vault needs it back without asking. It is not a secret,
+ * and remembering it is the difference between a 15-minute auto-lock being
+ * usable and being switched off.
+ */
+export async function readEmail(): Promise<string | null> {
+  const r = await chrome.storage.local.get(EMAIL_KEY);
+  const v = r[EMAIL_KEY] as string | undefined;
+  return v ? v : null;
+}
+
+export async function writeEmail(email: string): Promise<void> {
+  await chrome.storage.local.set({ [EMAIL_KEY]: email });
+}
+
+export async function clearEmail(): Promise<void> {
+  await chrome.storage.local.remove(EMAIL_KEY);
+}
 
 export async function readToken(store: TokenStore): Promise<string | null> {
   const v = await store.get();
