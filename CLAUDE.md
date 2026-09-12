@@ -31,7 +31,7 @@ These apply when designing or planning, before any code exists.
 | Build gate | `pnpm build` (`next build`) |
 | Test gate | `pnpm test` (`vitest run`) |
 | Smoke gate | `pnpm smoke` (`bash scripts/smoke.sh`) |
-| Push schema | **BROKEN — see below** |
+| Push schema | `pnpm db:push` |
 | Dev server | `pnpm dev` |
 
 ### Key paths
@@ -64,19 +64,34 @@ These apply when designing or planning, before any code exists.
 - A reload re-locks the vault. The key is in memory only - never localStorage,
   sessionStorage, IndexedDB or a cookie.
 
-### `pnpm db:push` is broken (NEEDS-REVIEW)
+### Database topology — read this before running tests
 
-`drizzle-kit@0.30.6` against this Neon server emits
-`DROP CONSTRAINT "<table>_<col>_not_null"` for every non-null column before any real
-change. The first target is a primary key, Postgres rejects it
-(`42P16: column "id" is in a primary key`), and the push aborts having applied nothing —
-**while still exiting 0**, so an exit-code check does not catch it. It also prompts
-interactively when it cannot tell a created table from a renamed one, and `--force` does
-not suppress that; redirect stdin from `/dev/null` or it hangs forever.
+Two Neon branches in project `tiny-rain-06343556`:
 
-Until drizzle-kit is upgraded, apply schema changes by taking the `ADD COLUMN` statements
-drizzle-kit generates and executing them directly, then verifying the result against
-`schema.ts`. Both schema changes in this project were applied that way.
+| Branch | Used by | Contains |
+|---|---|---|
+| `main` | **production** (Vercel `DATABASE_URL`) | the real vault. Never point tests at it. |
+| `dev`  | local `.env` and the whole test suite | disposable |
+
+Local `.env` points at `dev`. Production's URL is set on Vercel only and is deliberately
+not in any local file. The test suite creates and deletes rows, so it must never run
+against `main`.
+
+`pnpm db:push` applies to whichever branch `.env` names — so a schema change has to be
+pushed **twice**: once locally against `dev`, and once against `main` for production
+(`neon connection-string main --project-id tiny-rain-06343556`, then push with that URL).
+
+### `pnpm db:push` — fixed, was broken on drizzle-kit 0.30.x
+
+`drizzle-kit@0.30.6` predated PostgreSQL 17's named NOT NULL constraints (Neon runs 18.6),
+so it emitted `DROP CONSTRAINT "<table>_<col>_not_null"` for every non-null column, hit a
+primary key, aborted having applied nothing, **and still exited 0**. Upgrading to
+`0.31.10` fixes it; verified by adding and dropping a real column and confirming both
+landed. Do not downgrade below 0.31.
+
+Note it still prompts interactively when it cannot tell a created table from a renamed
+one, and `--force` does not suppress that — redirect stdin from `/dev/null` in scripts or
+it hangs forever.
 
 ### Environment notes
 

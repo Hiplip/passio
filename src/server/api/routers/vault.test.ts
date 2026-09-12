@@ -165,13 +165,16 @@ describe("account.status", () => {
     });
   });
 
-  it("reports registration open when no account exists", async () => {
+  it("mirrors whether an account actually exists", async () => {
+    // Deliberately NOT "asserts the table is empty". That version depended on
+    // global state: it passed only against a pristine database and failed
+    // permanently the moment a real account existed. This tests the invariant
+    // the procedure actually promises, so it holds in any database state.
     const [existing] = await db.select({ id: user.id }).from(user).limit(1);
-    expect(existing).toBeUndefined();
 
-    expect(await callerFor(null).account.status()).toEqual({
-      registrationOpen: true,
-    });
+    const { registrationOpen } = await callerFor(null).account.status();
+
+    expect(registrationOpen).toBe(existing === undefined);
   });
 
   it("is visible to an authenticated caller too", async () => {

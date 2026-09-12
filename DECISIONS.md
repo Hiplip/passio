@@ -248,3 +248,22 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   first deploy, so requiring it made the first deploy impossible without guessing the domain. It
   now falls back to `VERCEL_PROJECT_PRODUCTION_URL`, and is only set explicitly for local dev.
   It is therefore deliberately NOT set on Vercel.
+
+## 2026-09-12 — Database separation and drizzle-kit upgrade
+
+- **drizzle-kit upgraded 0.30.6 → 0.31.10, which fixes `db:push`.** The old version predated
+  PostgreSQL 17's named NOT NULL constraints (Neon runs 18.6) and emitted DROP CONSTRAINT for
+  every non-null column, aborting on a primary key while still exiting 0. Verified empirically:
+  added a real column, confirmed it landed in the database, dropped it, confirmed it went.
+  There is no global drizzle-kit install — it is a per-project devDependency, so every other
+  project needs the same bump individually.
+- **Local dev and tests moved to a dedicated Neon branch (`dev`, br-nameless-hat-aeppbt28).**
+  Previously local `.env`, the test suite and Vercel production all shared one connection
+  string, so `pnpm test` wrote to the production database. The owner had by then created a real
+  account, making this urgent. Production stays on `main`; its URL is set on Vercel only.
+  The dev branch is copy-on-write, so its copy of the real row was cleared after branching.
+  Production was verified intact afterwards (1 user, 1 item).
+- **`account.status`'s test no longer asserts global emptiness.** It previously required a
+  pristine database and would have failed permanently once a real account existed. It now
+  asserts the invariant the procedure actually promises — that `registrationOpen` mirrors
+  whether a user row exists — which holds in any database state.
