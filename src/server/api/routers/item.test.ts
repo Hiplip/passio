@@ -441,3 +441,73 @@ describe("test hygiene", () => {
     expect(users).toHaveLength(0);
   });
 });
+
+describe("item.listDeleted", () => {
+  it("lists the caller's deleted items and nothing else", async () => {
+    await callerFor(ALICE).item.create({
+      id: ALICE_ITEM,
+      ciphertext: ALICE_CIPHERTEXT,
+    });
+    await callerFor(ALICE).item.create({
+      id: SECOND_ITEM,
+      ciphertext: ALICE_CIPHERTEXT,
+    });
+    await callerFor(ALICE).item.delete({ id: ALICE_ITEM });
+
+    const deleted = await callerFor(ALICE).item.listDeleted();
+
+    expect(deleted.map((row) => row.id)).toEqual([ALICE_ITEM]);
+  });
+
+  it("is the mirror of list: an item appears in exactly one of them", async () => {
+    await callerFor(ALICE).item.create({
+      id: ALICE_ITEM,
+      ciphertext: ALICE_CIPHERTEXT,
+    });
+
+    expect((await callerFor(ALICE).item.list()).map((r) => r.id)).toEqual([ALICE_ITEM]);
+    expect(await callerFor(ALICE).item.listDeleted()).toEqual([]);
+
+    await callerFor(ALICE).item.delete({ id: ALICE_ITEM });
+
+    expect(await callerFor(ALICE).item.list()).toEqual([]);
+    expect((await callerFor(ALICE).item.listDeleted()).map((r) => r.id)).toEqual([
+      ALICE_ITEM,
+    ]);
+  });
+
+  it("never includes another user's deleted items", async () => {
+    await callerFor(BOB).item.create({ id: BOB_ITEM, ciphertext: BOB_CIPHERTEXT });
+    await callerFor(BOB).item.delete({ id: BOB_ITEM });
+
+    expect(await callerFor(ALICE).item.listDeleted()).toEqual([]);
+  });
+
+  it("drops an item back out again once it is restored", async () => {
+    await callerFor(ALICE).item.create({
+      id: ALICE_ITEM,
+      ciphertext: ALICE_CIPHERTEXT,
+    });
+    await callerFor(ALICE).item.delete({ id: ALICE_ITEM });
+    await callerFor(ALICE).item.restore({ id: ALICE_ITEM });
+
+    expect(await callerFor(ALICE).item.listDeleted()).toEqual([]);
+    expect((await callerFor(ALICE).item.list()).map((r) => r.id)).toEqual([ALICE_ITEM]);
+  });
+
+  it("still returns the ciphertext, so a deleted item can be decrypted and shown", async () => {
+    await callerFor(ALICE).item.create({
+      id: ALICE_ITEM,
+      ciphertext: ALICE_CIPHERTEXT,
+    });
+    await callerFor(ALICE).item.delete({ id: ALICE_ITEM });
+
+    const [row] = await callerFor(ALICE).item.listDeleted();
+
+    expect(row?.ciphertext).toBe(ALICE_CIPHERTEXT);
+  });
+
+  it("rejects an unauthenticated caller", async () => {
+    expect((await errorOf(callerFor(null).item.listDeleted())).code).toBe("UNAUTHORIZED");
+  });
+});
