@@ -19,6 +19,7 @@ interface Manifest {
   permissions?: string[];
   host_permissions?: string[];
   content_security_policy?: { extension_pages?: string };
+  content_scripts?: unknown;
   externally_connectable?: unknown;
 }
 
@@ -82,5 +83,13 @@ describe("generated manifest", () => {
 
   it("is not reachable from any web page", () => {
     expect(manifest.externally_connectable).toBeUndefined();
+  });
+
+  it("declares no content scripts", () => {
+    // The fill script is injected at runtime under activeTab, after a click on
+    // the toolbar icon. A DECLARED content script would need host permissions
+    // for every site it could ever run on - which is exactly the <all_urls>
+    // posture this design rejected. If this fails, that decision was undone.
+    expect(manifest.content_scripts).toBeUndefined();
   });
 });

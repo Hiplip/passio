@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { readEmail, writeEmail } from "../../src/auth";
 import { vault } from "../../src/client";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
+import type { FillOutcome, FillPayload } from "../../src/inject";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
 import "./styles.css";
 
@@ -71,7 +72,17 @@ function Unlock({
   );
 }
 
-function Row({ item, onCopy }: { item: ItemSummary; onCopy: (f: FillField) => void }) {
+function Row({
+  item,
+  canFill,
+  onCopy,
+  onFill,
+}: {
+  item: ItemSummary;
+  canFill: boolean;
+  onCopy: (f: FillField) => void;
+  onFill: () => void;
+}) {
   return (
     <li className="row">
       <div className="rowMain">
@@ -79,6 +90,9 @@ function Row({ item, onCopy }: { item: ItemSummary; onCopy: (f: FillField) => vo
         {item.username ? <span className="rowSub">{item.username}</span> : null}
       </div>
       <div className="rowActions">
+        {canFill && item.type === "login" ? (
+          <button className="chip primary" onClick={onFill}>Fill</button>
+        ) : null}
         {item.username ? (
           <button className="chip" onClick={() => onCopy("username")}>User</button>
         ) : null}
@@ -147,6 +161,48 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     }
   }
 
+  /**
+   * Fills the active tab.
+   *
+   * Injects the fill script first: activeTab grants access to this one tab
+   * because the popup was opened by a click, and allFrames stays false because
+   * cross-origin iframe filling is out of scope and getting it wrong is worse
+   * than not doing it.
+   */
+  async function fill(item: ItemSummary) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url?.startsWith("http")) {
+      setNote("Cannot fill this kind of page.");
+      return;
+    }
+
+    try {
+      const payload: FillPayload = {
+        kind: "fill",
+        username: item.username ? await vault.fieldValue(item.id, "username") : "",
+        password: await vault.fieldValue(item.id, "password"),
+        totp: item.hasTotp ? await vault.fieldValue(item.id, "totp") : "",
+      };
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: false },
+        files: ["content-scripts/fill.js"],
+      });
+
+      const outcome: FillOutcome = await chrome.tabs.sendMessage(tab.id, payload);
+      if (outcome === "filled") {
+        window.close();
+        return;
+      }
+      // Autofill fails often; it has to fail into something useful. The copy
+      // buttons are still right there.
+      setNote("No login form on this page.");
+    } catch (err) {
+      if (err instanceof Error && /locked/i.test(err.message)) return onLocked();
+      setNote("Could not fill this page.");
+    }
+  }
+
   async function changeLock(minutes: number) {
     setLockMinutes(minutes);
     await chrome.storage.local.set({ [LOCK_MINUTES_KEY]: minutes });
@@ -164,6 +220,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   if (!items) return <main className="pad muted">Decrypting…</main>;
 
+  const canFill = tabUrl?.startsWith("http") ?? false;
   const showSite = forSite.length > 0 && query === "";
   const rest = showSite
     ? filtered.filter((i) => !forSite.some((m) => m.id === i.id))
@@ -203,7 +260,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
           <p className="group">For this site</p>
           <ul className="list">
             {forSite.map((i) => (
-              <Row key={i.id} item={i} onCopy={(f) => void copy(i, f)} />
+              <Row
+                key={i.id} item={i} canFill={canFill}
+                onCopy={(f) => void copy(i, f)} onFill={() => void fill(i)}
+              />
             ))}
           </ul>
         </>
@@ -214,7 +274,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
           {showSite ? <p className="group">All items</p> : null}
           <ul className="list">
             {rest.map((i) => (
-              <Row key={i.id} item={i} onCopy={(f) => void copy(i, f)} />
+              <Row
+                key={i.id} item={i} canFill={canFill}
+                onCopy={(f) => void copy(i, f)} onFill={() => void fill(i)}
+              />
             ))}
           </ul>
         </>
