@@ -3148,3 +3148,82 @@ there. `matchItemsToUrl`/`MatchableItem` (Task 17) are consumed by custody in Ta
 behaviour rather than full source. They are presentational React with no branching logic
 that a unit test would meaningfully cover, and every function they call is specified with
 complete code and tests elsewhere in this plan.
+
+---
+
+# END-OF-RUN SUMMARY
+
+**Run date:** 2026-09-12 · unattended · executed inline (not subagent-driven: the
+monorepo split is one coherent whole-repo operation, poorly suited to isolated agents).
+
+## Phases completed: all six
+
+| Phase | Commit | Gates | Deploy |
+|---|---|---|---|
+| 1 — Monorepo split | `08fe230` | typecheck · lint · **354 tests / 28 files** · build · smoke | Ready |
+| 2 — Shell + sign-in | `c9b6df7` | typecheck · lint · **373 tests / 31 files** · build · smoke | Ready |
+| 3 — Offscreen custody (+4, +6) | `2694986` | typecheck · lint · **418 tests / 35 files** · build · smoke | Ready |
+| 5 — Autofill | `1262c2e` | typecheck · lint · **451 tests / 38 files** · build · smoke | pending at write time |
+
+Phases 4 and 6 landed inside phase 3's commit. Phase 4's `matchItemsToUrl` was pulled
+forward because the message protocol already declared `matchCount`, and shipping a
+protocol with a dead message kind is worse than crossing a phase boundary. Phase 6's
+`chrome.alarms` / `chrome.idle` / configurable timeout landed with it because the
+background worker needed the preference anyway, and no phase may leave a vault key
+alive indefinitely.
+
+Test count grew 354 → **451** (+97), every one written against behaviour specified in
+the plan.
+
+## Phases blocked: none
+
+## Deviations from the spec
+
+1. **`NEEDS-REVIEW`: the web app stays at the repo root, not `apps/web`.** Recorded in
+   `DECISIONS.md`. Removes the Vercel Root Directory change the spec itself named as the
+   highest deployment risk.
+2. **Phase ordering compressed** as described above.
+3. **The fill script is injected as a file, not as `executeScript({ func })`.** The plan
+   assumed WXT would bundle a referenced function's imports into the injected chunk. It
+   does not, and cannot: Chrome stringifies `func` at runtime, so imported helpers become
+   free variables and throw `ReferenceError` in the page. Injecting a bundled content
+   script with `registration: "runtime"` keeps `findLoginFields` and `fillField` as real
+   tested modules, and keeps the manifest free of `content_scripts`.
+
+## Things the plan got wrong, found by executing it
+
+- **Vitest aliases must be anchored regexes.** A plain string alias prefix-matches, so
+  `"@passio/crypto"` also swallowed `@passio/crypto/worker/derive` and rewrote it to
+  `.../index.ts/worker/derive`. Eight test files stopped loading with no other symptom.
+- **`tldts` defaults to `allowPrivateDomains: false`.** The plan's test for
+  `alice.github.io` vs `bob.github.io` failed on first run and was right to: with the
+  default, one tenant's login is offered on another tenant's page.
+- **WXT's `postinstall` runs `wxt prepare`, which fails when no entrypoints exist yet.**
+  Renamed to `prepare-types` and wired into `typecheck`, which needs it anyway because
+  `.wxt/` is gitignored.
+- **The root `tsconfig.json` cannot typecheck the extension.** WXT's auto-imported
+  globals only exist under the extension's own config. `pnpm typecheck` now runs both.
+- **`unbound-method` fires on reading `PropertyDescriptor.set`**, which is declared with
+  method shorthand. Fixed by typing the descriptor slot as a property holding a function
+  with an explicit `this`, and calling through `Reflect.apply`. No suppression was used.
+
+## Verified by execution, not assumption
+
+- No server code (`drizzle-orm`, `better-auth`, `postgres`) in the extension bundle,
+  despite the type-only `AppRouter` import.
+- Argon2id appears **only** in `assets/worker-*.js`. The popup chunk contains none, so
+  the popup structurally cannot derive a key.
+- The generated manifest contains no `content_scripts`, no `<all_urls>`, and exactly the
+  seven designed permissions plus one host permission.
+- `extension/key.pem` is gitignored and was confirmed absent from every staged commit.
+
+## NOT verified — no browser on this machine
+
+Unchanged from the spec, and the reason every extension phase ends in a handoff:
+
+- **whether the offscreen document actually survives service-worker eviction** — the
+  load-bearing assumption of the entire design
+- whether the manifest loads in Chrome
+- whether CORS and bearer auth work from `chrome-extension://olifgfoaipigflfaiadpjalokaoonjjo`
+- whether autofill works on any real site
+- any popup rendering

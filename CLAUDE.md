@@ -148,6 +148,60 @@ it hangs forever.
   seeding rows makes it fail. Run `pnpm test` on its own; never alongside another test run.
   `pnpm vitest run --project unit` is safe to run at any time.
 
+### Browser extension (`extension/`)
+
+Chrome MV3, built with WXT. Load `extension/.output/chrome-mv3/` via
+`chrome://extensions` → Load unpacked.
+
+| Purpose | Command |
+|---|---|
+| Build the extension | `pnpm --filter @passio/extension build` |
+| Watch mode | `pnpm --filter @passio/extension dev` |
+| Regenerate WXT types | `pnpm --filter @passio/extension typecheck` (runs `wxt prepare` first) |
+
+**`pnpm test` builds the extension first**, because `extension/manifest.test.ts`
+asserts the *generated* manifest. Do not decouple them: the assertion is worthless
+against a stale build.
+
+#### The vault key lives in an offscreen document
+
+MV3 evicts the service worker after ~30s idle. `chrome.storage.session` cannot hold a
+`CryptoKey` — it serialises as JSON and an exported `ArrayBuffer` becomes `{}` — so the
+only usable form is raw bytes, which forces `extractable: true`. That would delete the
+invariant the branded types exist to enforce. An offscreen document keeps the key
+non-extractable and in memory instead.
+
+Consequences to preserve:
+
+- **`extension/entrypoints/offscreen/` is the only context that ever holds the key.**
+  The popup receives `ItemSummary` values with no secrets and asks for one named field
+  at a time. The content script receives three strings.
+- Argon2id must appear **only** in `assets/worker-*.js` in the build output, and the
+  popup chunk must not contain it. If the popup ever links derivation code, something
+  imported the wrong module.
+- Auto-lock uses `chrome.alarms`, which survives worker eviction. `setTimeout` does not.
+
+#### Permissions are asserted, not just intended
+
+`extension/manifest.test.ts` asserts the exact permission list, the single host
+permission, absence of `<all_urls>`, absence of `content_scripts`, presence of
+`wasm-unsafe-eval` and of the pinned `key`. **This is the gate that replaces `pnpm smoke`
+for the extension** — there is no browser here, so nothing can prove the extension
+works, only that it never quietly asks for more than it was designed to.
+
+Changing that list is a design decision: update `docs/superpowers/specs/2026-09-12-passio-extension-design.md` (D3a) in the same commit.
+
+#### Two traps that cost real time
+
+- **`tldts` defaults to `allowPrivateDomains: false`.** With it off, `github.io` and
+  `vercel.app` read as ordinary domains, so `alice.github.io` and `bob.github.io` are
+  "the same site" and one tenant's login is offered on another's page. `match.ts` turns
+  it on; the test for it must stay.
+- **`extension/key.pem` is the private signing key and is gitignored.** The manifest
+  `key` field is the public half and is committed. Losing the `.pem` means a new
+  extension id, which breaks `trustedOrigins` and the CORS allowlist in
+  `src/server/cors.ts`. Extension id: `olifgfoaipigflfaiadpjalokaoonjjo`.
+
 ### Smoke routes
 
 Phase 1: `/`, `/signup`, `/login` expect **200**; `/unlock`, `/vault` expect a **redirect
