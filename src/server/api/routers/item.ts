@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -34,6 +34,27 @@ export const itemRouter = createTRPCRouter({
       })
       .from(item)
       .where(and(eq(item.userId, ctx.session.user.id), isNull(item.deletedAt)))
+      .orderBy(desc(item.updatedAt));
+  }),
+
+  /**
+   * Soft-deleted items.
+   *
+   * Separate from `list` rather than a flag on it, so no caller can
+   * accidentally mix deleted rows into the live vault by passing the wrong
+   * argument. Without this, `restore` is unreachable and a delete is
+   * effectively permanent.
+   */
+  listDeleted: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        id: item.id,
+        ciphertext: item.ciphertext,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })
+      .from(item)
+      .where(and(eq(item.userId, ctx.session.user.id), isNotNull(item.deletedAt)))
       .orderBy(desc(item.updatedAt));
   }),
 

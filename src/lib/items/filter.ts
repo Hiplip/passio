@@ -12,7 +12,11 @@ export type VaultFilter =
   | { kind: "all" }
   | { kind: "type"; type: ItemType }
   | { kind: "folder"; folderId: string }
-  | { kind: "unfiled" };
+  | { kind: "unfiled" }
+  /** Deleted items. The caller supplies the deleted list; this kind does no
+   *  filtering of its own, because trash is a different data source rather
+   *  than a subset of the live vault. */
+  | { kind: "trash" };
 
 export const ALL_ITEMS: VaultFilter = { kind: "all" };
 
@@ -48,6 +52,8 @@ export function applyFilter(
         const id = item.data.folderId;
         return id === undefined || !knownFolderIds.has(id);
       });
+    case "trash":
+      return items;
   }
 }
 

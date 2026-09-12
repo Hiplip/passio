@@ -122,3 +122,18 @@ describe("counts", () => {
     expect(countByType([]).size).toBe(0);
   });
 });
+
+describe("trash", () => {
+  it("passes the caller's list through unchanged", () => {
+    // Trash is a different data source, not a subset of the live vault, so the
+    // caller supplies the deleted rows and this kind does no filtering.
+    const deleted = [make("d1", { type: "login", title: "Old" })];
+    expect(applyFilter(deleted, { kind: "trash" }, known)).toEqual(deleted);
+  });
+
+  it("is distinguishable from every other filter", () => {
+    expect(filtersEqual({ kind: "trash" }, ALL_ITEMS)).toBe(false);
+    expect(filtersEqual({ kind: "trash" }, { kind: "unfiled" })).toBe(false);
+    expect(filtersEqual({ kind: "trash" }, { kind: "trash" })).toBe(true);
+  });
+});

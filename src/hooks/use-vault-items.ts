@@ -20,8 +20,17 @@ const EMPTY: DecryptedVault = { items: [], damaged: [] };
  * the rows are ciphertext until it completes, so the list renders as loading
  * rather than briefly empty, which would read as data loss.
  */
-export function useVaultItems(vaultKey: VaultKey | null) {
-  const rows = api.item.list.useQuery(undefined, { enabled: vaultKey !== null });
+export function useVaultItems(
+  vaultKey: VaultKey | null,
+  options: { deleted?: boolean } = {},
+) {
+  const live = api.item.list.useQuery(undefined, {
+    enabled: vaultKey !== null && !options.deleted,
+  });
+  const trashed = api.item.listDeleted.useQuery(undefined, {
+    enabled: vaultKey !== null && options.deleted === true,
+  });
+  const rows = options.deleted ? trashed : live;
   const [vault, setVault] = useState<DecryptedVault>(EMPTY);
   const [decrypting, setDecrypting] = useState(true);
 

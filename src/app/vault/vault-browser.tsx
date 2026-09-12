@@ -34,6 +34,8 @@ function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string
       return "No folder";
     case "folder":
       return folders.find((f) => f.id === filter.folderId)?.name ?? "Folder";
+    case "trash":
+      return "Trash";
   }
 }
 
@@ -43,6 +45,7 @@ export function VaultBrowser() {
   const { folders } = useFolders(vaultKey);
   const utils = api.useUtils();
   const removeFolder = api.folder.delete.useMutation();
+  const restoreItem = api.item.restore.useMutation();
 
   const [filter, setFilter] = useState<VaultFilter>(ALL_ITEMS);
   const [query, setQuery] = useState("");
@@ -54,14 +57,36 @@ export function VaultBrowser() {
     [folders],
   );
 
+  const inTrash = filter.kind === "trash";
+  // Only fetched while trash is open, so the deleted rows are not decrypted on
+  // every visit to the vault.
+  const deleted = useVaultItems(vaultKey, { deleted: inTrash });
+
+  const source = inTrash ? deleted.items : items;
+  const sourceDamaged = inTrash ? deleted.damaged : damaged;
+  const loading = inTrash ? deleted.isLoading : isLoading;
+
   // Both run in memory over the already-decrypted vault, so neither needs a
   // debounce and neither tells the server anything.
-  const filtered = applyFilter(items, filter, knownFolderIds);
+  const filtered = applyFilter(source, filter, knownFolderIds);
   const visible = searchItems(filtered, query);
 
   const folderCounts = countByFolder(items);
   const typeCounts = countByType(items);
   const unfiledCount = applyFilter(items, { kind: "unfiled" }, knownFolderIds).length;
+
+  async function restore(itemId: string) {
+    try {
+      await restoreItem.mutateAsync({ id: itemId });
+      await Promise.all([
+        utils.item.list.invalidate(),
+        utils.item.listDeleted.invalidate(),
+      ]);
+      toast.success("Item restored");
+    } catch {
+      toast.error("Could not restore that item.");
+    }
+  }
 
   async function deleteFolder(folder: DecryptedFolder) {
     if (
@@ -92,6 +117,7 @@ export function VaultBrowser() {
         typeCounts={typeCounts}
         folderCounts={folderCounts}
         unfiledCount={unfiledCount}
+        trashCount={deleted.items.length}
         onNewFolder={() => {
           setEditingFolder(undefined);
           setFolderDialogOpen(true);
@@ -108,9 +134,11 @@ export function VaultBrowser() {
           <div className="min-w-0">
             <h1 className="truncate">{describeFilter(filter, folders)}</h1>
             <p className="text-muted-foreground text-sm">
-              {isLoading
+              {loading
                 ? "Decrypting…"
-                : `${filtered.length} ${filtered.length === 1 ? "item" : "items"}, encrypted on this device`}
+                : inTrash
+                  ? `${filtered.length} deleted ${filtered.length === 1 ? "item" : "items"}, still encrypted`
+                  : `${filtered.length} ${filtered.length === 1 ? "item" : "items"}, encrypted on this device`}
             </p>
           </div>
 
@@ -132,7 +160,7 @@ export function VaultBrowser() {
           />
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="grid gap-px overflow-hidden rounded-xl border">
             {[0, 1, 2].map((i) => (
               <div key={i} className="bg-card flex items-center gap-3 px-4 py-3">
@@ -145,7 +173,13 @@ export function VaultBrowser() {
             ))}
           </div>
         ) : (
-          <ItemList items={visible} damaged={damaged} query={query} />
+          <ItemList
+            items={visible}
+            damaged={sourceDamaged}
+            query={query}
+            onRestore={inTrash ? (item) => void restore(item.id) : undefined}
+            emptyMessage={inTrash ? "Nothing deleted." : undefined}
+          />
         )}
       </div>
 

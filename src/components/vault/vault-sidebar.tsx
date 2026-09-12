@@ -54,6 +54,7 @@ interface VaultSidebarProps {
   typeCounts: Map<ItemType, number>;
   folderCounts: Map<string, number>;
   unfiledCount: number;
+  trashCount: number;
   onNewFolder: () => void;
   onRenameFolder: (folder: DecryptedFolder) => void;
   onDeleteFolder: (folder: DecryptedFolder) => void;
@@ -65,10 +66,16 @@ function buildEntries({
   typeCounts,
   folderCounts,
   unfiledCount,
+  trashCount,
 }: Pick<
   VaultSidebarProps,
-  "folders" | "totalCount" | "typeCounts" | "folderCounts" | "unfiledCount"
->): { primary: Entry[]; types: Entry[]; folders: Entry[] } {
+  | "folders"
+  | "totalCount"
+  | "typeCounts"
+  | "folderCounts"
+  | "unfiledCount"
+  | "trashCount"
+>): { primary: Entry[]; types: Entry[]; folders: Entry[]; trash: Entry[] } {
   return {
     primary: [
       {
@@ -100,6 +107,15 @@ function buildEntries({
         count: unfiledCount,
         filter: { kind: "unfiled" },
         Icon: Inbox,
+      },
+    ],
+    trash: [
+      {
+        key: "trash",
+        label: "Trash",
+        count: trashCount,
+        filter: { kind: "trash" },
+        Icon: Trash2,
       },
     ],
   };
@@ -146,7 +162,12 @@ export function VaultSidebar(props: VaultSidebarProps) {
   const { filter, onFilterChange, folders, onNewFolder, onRenameFolder, onDeleteFolder } =
     props;
   const entries = buildEntries(props);
-  const flat = [...entries.primary, ...entries.types, ...entries.folders];
+  const flat = [
+    ...entries.primary,
+    ...entries.types,
+    ...entries.folders,
+    ...entries.trash,
+  ];
 
   return (
     <>
@@ -254,6 +275,17 @@ export function VaultSidebar(props: VaultSidebarProps) {
                 </div>
               );
             })}
+          </div>
+
+          <div className="grid gap-0.5 border-t pt-4">
+            {entries.trash.map((entry) => (
+              <SidebarButton
+                key={entry.key}
+                entry={entry}
+                active={filtersEqual(entry.filter, filter)}
+                onSelect={() => onFilterChange(entry.filter)}
+              />
+            ))}
           </div>
         </div>
       </nav>
