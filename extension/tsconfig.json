@@ -1,0 +1,22 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      // Type-only access to the app, for `import type { AppRouter }`.
+      "@web/*": ["../src/*"],
+      // The app's own files import each other as `~/...`, so tsc needs this to
+      // follow them. It is NOT an invitation to import app code from the
+      // extension: Vite has no such alias, so a value import through either
+      // path fails the build rather than silently bundling the server.
+      "~/*": ["../src/*"]
+    },
+    "jsx": "react-jsx",
+    // The app's env module is src/env.js. Following the tRPC router's imports
+    // reaches it, so tsc has to be willing to read JavaScript.
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".wxt/**/*"],
+  "exclude": ["node_modules", ".output"]
+}

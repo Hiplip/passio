@@ -4,6 +4,7 @@ import { type NextRequest } from "next/server";
 import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
+import { corsHeaders } from "~/server/cors";
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
@@ -15,8 +16,8 @@ const createContext = async (req: NextRequest) => {
   });
 };
 
-const handler = (req: NextRequest) =>
-  fetchRequestHandler({
+const handler = async (req: NextRequest) => {
+  const response = await fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
@@ -30,5 +31,21 @@ const handler = (req: NextRequest) =>
           }
         : undefined,
   });
+
+  // The extension calls this from chrome-extension://<id>. Same-origin callers
+  // get no extra headers, because corsHeaders returns nothing for them.
+  for (const [k, v] of Object.entries(corsHeaders(req.headers.get("origin")))) {
+    response.headers.set(k, v);
+  }
+  return response;
+};
+
+/** Preflight. Without it the browser never sends the Authorization header. */
+export function OPTIONS(req: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders(req.headers.get("origin")),
+  });
+}
 
 export { handler as GET, handler as POST };

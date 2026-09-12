@@ -37,3 +37,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .env*
+
+# Extension signing key. The manifest "key" field is the PUBLIC half and is
+# committed; this is the private half that signs a packaged build. Losing it
+# means a new extension id; leaking it means someone else can publish as you.
+*.pem
+extension/.output
+extension/.wxt

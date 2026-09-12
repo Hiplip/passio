@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 
 import { env } from "~/env";
 import { KDF_VERSION } from "@passio/crypto";
+import { EXTENSION_ORIGIN } from "~/server/cors";
 import { db } from "~/server/db";
 import { user as userTable } from "~/server/db/schema";
 
@@ -35,6 +37,22 @@ function resolveBaseURL(): string {
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: resolveBaseURL(),
+
+  /** The browser extension is a first-party client living on its own origin. */
+  trustedOrigins: [EXTENSION_ORIGIN],
+
+  /**
+   * Issues a token in the `set-auth-token` response header, which the extension
+   * stores and replays as `Authorization: Bearer`.
+   *
+   * Cookies cannot reach a chrome-extension:// origin without SameSite=None on
+   * the web app's session cookie, which would weaken CSRF posture on the site
+   * itself purely to serve the extension. A bearer token keeps the two clients
+   * independent. It is also not very sensitive here: in a zero-knowledge design
+   * a session token buys ciphertext and nothing else.
+   */
+  plugins: [bearer()],
+
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
