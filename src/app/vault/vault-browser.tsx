@@ -78,9 +78,15 @@ export function VaultBrowser() {
   const filter: VaultFilter = view === "overview" ? ALL_ITEMS : view;
 
   const inTrash = filter.kind === "trash";
-  // Fetched only while trash is open, so deleted rows are not decrypted on
-  // every visit to the vault.
-  const deleted = useVaultItems(vaultKey, { deleted: inTrash });
+
+  // The badge needs a count at all times, but a count needs no decryption -
+  // just the number of rows. Decryption happens only when trash is open.
+  const deletedRows = api.item.listDeleted.useQuery(undefined, {
+    enabled: vaultKey !== null,
+  });
+  const trashCount = deletedRows.data?.length ?? 0;
+
+  const deleted = useVaultItems(vaultKey, { deleted: true, enabled: inTrash });
 
   const source = inTrash ? deleted.items : items;
   const loading = inTrash ? deleted.isLoading : isLoading;
@@ -93,7 +99,6 @@ export function VaultBrowser() {
   const typeCounts = countByType(items);
   const totpCount = countTotp(items);
   const unfiledCount = applyFilter(items, { kind: "unfiled" }, knownFolderIds).length;
-  const trashCount = deleted.items.length;
 
   async function restore(itemId: string) {
     try {

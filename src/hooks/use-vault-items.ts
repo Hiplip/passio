@@ -22,15 +22,21 @@ const EMPTY: DecryptedVault = { items: [], damaged: [] };
  */
 export function useVaultItems(
   vaultKey: VaultKey | null,
-  options: { deleted?: boolean } = {},
+  options: { deleted?: boolean; enabled?: boolean } = {},
 ) {
+  const wantsDeleted = options.deleted === true;
+  const active = (options.enabled ?? true) && vaultKey !== null;
+
   const live = api.item.list.useQuery(undefined, {
-    enabled: vaultKey !== null && !options.deleted,
+    enabled: active && !wantsDeleted,
   });
   const trashed = api.item.listDeleted.useQuery(undefined, {
-    enabled: vaultKey !== null && options.deleted === true,
+    enabled: active && wantsDeleted,
   });
-  const rows = options.deleted ? trashed : live;
+  // Selected by what the caller asked for, never by which query happens to
+  // have data: reading the live list while asking for trash is how the trash
+  // count ended up showing the live item count.
+  const rows = wantsDeleted ? trashed : live;
   const [vault, setVault] = useState<DecryptedVault>(EMPTY);
   const [decrypting, setDecrypting] = useState(true);
 

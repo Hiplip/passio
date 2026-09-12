@@ -58,10 +58,12 @@ function SidebarButton({
   entry,
   active,
   onSelect,
+  countClassName,
 }: {
   entry: Entry;
   active: boolean;
   onSelect: () => void;
+  countClassName?: string;
 }) {
   const { Icon } = entry;
   return (
@@ -79,7 +81,14 @@ function SidebarButton({
       <Icon className="size-4 shrink-0" />
       <span className="min-w-0 flex-1 truncate">{entry.label}</span>
       {entry.count !== undefined ? (
-        <span className="secret text-xs opacity-70">{entry.count}</span>
+        <span
+          className={cn(
+            "secret w-5 text-right text-xs opacity-70 transition-opacity",
+            countClassName,
+          )}
+        >
+          {entry.count}
+        </span>
       ) : null}
     </button>
   );
@@ -203,11 +212,18 @@ export function VaultSidebar({
           {folderEntries.map((entry) => {
             const folder = folders.find((f) => `folder:${f.id}` === entry.key);
             return (
-              <div key={entry.key} className="group/row flex items-center gap-1">
+              <div key={entry.key} className="group/row relative">
                 <SidebarButton
                   entry={entry}
                   active={viewsEqual(entry.view, selected)}
                   onSelect={() => onViewChange(entry.view)}
+                  // The count steps aside for the menu rather than making room
+                  // for it, so the row never changes width.
+                  countClassName={
+                    folder
+                      ? "group-hover/row:opacity-0 group-focus-within/row:opacity-0"
+                      : undefined
+                  }
                 />
 
                 {folder ? (
@@ -218,7 +234,7 @@ export function VaultSidebar({
                           variant="ghost"
                           size="icon-xs"
                           aria-label={`Manage ${folder.name}`}
-                          className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
+                          className="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
                         />
                       }
                     >
