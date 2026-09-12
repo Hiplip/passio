@@ -31,6 +31,10 @@ export const CIPHER_VERSION = "v1";
  *  authenticated data. Without it any ciphertext decrypts in any slot, so a
  *  malicious server could swap or roll back rows undetectably. */
 export const AAD_ITEM_PREFIX = "passio-item-v1";
+/** Folder names are secrets too - "Crypto wallets" leaks intent on its own - so
+ *  they are encrypted like items, under their own prefix so a folder ciphertext
+ *  can never be accepted in an item's row. */
+export const AAD_FOLDER_PREFIX = "passio-folder-v1";
 /** The two vault-key wrappings hold identical plaintext, so only the AAD keeps a
  *  recovery-wrapped key from being accepted where a master-wrapped one belongs. */
 export const AAD_VAULT_KEY_MASTER = "passio-vault-key-v1:master";

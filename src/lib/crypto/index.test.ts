@@ -12,6 +12,7 @@ describe("the public crypto surface", () => {
       "deriveRecoveryAuthHash",
       "deriveRecoveryWrappingKey",
       "encryptItem",
+      "folderAad",
       "generateRecoveryKey",
       "generateVaultKey",
       "itemAad",

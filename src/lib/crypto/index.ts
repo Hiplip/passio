@@ -1,5 +1,5 @@
 export {
-  CipherFormatError, DecryptionError, decryptItem, encryptItem, itemAad,
+  CipherFormatError, DecryptionError, decryptItem, encryptItem, folderAad, itemAad,
 } from "./cipher";
 export { KDF_VERSION } from "./constants";
 export { RecoveryKeyError } from "./errors";

@@ -13,9 +13,21 @@ import { z } from "zod";
  */
 const nonEmpty = z.string().trim().min(1, "required");
 
+/**
+ * Fields every item type shares.
+ *
+ * `folderId` lives inside the encrypted blob, not in a database column, so the
+ * server cannot tell which items are grouped together - grouping is itself a
+ * hint about what the items are.
+ */
+const commonFields = {
+  title: nonEmpty,
+  folderId: z.string().uuid().optional(),
+};
+
 export const loginItemSchema = z.object({
   type: z.literal("login"),
-  title: nonEmpty,
+  ...commonFields,
   username: z.string().optional(),
   password: z.string().optional(),
   uri: z.string().optional(),
@@ -33,13 +45,13 @@ export const loginItemSchema = z.object({
 
 export const noteItemSchema = z.object({
   type: z.literal("note"),
-  title: nonEmpty,
+  ...commonFields,
   body: z.string().optional(),
 });
 
 export const cardItemSchema = z.object({
   type: z.literal("card"),
-  title: nonEmpty,
+  ...commonFields,
   cardholderName: z.string().optional(),
   // A string, never a number: a leading zero is significant and 16 digits
   // exceeds what a JS number represents exactly.
@@ -74,3 +86,10 @@ export function newNoteItem(): NoteItem {
 export function newCardItem(): CardItem {
   return { type: "card", title: "Untitled card" };
 }
+
+/** The decrypted contents of a folder row. Its name is a secret like any other. */
+export const folderSchema = z.object({
+  name: nonEmpty,
+});
+
+export type Folder = z.infer<typeof folderSchema>;

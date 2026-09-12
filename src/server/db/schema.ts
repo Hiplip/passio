@@ -129,6 +129,32 @@ export const item = pgTable(
 );
 
 /**
+ * A vault folder.
+ *
+ * Only ciphertext, exactly like an item: a folder name such as "Crypto wallets"
+ * leaks intent on its own, so the server never sees it. Which items belong to a
+ * folder is recorded inside each item's own blob, not here, so the server also
+ * cannot see the grouping.
+ */
+export const folder = pgTable(
+  "folder",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    ciphertext: text("ciphertext").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("folder_user_id_idx").on(table.userId)],
+);
+
+export const folderRelations = relations(folder, ({ one }) => ({
+  user: one(user, { fields: [folder.userId], references: [user.id] }),
+}));
+
+/**
  * Schema groundwork for a future multi-user direction. Nothing at MVP reads or
  * writes this. There is no invite UI and no redemption flow: registration is
  * simply closed once any account exists. Do not build an invite flow.

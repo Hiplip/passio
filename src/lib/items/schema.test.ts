@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { itemSchema, newCardItem, newLoginItem, newNoteItem } from "./schema";
+import { folderSchema, itemSchema, newCardItem, newLoginItem, newNoteItem } from "./schema";
 
 describe("login items", () => {
   it("accepts a complete login item", () => {
@@ -153,5 +153,43 @@ describe("the union after adding types", () => {
     expect(itemSchema.safeParse(newLoginItem()).success).toBe(true);
     expect(itemSchema.safeParse(newNoteItem()).success).toBe(true);
     expect(itemSchema.safeParse(newCardItem()).success).toBe(true);
+  });
+});
+
+describe("folders", () => {
+  const FOLDER_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+
+  it("accepts a folderId on every item type", () => {
+    for (const item of [
+      { type: "login", title: "A", folderId: FOLDER_ID },
+      { type: "note", title: "B", folderId: FOLDER_ID },
+      { type: "card", title: "C", folderId: FOLDER_ID },
+    ]) {
+      expect(itemSchema.safeParse(item).success).toBe(true);
+    }
+  });
+
+  it("treats folderId as optional, so unfiled items stay valid", () => {
+    expect(itemSchema.safeParse({ type: "login", title: "A" }).success).toBe(true);
+  });
+
+  it("rejects a folderId that is not a uuid", () => {
+    expect(
+      itemSchema.safeParse({ type: "login", title: "A", folderId: "Work" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a folder with a name", () => {
+    expect(folderSchema.safeParse({ name: "Work" }).success).toBe(true);
+  });
+
+  it("rejects a folder with a blank name", () => {
+    expect(folderSchema.safeParse({ name: "   " }).success).toBe(false);
+    expect(folderSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("trims a folder name", () => {
+    const result = folderSchema.safeParse({ name: "  Work  " });
+    expect(result.success && result.data.name).toBe("Work");
   });
 });

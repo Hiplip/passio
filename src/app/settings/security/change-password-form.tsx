@@ -60,7 +60,7 @@ export function ChangePasswordForm({ email }: { email: string }) {
 
   if (done) {
     return (
-      <Card className="max-w-xl">
+      <Card>
         <CardHeader>
           <CardTitle>Master password changed</CardTitle>
           <CardDescription>
@@ -78,7 +78,7 @@ export function ChangePasswordForm({ email }: { email: string }) {
   }
 
   return (
-    <Card className="max-w-xl">
+    <Card>
       <CardHeader>
         <CardDescription>
           Changing your master password re-encrypts only the key to your vault, so

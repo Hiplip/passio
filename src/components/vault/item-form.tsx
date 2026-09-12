@@ -8,7 +8,16 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
 import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { useFolders } from "~/hooks/use-folders";
+import { useVault } from "~/hooks/use-vault";
 import { GeneratorDialog } from "~/components/vault/generator-dialog";
 import { SecretField } from "~/components/vault/secret-field";
 import { TotpDisplay } from "~/components/vault/totp-display";
@@ -51,6 +60,8 @@ export function ItemForm({
             required
           />
 
+          <FolderPicker value={value} onChange={onChange} />
+
           {value.type === "login" ? (
             <LoginFields value={value} onChange={onChange} />
           ) : value.type === "note" ? (
@@ -87,6 +98,49 @@ export function ItemForm({
         </CardFooter>
       </Card>
     </form>
+  );
+}
+
+/** The sentinel for "no folder". A Select cannot carry undefined as a value. */
+const NO_FOLDER = "__none__";
+
+function FolderPicker({
+  value,
+  onChange,
+}: {
+  value: Item;
+  onChange: (next: Item) => void;
+}) {
+  const { vaultKey } = useVault();
+  const { folders } = useFolders(vaultKey);
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="item-folder">Folder</Label>
+      <Select
+        value={value.folderId ?? NO_FOLDER}
+        onValueChange={(next: string | null) =>
+          onChange({
+            ...value,
+            // Base UI can clear a Select to null; both that and the sentinel
+            // mean the same thing here.
+            folderId: next === null || next === NO_FOLDER ? undefined : next,
+          })
+        }
+      >
+        <SelectTrigger id="item-folder" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_FOLDER}>No folder</SelectItem>
+          {folders.map((folder) => (
+            <SelectItem key={folder.id} value={folder.id}>
+              {folder.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

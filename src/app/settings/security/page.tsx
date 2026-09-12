@@ -11,10 +11,12 @@ export default async function SecuritySettingsPage() {
 
   return (
     <VaultShell>
-      <div className="mb-6">
-        <h1>Change master password</h1>
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-6">
+          <h1>Change master password</h1>
+        </div>
+        <ChangePasswordForm email={session.user.email} />
       </div>
-      <ChangePasswordForm email={session.user.email} />
     </VaultShell>
   );
 }

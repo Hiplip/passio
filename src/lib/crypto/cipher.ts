@@ -1,4 +1,4 @@
-import { AAD_ITEM_PREFIX, AES_IV_BYTES, AES_TAG_BITS, CIPHER_VERSION } from "./constants";
+import { AAD_FOLDER_PREFIX, AAD_ITEM_PREFIX, AES_IV_BYTES, AES_TAG_BITS, CIPHER_VERSION } from "./constants";
 import { bytesToUtf8, fromBase64Url, toBase64Url, utf8ToBytes } from "./encoding";
 import type { VaultKey } from "./types";
 
@@ -31,6 +31,12 @@ export class DecryptionError extends Error {
 export function itemAad(itemId: string): string {
   if (itemId.length === 0) throw new Error("an item aad needs an item id");
   return `${AAD_ITEM_PREFIX}:${itemId}`;
+}
+
+/** The context string that binds a folder ciphertext to the row holding it. */
+export function folderAad(folderId: string): string {
+  if (folderId.length === 0) throw new Error("a folder aad needs a folder id");
+  return `${AAD_FOLDER_PREFIX}:${folderId}`;
 }
 
 /**

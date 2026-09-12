@@ -26,7 +26,7 @@ export function SettingsForm({ email }: { email: string }) {
   const [minutes, setMinutes] = useLockTimeout();
 
   return (
-    <div className="grid max-w-xl gap-6">
+    <div className="grid gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Auto-lock</CardTitle>
