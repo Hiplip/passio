@@ -9,7 +9,6 @@ import {
   KeyRound,
   LayoutList,
   MoreHorizontal,
-  Pencil,
   StickyNote,
   Trash2,
 } from "lucide-react";
@@ -226,15 +225,17 @@ export function VaultSidebar({
                       <MoreHorizontal />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onRenameFolder(folder)}>
-                        <Pencil />
+                      <DropdownMenuItem
+                        className="whitespace-nowrap"
+                        onClick={() => onRenameFolder(folder)}
+                      >
                         Rename
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         variant="destructive"
+                        className="whitespace-nowrap"
                         onClick={() => onDeleteFolder(folder)}
                       >
-                        <Trash2 />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

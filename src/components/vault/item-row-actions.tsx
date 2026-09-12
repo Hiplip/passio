@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, ExternalLink, MoreVertical, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, MoreVertical, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -49,8 +49,11 @@ export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProp
   }
 
   const copyItems = actions().map((action) => (
-    <DropdownMenuItem key={action.key} onClick={() => void copy(action.label, action.value)}>
-      <Copy />
+    <DropdownMenuItem
+      key={action.key}
+      className="whitespace-nowrap"
+      onClick={() => void copy(action.label, action.value)}
+    >
       {action.label}
     </DropdownMenuItem>
   ));
@@ -111,23 +114,28 @@ export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProp
             {copyItems}
             {url ? (
               <DropdownMenuItem
+                className="whitespace-nowrap"
                 render={<a href={url} target="_blank" rel="noopener noreferrer" />}
               >
-                <ExternalLink />
                 Open website
               </DropdownMenuItem>
             ) : null}
             {copyItems.length > 0 || url ? <DropdownMenuSeparator /> : null}
           </div>
 
-          <DropdownMenuItem render={<Link href={`/vault/${item.id}`} />}>
-            <Pencil />
+          <DropdownMenuItem
+            className="whitespace-nowrap"
+            render={<Link href={`/vault/${item.id}`} />}
+          >
             Edit
           </DropdownMenuItem>
 
           {onDelete ? (
-            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              <Trash2 />
+            <DropdownMenuItem
+              variant="destructive"
+              className="whitespace-nowrap"
+              onClick={onDelete}
+            >
               Delete
             </DropdownMenuItem>
           ) : null}
