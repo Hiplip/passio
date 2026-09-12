@@ -12,7 +12,7 @@ import {
   newNoteItem,
   type Item,
   type ItemType,
-} from "~/lib/items/schema";
+} from "@passio/core/schema";
 
 const CHOICES = [
   {

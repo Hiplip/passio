@@ -5,8 +5,8 @@ import {
   normalizeEmail,
   unwrapVaultKey,
   wrapVaultKey,
-} from "~/lib/crypto";
-import { deriveInWorker } from "~/lib/crypto-worker/client";
+} from "@passio/crypto";
+import { deriveInWorker } from "@passio/crypto/worker/client";
 
 export interface RecoveryInput {
   email: string;

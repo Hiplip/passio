@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { WrappingKey } from "~/lib/crypto";
+import type { WrappingKey } from "..";
 
 import { DERIVATION_TIMEOUT_MS, deriveInWorker, type DerivationWorker } from "./client";
 import type { DeriveRequest, DeriveResponse } from "./worker";

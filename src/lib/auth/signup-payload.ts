@@ -4,8 +4,8 @@ import {
   generateVaultKey,
   normalizeEmail,
   wrapVaultKey,
-} from "~/lib/crypto";
-import { deriveInWorker } from "~/lib/crypto-worker/client";
+} from "@passio/crypto";
+import { deriveInWorker } from "@passio/crypto/worker/client";
 
 export interface SignupPayload {
   email: string;

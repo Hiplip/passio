@@ -21,8 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import type { DecryptedFolder } from "~/hooks/use-folders";
-import { viewsEqual, type VaultView } from "~/lib/items/filter";
-import type { ItemType } from "~/lib/items/schema";
+import { viewsEqual, type VaultView } from "@passio/core/filter";
+import type { ItemType } from "@passio/core/schema";
 import { cn } from "~/lib/utils";
 
 interface Entry {

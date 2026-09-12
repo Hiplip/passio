@@ -8,13 +8,13 @@ import {
   itemAad,
   unwrapVaultKey,
   wrapVaultKey,
-} from "~/lib/crypto";
-import { performDerivation } from "~/lib/crypto-worker/derive";
+} from "@passio/crypto";
+import { performDerivation } from "@passio/crypto/worker/derive";
 
 import { buildPasswordChangePayload, buildRecoveryPayload } from "./recovery";
 
-vi.mock("~/lib/crypto-worker/client", async () => {
-  const { performDerivation: derive } = await import("~/lib/crypto-worker/derive");
+vi.mock("@passio/crypto/worker/client", async () => {
+  const { performDerivation: derive } = await import("@passio/crypto/worker/derive");
   return { deriveInWorker: derive };
 });
 

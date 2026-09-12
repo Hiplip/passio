@@ -4,13 +4,13 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { copyWithAutoClear } from "~/lib/clipboard";
+import { copyWithAutoClear } from "@passio/core/clipboard";
 import {
   generateTotp,
   secondsRemaining,
   TOTP_DEFAULTS,
   type TotpConfig,
-} from "~/lib/items/totp";
+} from "@passio/core/totp";
 
 /** Splits 123456 into "123 456" so it can be read back in two glances. */
 function group(code: string): string {

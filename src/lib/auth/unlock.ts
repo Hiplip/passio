@@ -1,5 +1,5 @@
-import { normalizeEmail, unwrapVaultKey, type VaultKey } from "~/lib/crypto";
-import { deriveInWorker } from "~/lib/crypto-worker/client";
+import { normalizeEmail, unwrapVaultKey, type VaultKey } from "@passio/crypto";
+import { deriveInWorker } from "@passio/crypto/worker/client";
 
 export type UnlockResult =
   | { ok: true; vaultKey: VaultKey }

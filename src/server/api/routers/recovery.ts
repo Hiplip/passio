@@ -3,8 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
-import { normalizeEmail } from "~/lib/crypto";
-import { toBase64Url, utf8ToBytes } from "~/lib/crypto/encoding";
+import { normalizeEmail } from "@passio/crypto";
+import { toBase64Url, utf8ToBytes } from "@passio/crypto/encoding";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { auth } from "~/server/better-auth";
 import { account, session, user } from "~/server/db/schema";

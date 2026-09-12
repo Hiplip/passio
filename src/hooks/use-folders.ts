@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { encryptItem, folderAad, type VaultKey } from "~/lib/crypto";
+import { encryptItem, folderAad, type VaultKey } from "@passio/crypto";
 import {
   decryptFolders,
   type DecryptedFolder,
-} from "~/lib/items/decrypt-folders";
+} from "@passio/core/decrypt-folders";
 import { api } from "~/trpc/react";
 
 /** Fetches the folder list and decrypts it in memory. */

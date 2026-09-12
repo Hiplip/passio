@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ItemForm } from "~/components/vault/item-form";
 import { useVault } from "~/hooks/use-vault";
 import { encryptForStorage } from "~/hooks/use-vault-items";
-import type { Item } from "~/lib/items/schema";
+import type { Item } from "@passio/core/schema";
 import { api } from "~/trpc/react";
 
 interface ItemEditorProps {

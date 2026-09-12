@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { encryptItem, itemAad, type VaultKey } from "~/lib/crypto";
+import { encryptItem, itemAad, type VaultKey } from "@passio/crypto";
 import {
   decryptVault,
   type DecryptedItem,
   type DecryptedVault,
-} from "~/lib/items/decrypt-vault";
-import type { Item } from "~/lib/items/schema";
+} from "@passio/core/decrypt-vault";
+import type { Item } from "@passio/core/schema";
 import { api } from "~/trpc/react";
 
 const EMPTY: DecryptedVault = { items: [], damaged: [] };

@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import type { VaultKey } from "~/lib/crypto";
+import type { VaultKey } from "@passio/crypto";
 
 interface VaultContextValue {
   vaultKey: VaultKey | null;

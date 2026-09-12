@@ -21,7 +21,7 @@ import {
   generatePassphrase,
   generatePassword,
   type GeneratorOptions,
-} from "~/lib/items/generator";
+} from "@passio/core/generator";
 
 interface GeneratorDialogProps {
   open: boolean;

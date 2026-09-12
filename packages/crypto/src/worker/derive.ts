@@ -1,7 +1,7 @@
 // Imported from the module directly, not the public barrel: these three touch
 // raw master-key material, which never leaves this worker.
-import { deriveAuthHash, deriveMasterKey, stretchMasterKey } from "~/lib/crypto/kdf";
-import type { WrappingKey } from "~/lib/crypto/types";
+import { deriveAuthHash, deriveMasterKey, stretchMasterKey } from "../kdf";
+import type { WrappingKey } from "../types";
 
 export interface DerivationResult {
   /** Sent to Better Auth in place of a password. */

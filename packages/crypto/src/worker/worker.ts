@@ -1,4 +1,4 @@
-import type { WrappingKey } from "~/lib/crypto/types";
+import type { WrappingKey } from "../types";
 
 import { type DerivationResult, performDerivation } from "./derive";
 

@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { unwrapVaultKey, deriveRecoveryWrappingKey } from "~/lib/crypto";
-import { performDerivation } from "~/lib/crypto-worker/derive";
+import { unwrapVaultKey, deriveRecoveryWrappingKey } from "@passio/crypto";
+import { performDerivation } from "@passio/crypto/worker/derive";
 
 import { buildSignupPayload } from "./signup-payload";
 
 // A Web Worker cannot be constructed under the test environment, so the worker
 // client resolves to the same pure function the worker itself calls.
-vi.mock("~/lib/crypto-worker/client", async () => {
-  const { performDerivation: derive } = await import("~/lib/crypto-worker/derive");
+vi.mock("@passio/crypto/worker/client", async () => {
+  const { performDerivation: derive } = await import("@passio/crypto/worker/derive");
   return { deriveInWorker: derive };
 });
 

@@ -1,4 +1,4 @@
-import { decryptItem, folderAad, type VaultKey } from "~/lib/crypto";
+import { decryptItem, folderAad, type VaultKey } from "@passio/crypto";
 
 import { folderSchema } from "./schema";
 

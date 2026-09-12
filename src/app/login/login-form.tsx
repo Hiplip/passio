@@ -8,8 +8,8 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Field } from "~/components/ui/field";
-import { normalizeEmail } from "~/lib/crypto";
-import { deriveInWorker } from "~/lib/crypto-worker/client";
+import { normalizeEmail } from "@passio/crypto";
+import { deriveInWorker } from "@passio/crypto/worker/client";
 import { authClient } from "~/server/better-auth/client";
 
 export function LoginForm() {

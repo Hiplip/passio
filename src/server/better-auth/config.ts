@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { env } from "~/env";
-import { KDF_VERSION } from "~/lib/crypto";
+import { KDF_VERSION } from "@passio/crypto";
 import { db } from "~/server/db";
 import { user as userTable } from "~/server/db/schema";
 

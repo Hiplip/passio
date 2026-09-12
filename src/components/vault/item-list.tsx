@@ -5,8 +5,8 @@ import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ItemRowActions } from "~/components/vault/item-row-actions";
-import type { DecryptedItem } from "~/lib/items/decrypt-vault";
-import type { ItemType } from "~/lib/items/schema";
+import type { DecryptedItem } from "@passio/core/decrypt-vault";
+import type { ItemType } from "@passio/core/schema";
 
 const TYPE_ICON: Record<ItemType, typeof KeyRound> = {
   login: KeyRound,

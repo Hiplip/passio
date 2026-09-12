@@ -9,8 +9,8 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
-import type { DecryptedItem } from "~/lib/items/decrypt-vault";
-import type { ItemType } from "~/lib/items/schema";
+import type { DecryptedItem } from "@passio/core/decrypt-vault";
+import type { ItemType } from "@passio/core/schema";
 import { relativeTime } from "~/lib/relative-time";
 
 const TYPE_META: Record<ItemType, { label: string; Icon: typeof KeyRound }> = {

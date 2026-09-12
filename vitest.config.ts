@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
@@ -8,9 +9,34 @@ import react from "@vitejs/plugin-react";
 // any test module is imported.
 if (existsSync(".env")) process.loadEnvFile(".env");
 
+const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
 export default defineConfig({
   plugins: [react()],
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    // Explicit, not tsconfigPaths: a workspace has several tsconfigs and the
+    // root config has to resolve every project's imports the same way.
+    //
+    // ANCHORED REGEXES, not plain strings. A string alias prefix-matches, so
+    // "@passio/crypto" also swallows "@passio/crypto/worker/derive" and rewrites
+    // it to ".../index.ts/worker/derive". Every subpath import fails to resolve
+    // and 8 test files simply do not load.
+    alias: [
+      { find: /^~\//, replacement: r("./src") + "/" },
+      {
+        find: /^@passio\/crypto$/,
+        replacement: r("./packages/crypto/src/index.ts"),
+      },
+      {
+        find: /^@passio\/crypto\/(.*)$/,
+        replacement: r("./packages/crypto/src") + "/$1.ts",
+      },
+      {
+        find: /^@passio\/core\/(.*)$/,
+        replacement: r("./packages/core/src") + "/$1.ts",
+      },
+    ],
+  },
   test: {
     environment: "node",
     setupFiles: ["./src/test/setup.ts"],
@@ -36,7 +62,12 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+          include: [
+            "src/**/*.test.ts",
+            "src/**/*.test.tsx",
+            "packages/*/src/**/*.test.ts",
+            "extension/**/*.test.ts",
+          ],
           exclude: ["**/node_modules/**", "src/server/**"],
         },
       },

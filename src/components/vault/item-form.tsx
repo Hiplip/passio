@@ -21,9 +21,9 @@ import { SecretField } from "~/components/vault/secret-field";
 import { TotpDisplay } from "~/components/vault/totp-display";
 import { useFolders } from "~/hooks/use-folders";
 import { useVault } from "~/hooks/use-vault";
-import { digitsOnly, formatCardNumber, maskCardNumber } from "~/lib/items/mask";
-import type { CardItem, Item, LoginItem, NoteItem } from "~/lib/items/schema";
-import { parseTotpInput } from "~/lib/items/totp";
+import { digitsOnly, formatCardNumber, maskCardNumber } from "@passio/core/mask";
+import type { CardItem, Item, LoginItem, NoteItem } from "@passio/core/schema";
+import { parseTotpInput } from "@passio/core/totp";
 
 interface ItemFormProps {
   value: Item;

@@ -5,7 +5,14 @@ import drizzle from "eslint-plugin-drizzle";
 
 export default tseslint.config(
   {
-    ignores: [".next/**", "node_modules/**", "next-env.d.ts", "drizzle/**"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "next-env.d.ts",
+      "drizzle/**",
+      "extension/.wxt/**",
+      "extension/.output/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

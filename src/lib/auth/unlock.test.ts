@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   decryptItem, encryptItem, generateVaultKey, itemAad, wrapVaultKey,
-} from "~/lib/crypto";
-import { performDerivation } from "~/lib/crypto-worker/derive";
+} from "@passio/crypto";
+import { performDerivation } from "@passio/crypto/worker/derive";
 
 import { attemptUnlock } from "./unlock";
 
-vi.mock("~/lib/crypto-worker/client", async () => {
-  const { performDerivation: derive } = await import("~/lib/crypto-worker/derive");
+vi.mock("@passio/crypto/worker/client", async () => {
+  const { performDerivation: derive } = await import("@passio/crypto/worker/derive");
   return { deriveInWorker: derive };
 });
 

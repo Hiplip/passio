@@ -17,8 +17,8 @@ import { useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import type { DecryptedFolder } from "~/hooks/use-folders";
-import type { VaultFilter } from "~/lib/items/filter";
-import type { ItemType } from "~/lib/items/schema";
+import type { VaultFilter } from "@passio/core/filter";
+import type { ItemType } from "@passio/core/schema";
 
 interface Row {
   key: string;

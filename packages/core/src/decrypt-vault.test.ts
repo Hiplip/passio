@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { encryptItem, generateVaultKey, itemAad, type VaultKey } from "~/lib/crypto";
+import { encryptItem, generateVaultKey, itemAad, type VaultKey } from "@passio/crypto";
 
 import { decryptVault, type EncryptedRow } from "./decrypt-vault";
 

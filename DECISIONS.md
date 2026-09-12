@@ -294,3 +294,22 @@ runs afterwards, against roughly 1-in-3 failures before. Costs about a minute a 
 Also NEEDS-REVIEW: `account.status`'s "registration is open" branch has no integration test.
 It is only true when the whole user table is empty, which no test in a shared database can
 guarantee. The "closed" branch is deterministic - any row means closed - and is covered.
+
+## NEEDS-REVIEW: the web app stays at the repo root, not `apps/web`
+
+The extension spec (`2026-09-12-passio-extension-design.md`) placed the Next app at
+`apps/web/`. The implementation keeps it at the repo root, with `packages/*` and
+`extension/` beside it.
+
+The spec itself named changing Vercel's Root Directory as the change most likely to
+break the live site, and gave it its own phase for that reason. A pnpm workspace does
+not require it: the repo root can be both the workspace root and the app. That removes
+the deployment risk entirely rather than managing it, keeps every `~/*` alias in app
+code working untouched, and leaves `next.config.js`, `postcss.config.js`,
+`drizzle.config.ts`, `components.json` and `scripts/smoke.sh` free of path rewriting.
+
+Cost: the root `package.json` is both the workspace manifest and the app manifest. That
+is a common, supported layout and much cheaper than the alternative.
+
+Verified: 354 tests across 28 files — the exact pre-move count — plus typecheck, lint,
+build and smoke, all green after the move.

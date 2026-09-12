@@ -12,9 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { copyWithAutoClear } from "~/lib/clipboard";
-import { copyActionsFor, launchUrlFor } from "~/lib/items/actions";
-import type { DecryptedItem } from "~/lib/items/decrypt-vault";
+import { copyWithAutoClear } from "@passio/core/clipboard";
+import { copyActionsFor, launchUrlFor } from "@passio/core/actions";
+import type { DecryptedItem } from "@passio/core/decrypt-vault";
 
 interface ItemRowActionsProps {
   item: DecryptedItem;

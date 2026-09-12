@@ -13,7 +13,7 @@ import { ItemList } from "~/components/vault/item-list";
 import { VaultOverview } from "~/components/vault/vault-overview";
 import { VaultSidebar } from "~/components/vault/vault-sidebar";
 import { useFolders, type DecryptedFolder } from "~/hooks/use-folders";
-import type { DecryptedItem } from "~/lib/items/decrypt-vault";
+import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
 import {
@@ -24,8 +24,8 @@ import {
   countTotp,
   type VaultFilter,
   type VaultView,
-} from "~/lib/items/filter";
-import { searchItems } from "~/lib/items/search";
+} from "@passio/core/filter";
+import { searchItems } from "@passio/core/search";
 import { api } from "~/trpc/react";
 
 function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {

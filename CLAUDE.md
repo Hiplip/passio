@@ -42,7 +42,20 @@ These apply when designing or planning, before any code exists.
   (siblings: `client.ts`, `server.ts`, `index.ts`)
 - tRPC: `src/server/api/trpc.ts`, `src/server/api/root.ts`, `src/server/api/routers/*`
 - Env schema: `src/env.js` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
-- Crypto (trust-critical): `src/lib/crypto/*` — imports only `hash-wasm` + WebCrypto
+- **Workspace**: pnpm workspace. The Next app is the repo ROOT (not `apps/web`), with
+  `packages/crypto`, `packages/core` and `extension` beside it. Keeping the app at the
+  root means Vercel's Root Directory setting never has to change.
+- Crypto (trust-critical): `packages/crypto/src/*` — imports only `hash-wasm` + WebCrypto.
+  Includes the Argon2id Web Worker under `src/worker/`.
+- Shared vault logic: `packages/core/src/*` — item schema, TOTP, generator, filter,
+  search, mask, decryption, clipboard, URL matching. Depends on `@passio/crypto`; never
+  the reverse.
+- Both packages are **buildless**: they publish TypeScript source, consumed via
+  `transpilePackages` (Next) and natively (Vite, Vitest). A `dist/` here would silently
+  shadow a source change in the most trust-critical code in the project.
+- `vitest.config.ts` aliases must stay **anchored regexes**. A plain string alias
+  prefix-matches, so `"@passio/crypto"` also swallows `@passio/crypto/worker/derive` and
+  8 test files stop loading with no other symptom.
 - Vitest config: `vitest.config.ts` (`environment: "node"`; component tests opt into jsdom with a
   `// @vitest-environment jsdom` docblock, because jsdom lacks a full WebCrypto)
 - Test setup: `src/test/setup.ts`

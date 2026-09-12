@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generateVaultKey, unwrapVaultKey, wrapVaultKey } from "~/lib/crypto";
+import { generateVaultKey, unwrapVaultKey, wrapVaultKey } from "..";
 
 import { performDerivation } from "./derive";
 
