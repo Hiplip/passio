@@ -121,6 +121,13 @@ it hangs forever.
   `process.env` the way `next dev` does, and DB-backed tests import `~/env`, which
   validates `DATABASE_URL` at module load.
 - Tests hit the real Neon dev database. Each test creates its own rows and cleans up.
+- **`pnpm test` runs single-worker, one file at a time** (`maxWorkers: 1` +
+  `fileParallelism: false`, both at ROOT level in `vitest.config.ts`). Do not "optimise"
+  this away. The unit project runs Argon2id at 64 MiB across several workers; on this
+  8 GB box that starved the database workers and produced a DIFFERENT database test
+  failing on roughly one run in three. It read like a data race and was memory pressure.
+  Note both options are silently ignored inside a `projects[]` entry - only root works.
+  The suite takes about two minutes as a result.
 - **The DB tests assume exclusive access to that database.** `vitest.config.ts` splits the
   suite into two projects: `unit` (in-memory, files in parallel) and `db` (single fork, one
   file at a time). That ordering holds *within* one vitest run. It does NOT hold across two

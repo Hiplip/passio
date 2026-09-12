@@ -50,7 +50,7 @@ export function NewItem() {
 
   if (!type) {
     return (
-      <div className="mx-auto grid max-w-2xl gap-6">
+      <div className="grid gap-6">
         <div>
           <h1>What are you saving?</h1>
           <p className="text-muted-foreground text-sm">
@@ -91,7 +91,7 @@ export function NewItem() {
   const Icon = choice?.Icon ?? KeyRound;
 
   return (
-    <div className="mx-auto grid max-w-2xl gap-5">
+    <div className="grid gap-5">
       <div className="flex items-center gap-3">
         <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-xl">
           <Icon className="size-5" />

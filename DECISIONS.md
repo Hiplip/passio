@@ -267,3 +267,30 @@ Suite: 50 tests across 6 files (the plan's own counts, 47, were an estimate).
   pristine database and would have failed permanently once a real account existed. It now
   asserts the invariant the procedure actually promises — that `registrationOpen` mirrors
   whether a user row exists — which holds in any database state.
+
+## 2026-09-12 — Flaky test suite: the cause was memory, not a data race
+
+Roughly one full-suite run in three failed, always in a database test, a different one each
+time (`account.status`, `vault.rewrap`, `item.listDeleted`). Three wrong diagnoses before the
+right one, recorded so the next person does not repeat them:
+
+1. Serialising the db files at **project** level (`maxWorkers` / `fileParallelism` inside a
+   `projects[]` entry). Vitest silently ignores both there, so this never took effect.
+2. Moving `fileParallelism: false` to root. Honoured, but it only orders files *within* a
+   project - the projects still ran concurrently, so it changed nothing.
+3. Replacing the flakiest assertion with a rolled-back transaction that emptied the user
+   table. It passed, but took a table-wide lock in a database other tests were using; adding
+   lock pressure to an unexplained failure is the wrong move, so it was removed.
+
+The actual cause: the `db` project passed 79/79 on its own and only failed as part of the full
+suite. The `unit` project runs Argon2id at 64 MiB across parallel workers, and on this 8 GB box
+(shared with several Claude processes) that starved the database workers. The harness had also
+been OOM-killing the repeated test loops used to investigate - the investigation was feeding
+the symptom.
+
+Fix: `maxWorkers: 1` at root, alongside `fileParallelism: false`. Three consecutive clean full
+runs afterwards, against roughly 1-in-3 failures before. Costs about a minute a run.
+
+Also NEEDS-REVIEW: `account.status`'s "registration is open" branch has no integration test.
+It is only true when the whole user table is empty, which no test in a shared database can
+guarantee. The "closed" branch is deterministic - any row means closed - and is covered.

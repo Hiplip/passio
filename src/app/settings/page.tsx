@@ -11,7 +11,7 @@ export default async function SettingsPage() {
 
   return (
     <VaultShell>
-      <div className="mx-auto max-w-2xl">
+      <div>
         <div className="mb-6">
           <h1>Settings</h1>
           <p className="text-muted-foreground text-sm">

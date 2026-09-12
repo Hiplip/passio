@@ -58,7 +58,7 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto grid max-w-2xl gap-5">
+      <div className="grid gap-5">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-80 w-full rounded-xl" />
       </div>
@@ -67,7 +67,7 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (damaged.includes(itemId)) {
     return (
-      <div className="mx-auto grid max-w-2xl gap-4">
+      <div className="grid gap-4">
         <BackToVault />
         <Alert variant="destructive">
           <AlertTitle>This item could not be decrypted</AlertTitle>
@@ -84,7 +84,7 @@ export function EditItem({ itemId }: { itemId: string }) {
 
   if (!item) {
     return (
-      <div className="mx-auto grid max-w-2xl gap-4">
+      <div className="grid gap-4">
         <BackToVault />
         <div>
           <h1>Item not found</h1>
@@ -97,7 +97,7 @@ export function EditItem({ itemId }: { itemId: string }) {
   }
 
   return (
-    <div className="mx-auto grid max-w-2xl gap-5">
+    <div className="grid gap-5">
       <BackToVault />
       <ItemHeader item={item} />
       <ItemEditor itemId={item.id} initial={item.data} isNew={false} />

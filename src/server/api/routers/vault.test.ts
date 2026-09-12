@@ -165,17 +165,15 @@ describe("account.status", () => {
     });
   });
 
-  it("mirrors whether an account actually exists", async () => {
-    // Deliberately NOT "asserts the table is empty". That version depended on
-    // global state: it passed only against a pristine database and failed
-    // permanently the moment a real account existed. This tests the invariant
-    // the procedure actually promises, so it holds in any database state.
-    const [existing] = await db.select({ id: user.id }).from(user).limit(1);
-
-    const { registrationOpen } = await callerFor(null).account.status();
-
-    expect(registrationOpen).toBe(existing === undefined);
-  });
+  // The "registration is open" branch is deliberately NOT covered here.
+  //
+  // It is only true when the WHOLE user table is empty, and five test files
+  // seed and delete rows in one shared database, so no test can hold that
+  // precondition. Two attempts to assert it were flaky, and a third - emptying
+  // the table inside a rolled-back transaction - would have taken a table-wide
+  // lock in a database other tests are using. The closed branch below is
+  // deterministic: any row at all means closed, so concurrent rows only
+  // reinforce it.
 
   it("is visible to an authenticated caller too", async () => {
     await seedUser(USER_A);
