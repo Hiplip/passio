@@ -27,7 +27,26 @@ fine to share.
 
 ---
 
-## 1. Load it
+## 1. First — confirm the web app still works
+
+The whole repo was restructured into `apps/` + `packages/`. Every gate passed and
+production is serving correctly, but this is where your **actual vault** lives, so it is
+worth two minutes before touching the extension.
+
+At https://passio-hiplip.vercel.app:
+
+- [ ] Log in and unlock — all your items are there
+- [ ] Open an item, reveal a password, copy it
+- [ ] A TOTP code appears and counts down
+- [ ] Create a throwaway item, then delete it (it lands in Trash)
+- [ ] Folders and the category filters still work
+
+If anything here is wrong, **stop and tell me**. That is a regression in your real vault
+and it outranks everything else on this page.
+
+---
+
+## 2. Load the extension
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
@@ -43,19 +62,27 @@ Expect Chrome to list exactly these permissions: read your browsing history (tha
 
 ---
 
-## 2. Sign in
+## 3. Sign in
 
 Click the toolbar icon. Enter your email and master password.
 
+**The server half of this is already verified.** A CORS preflight from
+`chrome-extension://olifgfoaipigflfaiadpjalokaoonjjo` returns the correct
+`allow-origin`, `allow-headers: authorization` and `expose-headers: set-auth-token`
+against production, and an unknown origin gets nothing back. That turned out to be
+testable with curl — a preflight is just an HTTP request. What is left is the client
+half.
+
 - The button should read **"Unlocking…"** for about a second. That is Argon2id at 64 MiB.
-- If it fails instantly with a network error, CORS or the bearer plugin is misconfigured.
 - If it fails with something about WebAssembly, the CSP is wrong.
+- If it fails instantly with a network error, the bearer token is not being stored or
+  replayed — the server is known good.
 
 Expected: the vault list appears.
 
 ---
 
-## 3. The important one — does the key survive worker eviction?
+## 4. The important one — does the key survive worker eviction?
 
 **This is the single assumption the whole design rests on, and it is the one thing that
 could not be tested.** MV3 kills the service worker after ~30 seconds idle. The vault key
@@ -75,7 +102,7 @@ revisiting. Tell me and I will rework it rather than paper over it.
 
 ---
 
-## 4. Autofill
+## 5. Autofill
 
 1. Go to a real login page you have saved (GitHub is a good first test).
 2. The toolbar icon should show a **badge with the number of matching logins**.
@@ -100,7 +127,7 @@ Worth testing specifically:
 
 ---
 
-## 5. Auto-lock
+## 6. Auto-lock
 
 - Set **Lock after** to 1 min in the popup footer, leave it alone, come back. It should
   ask for the master password (not the email — that is remembered).
@@ -108,7 +135,7 @@ Worth testing specifically:
 
 ---
 
-## 6. Optional — stop the developer-mode nag
+## 7. Optional — stop the developer-mode nag
 
 Load-unpacked works forever but Chrome nags on every start. If that annoys you, publish
 it to the Chrome Web Store as **Unlisted**: you get auto-updates and no nag, only people
