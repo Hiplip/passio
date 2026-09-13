@@ -42,5 +42,9 @@ yarn-error.log*
 # committed; this is the private half that signs a packaged build. Losing it
 # means a new extension id; leaking it means someone else can publish as you.
 *.pem
-extension/.output
-extension/.wxt
+apps/extension/.output
+apps/extension/.wxt
+
+# The example env file is the one .env* file that SHOULD be committed - it
+# documents which variables exist, with no values.
+!apps/web/.env.example

@@ -30,21 +30,35 @@ These apply when designing or planning, before any code exists.
 | Lint gate | `pnpm lint` (`eslint .`) |
 | Build gate | `pnpm build` (`next build`) |
 | Test gate | `pnpm test` (`vitest run`) |
-| Smoke gate | `pnpm smoke` (`bash scripts/smoke.sh`) |
+| Smoke gate | `pnpm smoke` (`bash apps/web/scripts/smoke.sh` via the web workspace) |
 | Push schema | `pnpm db:push` |
 | Dev server | `pnpm dev` |
 
 ### Key paths
 
-- Drizzle schema: `src/server/db/schema.ts`; connection: `src/server/db/index.ts`
+- Drizzle schema: `apps/web/src/server/db/schema.ts`; connection: `apps/web/src/server/db/index.ts`
   (uses `postgres-js`, not the Neon HTTP driver)
-- Better Auth config: `src/server/better-auth/config.ts`
+- Better Auth config: `apps/web/src/server/better-auth/config.ts`
   (siblings: `client.ts`, `server.ts`, `index.ts`)
-- tRPC: `src/server/api/trpc.ts`, `src/server/api/root.ts`, `src/server/api/routers/*`
-- Env schema: `src/env.js` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
-- **Workspace**: pnpm workspace. The Next app is the repo ROOT (not `apps/web`), with
-  `packages/crypto`, `packages/core` and `extension` beside it. Keeping the app at the
-  root means Vercel's Root Directory setting never has to change.
+- tRPC: `apps/web/src/server/api/trpc.ts`, `.../root.ts`, `.../routers/*`
+- Env schema: `apps/web/src/env.js` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
+- **Workspace**: pnpm workspace, `apps/*` + `packages/*`.
+  ```
+  apps/web         the Next app         (Vercel Root Directory points here)
+  apps/extension   the Chrome extension
+  packages/crypto  trust-critical crypto
+  packages/core    shared vault logic
+  ```
+  The repo root holds only workspace-level config: `package.json` (scripts that
+  delegate with `--filter`), `pnpm-workspace.yaml`, `vitest.config.ts`,
+  `eslint.config.js`, `tsconfig.base.json`, and a `tsconfig.json` that exists solely so
+  ESLint's typed rules can resolve `vitest.config.ts`.
+- **`pnpm typecheck` is `pnpm -r typecheck`** — every workspace package typechecks under
+  its own tsconfig. That is what surfaces an undeclared dependency: `packages/core` was
+  importing `@scure/bip39` while only the app declared it, which worked by hoisting and
+  would have broken anyone consuming the package alone.
+- **Vercel's Root Directory must be `apps/web`**, with "Include source files outside of
+  the Root Directory" enabled so the workspace packages resolve.
 - Crypto (trust-critical): `packages/crypto/src/*` — imports only `hash-wasm` + WebCrypto.
   Includes the Argon2id Web Worker under `src/worker/`.
 - Shared vault logic: `packages/core/src/*` — item schema, TOTP, generator, filter,
@@ -58,8 +72,8 @@ These apply when designing or planning, before any code exists.
   8 test files stop loading with no other symptom.
 - Vitest config: `vitest.config.ts` (`environment: "node"`; component tests opt into jsdom with a
   `// @vitest-environment jsdom` docblock, because jsdom lacks a full WebCrypto)
-- Test setup: `src/test/setup.ts`
-- Smoke script: `scripts/smoke.sh`
+- Test setup: `apps/web/src/test/setup.ts`
+- Smoke script: `apps/web/scripts/smoke.sh`
 
 ### Crypto invariants (do not break these)
 
@@ -96,7 +110,7 @@ against `main`.
 leaves **production running against a schema missing its columns** — which fails at runtime,
 not at build time, so no gate catches it.
 
-After any edit to `src/server/db/schema.ts`, run both:
+After any edit to `apps/web/src/server/db/schema.ts`, run both:
 
 ```bash
 # 1. dev (what local .env points at)
@@ -130,7 +144,7 @@ it hangs forever.
 - `eslint.config.js` is excluded from `tsconfig.json` (`eslint-plugin-drizzle` ships no types).
 - GitHub OAuth was removed from the scaffold: incompatible with the zero-knowledge model
   (an OAuth user has no master password, so no vault key, so an un-unlockable account).
-- `vitest.config.ts` calls `process.loadEnvFile(".env")`: vitest does not populate
+- `vitest.config.ts` calls `process.loadEnvFile("apps/web/.env")`: vitest does not populate
   `process.env` the way `next dev` does, and DB-backed tests import `~/env`, which
   validates `DATABASE_URL` at module load.
 - Tests hit the real Neon dev database. Each test creates its own rows and cleans up.
@@ -148,9 +162,9 @@ it hangs forever.
   seeding rows makes it fail. Run `pnpm test` on its own; never alongside another test run.
   `pnpm vitest run --project unit` is safe to run at any time.
 
-### Browser extension (`extension/`)
+### Browser extension (`apps/extension/`)
 
-Chrome MV3, built with WXT. Load `extension/.output/chrome-mv3/` via
+Chrome MV3, built with WXT. Load `apps/extension/.output/chrome-mv3/` via
 `chrome://extensions` → Load unpacked.
 
 | Purpose | Command |
@@ -159,7 +173,7 @@ Chrome MV3, built with WXT. Load `extension/.output/chrome-mv3/` via
 | Watch mode | `pnpm --filter @passio/extension dev` |
 | Regenerate WXT types | `pnpm --filter @passio/extension typecheck` (runs `wxt prepare` first) |
 
-**`pnpm test` builds the extension first**, because `extension/manifest.test.ts`
+**`pnpm test` builds the extension first**, because `apps/extension/manifest.test.ts`
 asserts the *generated* manifest. Do not decouple them: the assertion is worthless
 against a stale build.
 
@@ -173,7 +187,7 @@ non-extractable and in memory instead.
 
 Consequences to preserve:
 
-- **`extension/entrypoints/offscreen/` is the only context that ever holds the key.**
+- **`apps/extension/entrypoints/offscreen/` is the only context that ever holds the key.**
   The popup receives `ItemSummary` values with no secrets and asks for one named field
   at a time. The content script receives three strings.
 - Argon2id must appear **only** in `assets/worker-*.js` in the build output, and the
@@ -183,7 +197,7 @@ Consequences to preserve:
 
 #### Permissions are asserted, not just intended
 
-`extension/manifest.test.ts` asserts the exact permission list, the single host
+`apps/extension/manifest.test.ts` asserts the exact permission list, the single host
 permission, absence of `<all_urls>`, absence of `content_scripts`, presence of
 `wasm-unsafe-eval` and of the pinned `key`. **This is the gate that replaces `pnpm smoke`
 for the extension** — there is no browser here, so nothing can prove the extension
@@ -197,10 +211,10 @@ Changing that list is a design decision: update `docs/superpowers/specs/2026-09-
   `vercel.app` read as ordinary domains, so `alice.github.io` and `bob.github.io` are
   "the same site" and one tenant's login is offered on another's page. `match.ts` turns
   it on; the test for it must stay.
-- **`extension/key.pem` is the private signing key and is gitignored.** The manifest
+- **`apps/extension/key.pem` is the private signing key and is gitignored.** The manifest
   `key` field is the public half and is committed. Losing the `.pem` means a new
   extension id, which breaks `trustedOrigins` and the CORS allowlist in
-  `src/server/cors.ts`. Extension id: `olifgfoaipigflfaiadpjalokaoonjjo`.
+  `apps/web/src/server/cors.ts`. Extension id: `olifgfoaipigflfaiadpjalokaoonjjo`.
 
 ### Smoke routes
 

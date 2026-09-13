@@ -313,3 +313,35 @@ is a common, supported layout and much cheaper than the alternative.
 
 Verified: 354 tests across 28 files — the exact pre-move count — plus typecheck, lint,
 build and smoke, all green after the move.
+
+## RESOLVED: the web app moved to `apps/web` after all
+
+Supersedes the `NEEDS-REVIEW` entry above ("web app stays at the repo root").
+
+That entry was right about the risk and wrong about the destination. Keeping the app at
+the repo root avoided changing Vercel's Root Directory, which was the correct call while
+six phases of extension work were landing — but it left three conventions side by side
+(`packages/*`, a top-level `extension/`, and the app at the root), and `apps/*` +
+`packages/*` is the standard layout that every monorepo tool assumes.
+
+Final structure:
+
+```
+apps/web         the Next app         (Vercel Root Directory)
+apps/extension   the Chrome extension
+packages/crypto  trust-critical crypto
+packages/core    shared vault logic
+```
+
+**Requires two Vercel settings**, both under Project Settings → Build & Deployment:
+Root Directory = `apps/web`, and "Include source files outside of the Root Directory in
+the Build Step" enabled so the workspace packages resolve.
+
+The move surfaced one real latent bug: `packages/core` imported `@scure/bip39` without
+declaring it, resolving only through the root's hoisted `node_modules`. Per-package
+typechecking (`pnpm -r typecheck`) is what caught it, and is the main practical argument
+for the split beyond tidiness.
+
+Verified after the move: 451 tests across 38 files (unchanged), typecheck across all four
+workspace projects, lint, build, smoke on 9 routes, and `db:push` reporting no changes
+against the dev branch.

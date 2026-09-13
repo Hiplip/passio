@@ -3,26 +3,26 @@
 Everything below needs a real browser. There is none on the VPS, so none of it could be
 verified by the agent that built it. Work through it in order; each step gates the next.
 
-**Build output to load:** `extension/.output/chrome-mv3/`
+**Build output to load:** `apps/extension/.output/chrome-mv3/`
 **Expected extension id:** `olifgfoaipigflfaiadpjalokaoonjjo`
 
 ---
 
 ## 0. Back up the signing key — do this first
 
-`extension/key.pem` exists only on the VPS and is deliberately gitignored. It is the
+`apps/extension/key.pem` exists only on the VPS and is deliberately gitignored. It is the
 private half of the extension's identity.
 
 ```bash
-cat extension/key.pem       # copy into your password manager, then close the terminal
+cat apps/extension/key.pem       # copy into your password manager, then close the terminal
 ```
 
 **Why it matters:** the extension id is derived from this key. Lose it and the id
 changes, which breaks the CORS allowlist and Better Auth `trustedOrigins` — both of
-which hard-code the current id in `src/server/cors.ts`. Recovering means regenerating
+which hard-code the current id in `apps/web/src/server/cors.ts`. Recovering means regenerating
 the key, updating that file, and redeploying.
 
-The public half is committed in `extension/.identity` and in the manifest. That one is
+The public half is committed in `apps/extension/.identity` and in the manifest. That one is
 fine to share.
 
 ---
@@ -31,7 +31,7 @@ fine to share.
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
-3. **Load unpacked** → select `extension/.output/chrome-mv3/`
+3. **Load unpacked** → select `apps/extension/.output/chrome-mv3/`
 
 **Check the id matches `olifgfoaipigflfaiadpjalokaoonjjo` exactly.** If it does not, the
 pinned key did not take effect and every API call will fail CORS. Stop here and say so.

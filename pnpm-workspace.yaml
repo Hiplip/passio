@@ -1,6 +1,6 @@
 packages:
+  - apps/*
   - packages/*
-  - extension
 
 allowBuilds:
   esbuild: true

@@ -6,23 +6,24 @@ import react from "@vitejs/plugin-react";
 // Next.js loads .env for `next dev`/`next build`; Vitest does not put dotenv
 // values on `process.env`. The database-backed server tests import `~/env`,
 // which validates DATABASE_URL at module load, so load the file here — before
-// any test module is imported.
-if (existsSync(".env")) process.loadEnvFile(".env");
+// any test module is imported. It lives with the app it configures.
+const ENV = "apps/web/.env";
+if (existsSync(ENV)) process.loadEnvFile(ENV);
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Explicit, not tsconfigPaths: a workspace has several tsconfigs and the
-    // root config has to resolve every project's imports the same way.
+    // Explicit, not tsconfigPaths: a workspace has several tsconfigs and this
+    // one config has to resolve every project's imports the same way.
     //
     // ANCHORED REGEXES, not plain strings. A string alias prefix-matches, so
     // "@passio/crypto" also swallows "@passio/crypto/worker/derive" and rewrites
     // it to ".../index.ts/worker/derive". Every subpath import fails to resolve
     // and 8 test files simply do not load.
     alias: [
-      { find: /^~\//, replacement: r("./src") + "/" },
+      { find: /^~\//, replacement: r("./apps/web/src") + "/" },
       {
         find: /^@passio\/crypto$/,
         replacement: r("./packages/crypto/src/index.ts"),
@@ -39,7 +40,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    setupFiles: ["./src/test/setup.ts"],
+    setupFiles: ["./apps/web/src/test/setup.ts"],
     // One worker, one file at a time, across the WHOLE run.
     //
     // `fileParallelism` alone only serialises files within a project, and the
@@ -63,12 +64,12 @@ export default defineConfig({
         test: {
           name: "unit",
           include: [
-            "src/**/*.test.ts",
-            "src/**/*.test.tsx",
+            "apps/web/src/**/*.test.ts",
+            "apps/web/src/**/*.test.tsx",
+            "apps/extension/**/*.test.ts",
             "packages/*/src/**/*.test.ts",
-            "extension/**/*.test.ts",
           ],
-          exclude: ["**/node_modules/**", "src/server/**"],
+          exclude: ["**/node_modules/**", "apps/web/src/server/**"],
         },
       },
       {
@@ -80,7 +81,10 @@ export default defineConfig({
         extends: true,
         test: {
           name: "db",
-          include: ["src/server/**/*.test.ts", "src/server/**/*.test.tsx"],
+          include: [
+            "apps/web/src/server/**/*.test.ts",
+            "apps/web/src/server/**/*.test.tsx",
+          ],
         },
       },
     ],
