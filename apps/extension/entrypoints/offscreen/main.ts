@@ -1,15 +1,19 @@
 import { deriveInWorker } from "@passio/crypto/worker/client";
 
 import { API_BASE, createApi } from "../../src/api";
-import {
-  chromeTokenStore,
-  clearToken,
-  exchangeAuthHash,
-  readToken,
-  writeToken,
-} from "../../src/auth";
+import { clearToken, exchangeAuthHash, readToken, writeToken } from "../../src/auth";
 import { createCustody } from "../../src/custody";
 import { parseRequest, type Response } from "../../src/messages";
+import { backgroundTokenStore } from "../../src/token-proxy";
+
+/**
+ * The session token, stored by the service worker on this document's behalf.
+ *
+ * `chrome.runtime` is the ONLY extension API available here. `chrome.storage`
+ * is undefined in an offscreen document, so every token read and write is a
+ * message. See src/token-proxy.ts.
+ */
+const tokens = backgroundTokenStore();
 
 /**
  * The only context in the extension that ever holds the vault key.
@@ -20,9 +24,9 @@ import { parseRequest, type Response } from "../../src/messages";
 const custody = createCustody({
   derive: (email, masterPassword) => deriveInWorker(masterPassword, email),
   signIn: (email, authHash) => exchangeAuthHash(API_BASE, email, authHash),
-  readToken: () => readToken(chromeTokenStore),
-  writeToken: (t) => writeToken(chromeTokenStore, t),
-  clearToken: () => clearToken(chromeTokenStore),
+  readToken: () => readToken(tokens),
+  writeToken: (t) => writeToken(tokens, t),
+  clearToken: () => clearToken(tokens),
   api: (token) => {
     const api = createApi(token);
     return {

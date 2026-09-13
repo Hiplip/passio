@@ -3,29 +3,41 @@ import { z } from "zod";
 /**
  * Everything that crosses an extension message boundary, validated on arrival.
  *
- * `target` exists because chrome.runtime.sendMessage broadcasts to every
- * extension context at once: without it the background worker and the offscreen
- * document both answer the same message and whichever replies first wins, at
- * random.
+ * chrome.runtime.sendMessage broadcasts to EVERY other extension context at
+ * once, so two fields are needed to make delivery unambiguous:
+ *
+ * - `target` says which listener the message is for.
+ * - `via: "background"` marks a message the service worker has forwarded.
+ *   Without it the offscreen document also hears the popup's original
+ *   broadcast and handles the same request twice - two Argon2id runs per
+ *   unlock, two sign-ins, two vault decryptions - while the background
+ *   forwards a copy that would loop straight back into its own listener.
+ *
+ * Senders outside the service worker omit `via`, so the offscreen document
+ * ignores them and answers only the forwarded copy.
  */
+const via = z.literal("background");
 const requestSchema = z.discriminatedUnion("kind", [
-  z.object({ target: z.literal("offscreen"), kind: z.literal("status") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("status") }),
   z.object({
     target: z.literal("offscreen"),
+    via,
     kind: z.literal("unlock"),
     email: z.string().email(),
     password: z.string().min(1),
   }),
-  z.object({ target: z.literal("offscreen"), kind: z.literal("lock") }),
-  z.object({ target: z.literal("offscreen"), kind: z.literal("signOut") }),
-  z.object({ target: z.literal("offscreen"), kind: z.literal("items") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("lock") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("signOut") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("items") }),
   z.object({
     target: z.literal("offscreen"),
+    via,
     kind: z.literal("matchCount"),
     url: z.string(),
   }),
   z.object({
     target: z.literal("offscreen"),
+    via,
     kind: z.literal("fieldValue"),
     itemId: z.string().uuid(),
     // The fill path turns this into a value typed into a page. It is the last
@@ -35,6 +47,56 @@ const requestSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type Request = z.infer<typeof requestSchema>;
+
+/**
+ * What the popup and the alarm build: the same message without `via`, which
+ * only the service worker is allowed to add.
+ *
+ * Omit must DISTRIBUTE over the union. A plain `Omit<Request, "via">` collapses
+ * every variant into their common keys, so `email` and `itemId` disappear and
+ * the discriminant stops narrowing.
+ */
+type WithoutVia<T> = T extends unknown ? Omit<T, "via"> : never;
+export type OutboundRequest = WithoutVia<Request>;
+
+/** Stamps a request as forwarded. Only the service worker calls this. */
+export function forwarded(req: OutboundRequest): Request {
+  return { ...req, via: "background" };
+}
+
+/**
+ * Messages the OFFSCREEN document sends to the service worker.
+ *
+ * `chrome.runtime` is the only extension API an offscreen document has. It
+ * cannot touch chrome.storage at all - reading it throws "Cannot read
+ * properties of undefined". So the document that holds the vault key asks the
+ * service worker to read and write the session token on its behalf.
+ *
+ * The token is the only thing proxied. The vault key never crosses this
+ * boundary, or any other.
+ */
+const backgroundRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ target: z.literal("background"), kind: z.literal("tokenRead") }),
+  z.object({
+    target: z.literal("background"),
+    kind: z.literal("tokenWrite"),
+    token: z.string().min(1),
+  }),
+  z.object({ target: z.literal("background"), kind: z.literal("tokenClear") }),
+]);
+
+export type BackgroundRequest = z.infer<typeof backgroundRequestSchema>;
+
+export type BackgroundResponse =
+  | { ok: true; kind: "tokenRead"; token: string | null }
+  | { ok: true; kind: "tokenWrite" }
+  | { ok: true; kind: "tokenClear" }
+  | { ok: false; error: string };
+
+export function parseBackgroundRequest(value: unknown): BackgroundRequest | null {
+  const parsed = backgroundRequestSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 export type FillField = "username" | "password" | "totp";
 
 export type VaultState = "signed-out" | "locked" | "unlocked";

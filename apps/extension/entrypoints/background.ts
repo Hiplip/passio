@@ -1,5 +1,12 @@
+import { chromeTokenStore, clearToken, readToken, writeToken } from "../src/auth";
+import {
+  forwarded,
+  parseBackgroundRequest,
+  type BackgroundResponse,
+  type OutboundRequest,
+  type Response,
+} from "../src/messages";
 import { normaliseLockMinutes } from "../src/prefs";
-import type { Request, Response } from "../src/messages";
 
 const OFFSCREEN_PATH = "offscreen.html";
 const LOCK_ALARM = "passio.auto-lock";
@@ -48,11 +55,9 @@ async function updateBadge(tabId: number, url: string | undefined): Promise<void
   if (url?.startsWith("http")) {
     try {
       await ensureOffscreen();
-      const res: Response = await chrome.runtime.sendMessage({
-        target: "offscreen",
-        kind: "matchCount",
-        url,
-      });
+      const res: Response = await chrome.runtime.sendMessage(
+        forwarded({ target: "offscreen", kind: "matchCount", url }),
+      );
       if (res.ok && res.kind === "matchCount") count = res.count;
     } catch {
       count = 0; // locked, or no offscreen document
@@ -63,18 +68,59 @@ async function updateBadge(tabId: number, url: string | undefined): Promise<void
 }
 
 export default defineBackground(() => {
+  /**
+   * Storage on behalf of the offscreen document.
+   *
+   * An offscreen document's only extension API is chrome.runtime, so it cannot
+   * reach chrome.storage itself. This worker holds the session token for it.
+   * Only the token crosses - never the vault key.
+   */
+  chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
+    if (sender.id !== chrome.runtime.id) return false;
+    const req = parseBackgroundRequest(raw);
+    if (!req) return false;
+
+    void (async (): Promise<BackgroundResponse> => {
+      switch (req.kind) {
+        case "tokenRead":
+          return {
+            ok: true,
+            kind: "tokenRead",
+            token: await readToken(chromeTokenStore),
+          };
+        case "tokenWrite":
+          await writeToken(chromeTokenStore, req.token);
+          return { ok: true, kind: "tokenWrite" };
+        case "tokenClear":
+          await clearToken(chromeTokenStore);
+          return { ok: true, kind: "tokenClear" };
+      }
+    })()
+      .then(sendResponse)
+      .catch((e: unknown) =>
+        sendResponse({
+          ok: false,
+          error: e instanceof Error ? e.message : "Storage failed.",
+        } satisfies BackgroundResponse),
+      );
+
+    return true;
+  });
+
   chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id) return false;
 
-    const req = raw as Partial<Request>;
+    const req = raw as Partial<OutboundRequest> & { via?: string };
     if (req?.target !== "offscreen") return false;
-    // The offscreen document answers its own messages; this worker only routes
-    // the ones that originate elsewhere.
-    if (sender.url?.endsWith(OFFSCREEN_PATH)) return false;
+    // Already forwarded: this is our own copy coming back round the broadcast.
+    // Handling it again would loop.
+    if (req.via === "background") return false;
 
     void (async () => {
       await ensureOffscreen();
-      const res: Response = await chrome.runtime.sendMessage(raw);
+      const res: Response = await chrome.runtime.sendMessage(
+        forwarded(req as OutboundRequest),
+      );
 
       // Any successful interaction is activity: push the idle deadline out.
       if (res.ok && req.kind !== "status" && req.kind !== "matchCount") {
@@ -96,7 +142,7 @@ export default defineBackground(() => {
 
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name !== LOCK_ALARM) return;
-    void chrome.runtime.sendMessage({ target: "offscreen", kind: "lock" });
+    void chrome.runtime.sendMessage(forwarded({ target: "offscreen", kind: "lock" }));
   });
 
   // Locking the laptop should lock the vault. Waiting out the idle timer after
@@ -104,7 +150,7 @@ export default defineBackground(() => {
   chrome.idle.setDetectionInterval(60);
   chrome.idle.onStateChanged.addListener((state) => {
     if (state === "locked") {
-      void chrome.runtime.sendMessage({ target: "offscreen", kind: "lock" });
+      void chrome.runtime.sendMessage(forwarded({ target: "offscreen", kind: "lock" }));
     }
   });
 

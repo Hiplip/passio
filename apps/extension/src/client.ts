@@ -1,6 +1,12 @@
-import type { FillField, ItemSummary, Request, Response, VaultState } from "./messages";
+import type {
+  FillField,
+  ItemSummary,
+  OutboundRequest,
+  Response,
+  VaultState,
+} from "./messages";
 
-async function send(req: Request): Promise<Response> {
+async function send(req: OutboundRequest): Promise<Response> {
   try {
     const res: Response = await chrome.runtime.sendMessage(req);
     return res;
