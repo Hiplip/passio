@@ -144,12 +144,33 @@ draw extra review scrutiny — the narrow permission set should help.
 
 ---
 
+## 8. The full vault page
+
+New: the popup's **Full vault** button (bottom left) opens the whole vault in a browser
+tab — the same interface as the web app, running inside the extension, already unlocked.
+
+- [ ] Click **Full vault**. The item list appears with the sidebar, folders and search.
+- [ ] Create an item. It should appear in the list and in the web app.
+- [ ] Edit an item, save, confirm the change sticks after a reload.
+- [ ] Create a folder, move an item into it, delete the folder — its items become
+      unfiled rather than disappearing.
+- [ ] Delete an item, find it in Trash, restore it.
+- [ ] From the popup, open an item's **⋯ → Edit in full vault** — it should deep-link
+      straight to that item.
+
+The vault key never enters this page: it sends plaintext to the offscreen document,
+which encrypts. That the page holds plaintext at all is a deliberate widening over the
+popup, recorded in `DECISIONS.md`.
+
+---
+
 ## What is deliberately not built
 
 Not oversights; each was decided in the spec:
 
-- **Creating or editing items, folders, signup, recovery, changing the master password.**
-  The extension is read-and-fill. Everything that writes to the vault stays in the web app.
+- **Signup, recovery-key redemption, changing the master password.** Creating and
+  editing items and folders now works in the extension; these three still live in the
+  web app, because they touch credentials themselves rather than vault contents.
 - **No offline access.** Nothing but the session token and your lock preference touches
   disk — no plaintext, no ciphertext.
 - **No "save this password?" prompt** on new logins. That needs to observe form

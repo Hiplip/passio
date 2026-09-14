@@ -44,11 +44,23 @@ These apply when designing or planning, before any code exists.
 - Env schema: `apps/web/src/env.js` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`)
 - **Workspace**: pnpm workspace, `apps/*` + `packages/*`.
   ```
-  apps/web         the Next app         (Vercel Root Directory points here)
-  apps/extension   the Chrome extension
-  packages/crypto  trust-critical crypto
-  packages/core    shared vault logic
+  apps/web          the Next app        (Vercel Root Directory points here)
+  apps/extension    the Chrome extension
+  packages/crypto   trust-critical crypto
+  packages/core     shared vault logic (no React)
+  packages/ui       design tokens + shadcn primitives
+  packages/vault-ui vault components, shared by BOTH surfaces
   ```
+
+  **`packages/vault-ui` is rendered by the web app and the extension alike.** It
+  imports neither Next nor tRPC: navigation and data arrive through two contexts
+  (`navigation.tsx`, `data.tsx`) that each surface implements. Adding a `next/*` or
+  `~/*` import there breaks the extension build - put it in the adapter instead.
+
+  Tailwind scans via `@source` lines in `packages/ui/src/styles.css`. **Add one for
+  every new package that renders markup**: detection anchors at the CSS file, so
+  without them a package's classes are purged silently. Measured: 71,008 bytes of CSS
+  with them, 29,986 without.
   The repo root holds only workspace-level config: `package.json` (scripts that
   delegate with `--filter`), `pnpm-workspace.yaml`, `vitest.config.ts`,
   `eslint.config.js`, `tsconfig.base.json`, and a `tsconfig.json` that exists solely so
@@ -204,6 +216,19 @@ for the extension** — there is no browser here, so nothing can prove the exten
 works, only that it never quietly asks for more than it was designed to.
 
 Changing that list is a design decision: update `docs/superpowers/specs/2026-09-12-passio-extension-design.md` (D3a) in the same commit.
+
+#### The offscreen document can only use `chrome.runtime`
+
+Not `chrome.storage`, not anything else. Reaching for `chrome.storage` there throws
+"Cannot read properties of undefined (reading 'local')" at runtime, and it shipped
+once. The session token is proxied through the service worker
+(`src/token-proxy.ts`), and every `chrome.storage` call lives in
+`src/chrome-storage.ts`, which the offscreen document must never import.
+
+`bundle.test.ts` asserts the offscreen document's **whole module graph** uses no API
+but `chrome.runtime`. It follows the page's modulepreload links rather than naming a
+chunk, because Rolldown hoists shared code and a named chunk can silently become an
+8 kB stub that proves nothing.
 
 #### Two traps that cost real time
 
