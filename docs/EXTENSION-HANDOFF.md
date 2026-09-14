@@ -105,9 +105,19 @@ the throwaway item and stop the server when you are done.
 
 ### B2 · The key survives service-worker eviction
 
+**Set "Lock after" to 60 min first.** With it at 1 minute this test cannot tell an
+eviction apart from auto-lock working correctly, and the two look identical from the
+outside.
+
+- [ ] Settings → Lock after → **60 min**
 - [ ] Unlock, close the popup
-- [ ] `chrome://extensions` → wait until passio reads **"service worker (Inactive)"**
+- [ ] `chrome://extensions` → watch the passio card for a minute or two
 - [ ] Open the popup → still unlocked
+
+The worker may now stay **active** the whole time rather than going Inactive: the
+offscreen document holds a port open while the vault is unlocked, which is deliberately
+what keeps it - and the key - from being collected. An unlocked vault keeping the worker
+alive is the fix, not a leak. Lock the vault and the worker goes idle like any other.
 
 ### B3 · Finding things
 
@@ -167,9 +177,18 @@ With the permission granted:
 
 ### B10 · Auto-lock
 
-- [ ] Set **Lock after** to 1 min, leave it, return → locked
+- [ ] Set **Lock after** to 1 min, close the popup, wait 90 seconds without touching it,
+      reopen → locked
+- [ ] Set it to 15 min, use the vault, and confirm it does **not** lock while you work
 - [ ] Lock your laptop screen and unlock → the vault is locked
 - [ ] "Lock now" works immediately
+
+Changing the timeout used to do nothing until the next vault interaction, so setting it
+to a minute and walking away left the previous delay running. The worker now rebuilds
+the alarm the moment the setting changes.
+
+Any use of the vault resets the countdown, by design - the timeout is idle time, not
+total session time.
 
 ---
 

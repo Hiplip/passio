@@ -9,7 +9,8 @@ import {
   type Response,
 } from "../src/messages";
 import { syncInlineScript, type ScriptingApi } from "../src/inline-script";
-import { normaliseLockMinutes } from "../src/prefs";
+import { KEEPALIVE_PORT } from "../src/keepalive";
+import { LOCK_MINUTES_KEY, normaliseLockMinutes } from "../src/prefs";
 
 const OFFSCREEN_PATH = "offscreen.html";
 const LOCK_ALARM = "passio.auto-lock";
@@ -47,8 +48,8 @@ async function ensureOffscreen(): Promise<void> {
 /** chrome.alarms outlives service-worker eviction; setTimeout does not. That is
  *  the entire reason auto-lock lives here and not in the offscreen document. */
 async function resetLockAlarm(): Promise<void> {
-  const stored = await chrome.storage.local.get("passio.lock-minutes");
-  const minutes = normaliseLockMinutes(stored["passio.lock-minutes"]);
+  const stored = await chrome.storage.local.get(LOCK_MINUTES_KEY);
+  const minutes = normaliseLockMinutes(stored[LOCK_MINUTES_KEY]);
   await chrome.alarms.clear(LOCK_ALARM);
   await chrome.alarms.create(LOCK_ALARM, { delayInMinutes: minutes });
 }
@@ -268,6 +269,34 @@ export default defineBackground(() => {
     })().catch(() => {
       // No offscreen document to tell: it is already gone, which is locked.
     });
+  });
+
+  /**
+   * The offscreen document holds this port open while the vault is unlocked.
+   *
+   * A connected port keeps the service worker alive, and traffic on it resets
+   * the idle timer - which is what keeps the offscreen document, and the vault
+   * key inside it, from being collected 30 seconds after you stop typing. The
+   * worker does not need to do anything with the ticks; receiving them is the
+   * whole point.
+   */
+  chrome.runtime.onConnect.addListener((connected) => {
+    if (connected.name !== KEEPALIVE_PORT) return;
+    connected.onMessage.addListener(() => {
+      // Deliberately empty. The message existing is what resets the timer.
+    });
+  });
+
+  /**
+   * Rebuild the alarm when the lock timeout is changed.
+   *
+   * Without this the setting only took effect at the next vault interaction:
+   * changing it to a minute and walking away left the old delay running, so it
+   * looked as though auto-lock had simply stopped working.
+   */
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !(LOCK_MINUTES_KEY in changes)) return;
+    void resetLockAlarm();
   });
 
   chrome.alarms.onAlarm.addListener((alarm) => {

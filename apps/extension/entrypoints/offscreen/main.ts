@@ -3,6 +3,7 @@ import { deriveInWorker } from "@passio/crypto/worker/client";
 import { API_BASE, createApi } from "../../src/api";
 import { clearToken, exchangeAuthHash, readToken, writeToken } from "../../src/auth";
 import { createCustody } from "../../src/custody";
+import { KEEPALIVE_PORT, KEEPALIVE_INTERVAL_MS } from "../../src/keepalive";
 import { parseRequest, type Response } from "../../src/messages";
 import { backgroundTokenStore } from "../../src/token-proxy";
 
@@ -64,16 +65,19 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
     case "status":
       return { ok: true, kind: "status", state: await custody.status() };
     case "heartbeat":
-      // Only reachable from devtools; exists so the keepalive is observable.
-      return { ok: true, kind: "heartbeat", count: heartbeats };
+      // Surfaced in Settings so a session that silently restarted is visible.
+      return { ok: true, kind: "heartbeat", count: ticks };
     case "unlock":
       await custody.unlock(req.email, req.password);
+      startKeepAlive();
       return { ok: true, kind: "unlock" };
     case "lock":
       custody.lock();
+      stopKeepAlive();
       return { ok: true, kind: "lock" };
     case "signOut":
       await custody.signOut();
+      stopKeepAlive();
       return { ok: true, kind: "signOut" };
     case "items":
       return { ok: true, kind: "items", ...(await custody.items()) };
@@ -110,26 +114,54 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
 }
 
 /**
- * Keeps this document from being considered idle while the vault is unlocked.
+ * Holds the service worker awake for as long as the vault is unlocked.
  *
- * Chrome's reference says an offscreen document has no lifetime limit for any
- * reason but AUDIO_PLAYBACK, and that its lifetime is independent of the
- * service worker. An older Chrome blog post, written before the API shipped,
- * described event-page-style teardown "when it stops performing actions". The
- * two do not agree, and no test on a machine without a browser can settle it.
+ * The previous attempt here was a timer that incremented a counter, on the
+ * theory that an offscreen document with something to do would not be
+ * collected. It did nothing: the document is torn down with the service worker
+ * anyway, and the vault was locked again by the time the worker went idle.
  *
- * A timer that does a trivial amount of work every 20 seconds makes the
- * question moot. If the reference is right this is a no-op; if the blog post
- * is right it is what keeps the vault key alive between uses. It runs only
- * while unlocked, because there is nothing to preserve otherwise, and it costs
- * a counter increment.
+ * An open port is what actually works. Chrome keeps a service worker alive
+ * while a port is connected, and traffic on it resets the idle timer, so
+ * ticking every 20 seconds keeps both the worker and this document - and
+ * therefore the key - alive across the eviction window.
+ *
+ * Only while unlocked. A locked vault has nothing worth preserving and should
+ * let the worker be collected like any other extension.
  */
-let heartbeats = 0;
-setInterval(() => {
-  void custody.status().then((state) => {
-    if (state === "unlocked") heartbeats += 1;
+let port: chrome.runtime.Port | null = null;
+let ticks = 0;
+
+function startKeepAlive(): void {
+  if (port) return;
+  port = chrome.runtime.connect({ name: KEEPALIVE_PORT });
+  port.onDisconnect.addListener(() => {
+    port = null;
+    // The worker was replaced. Reconnect so the session is not left exposed to
+    // the next eviction, but only if the vault is still unlocked.
+    void custody.status().then((state) => {
+      if (state === "unlocked") startKeepAlive();
+    });
   });
-}, 20_000);
+}
+
+function stopKeepAlive(): void {
+  port?.disconnect();
+  port = null;
+}
+
+setInterval(() => {
+  if (!port) return;
+  ticks += 1;
+  port.postMessage({ tick: ticks });
+}, KEEPALIVE_INTERVAL_MS);
+
+// The document may be recreated while the vault is still unlocked in it - it
+// cannot be, in practice, but the check costs nothing and makes the invariant
+// explicit: unlocked implies a live port.
+void custody.status().then((state) => {
+  if (state === "unlocked") startKeepAlive();
+});
 
 chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
   // Only our own extension, and only messages addressed here: the background
