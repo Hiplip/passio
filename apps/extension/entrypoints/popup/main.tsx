@@ -19,8 +19,10 @@ import { VaultDataProvider } from "@passio/vault-ui/data";
 import { EditItem } from "@passio/vault-ui/edit-item";
 import { NavigationProvider } from "@passio/vault-ui/navigation";
 import { NewItem } from "@passio/vault-ui/new-item";
+import { GeneratorPanel } from "@passio/vault-ui/generator-panel";
 import {
-  ArrowLeft, ExternalLink, KeyRound, Lock, MoreVertical, Plus, Search,
+  ArrowLeft, ExternalLink, Lock, LogOut, MoreVertical, Plus,
+  RefreshCw, Search, Settings, Shield, Wallet,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -51,12 +53,12 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function Header({
-  onLock,
+  title,
   onBack,
   onAdd,
   path,
 }: {
-  onLock?: () => void;
+  title: string;
   onBack?: () => void;
   onAdd?: () => void;
   path?: string;
@@ -67,19 +69,15 @@ function Header({
         <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="Back">
           <ArrowLeft />
         </Button>
-      ) : (
-        <>
-          <span className="bg-primary text-primary-foreground ml-1 grid size-6 place-items-center rounded-md">
-            <KeyRound className="size-3" />
-          </span>
-          <span className="text-sm font-semibold tracking-tight">passio</span>
-        </>
-      )}
+      ) : null}
+
+      <span className="ml-1 text-sm font-semibold tracking-tight">{title}</span>
 
       <span className="ml-auto flex items-center gap-1">
         {onAdd ? (
-          <Button variant="ghost" size="icon-sm" onClick={onAdd} aria-label="Add item">
+          <Button size="sm" onClick={onAdd}>
             <Plus />
+            New
           </Button>
         ) : null}
         {path !== undefined ? (
@@ -92,14 +90,41 @@ function Header({
             <ExternalLink />
           </Button>
         ) : null}
-        {onLock ? (
-          <Button variant="ghost" size="sm" onClick={onLock}>
-            <Lock />
-            Lock
-          </Button>
-        ) : null}
       </span>
     </header>
+  );
+}
+
+const TABS = [
+  { path: "/", label: "Vault", Icon: Wallet },
+  { path: "/generator", label: "Generator", Icon: RefreshCw },
+  { path: "/settings", label: "Settings", Icon: Settings },
+] as const;
+
+/** Bottom navigation. Three destinations, always visible, so nothing is more
+ *  than one tap away - and no "Send", which this product does not do. */
+function TabBar({ path }: { path: string }) {
+  return (
+    <nav className="flex border-t">
+      {TABS.map(({ path: to, label, Icon }) => {
+        const active = to === path;
+        return (
+          <a
+            key={to}
+            href={`#${to}`}
+            aria-current={active ? "page" : undefined}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors ${
+              active
+                ? "text-primary font-medium"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="size-4" />
+            {label}
+          </a>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -143,7 +168,11 @@ function Editor({
     <NavigationProvider value={navigation}>
       <VaultDataProvider value={data}>
         <Shell>
-          <Header onBack={onBack} path={path} />
+          <Header
+            title={path === "/vault/new" ? "New item" : "Edit item"}
+            onBack={onBack}
+            path={path}
+          />
           {body}
         </Shell>
       </VaultDataProvider>
@@ -175,7 +204,7 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
 
   return (
     <Shell>
-      <Header />
+      <Header title="passio" />
       <form onSubmit={(e) => void submit(e)} className="grid gap-4 p-4">
         <div>
           <h1 className="text-sm font-semibold">
@@ -340,7 +369,6 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   const [query, setQuery] = useState("");
   const [tabUrl, setTabUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lockMinutes, setLockMinutes] = useState(15);
 
   const load = useCallback(async () => {
     setError(null);
@@ -359,9 +387,6 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     void chrome.tabs
       .query({ active: true, currentWindow: true })
       .then(([t]) => setTabUrl(t?.url ?? null));
-    void chrome.storage.local
-      .get(LOCK_MINUTES_KEY)
-      .then((s) => setLockMinutes(normaliseLockMinutes(s[LOCK_MINUTES_KEY])));
   }, [load]);
 
   const filtered = useMemo(
@@ -432,21 +457,18 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     window.location.hash = `/vault/${itemId}`;
   }
 
-  async function changeLock(minutes: number) {
-    setLockMinutes(minutes);
-    await chrome.storage.local.set({ [LOCK_MINUTES_KEY]: minutes });
-  }
 
   if (error) {
     return (
       <Shell>
-        <Header onLock={() => void vault.lock().then(onLocked)} />
+        <Header title="Vault" />
         <div className="grid gap-3 p-4">
           <p className="text-destructive text-sm">{error}</p>
           <Button variant="outline" onClick={() => void load()}>
             Try again
           </Button>
         </div>
+        <TabBar path="/" />
       </Shell>
     );
   }
@@ -454,7 +476,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   if (!items) {
     return (
       <Shell>
-        <Header />
+        <Header title="Vault" />
         <div className="grid gap-3 p-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3">
@@ -466,6 +488,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             </div>
           ))}
         </div>
+        <TabBar path="/" />
       </Shell>
     );
   }
@@ -481,7 +504,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   return (
     <Shell>
       <Header
-        onLock={() => void vault.lock().then(onLocked)}
+        title="Vault"
         onAdd={() => (window.location.hash = "/vault/new")}
         path="/"
       />
@@ -539,27 +562,163 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         ) : null}
       </div>
 
-      <footer className="grid gap-2.5 border-t p-3">
-        <InlineToggle />
+      <TabBar path="/" />
+    </Shell>
+  );
+}
 
-        <div className="flex items-center gap-2">
-        <label htmlFor="lock" className="text-muted-foreground text-xs">
-          Lock after
-        </label>
-        <select
-          id="lock"
-          value={lockMinutes}
-          onChange={(e) => void changeLock(Number(e.target.value))}
-          className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
-        >
-          {LOCK_CHOICES.map((m) => (
-            <option key={m} value={m}>
-              {m} min
-            </option>
-          ))}
-        </select>
+/**
+ * The generator, as a tab.
+ *
+ * Renders @passio/vault-ui's GeneratorPanel — the same component the web app's
+ * "Generate a password" dialog uses — so the two cannot drift into producing
+ * passwords under different rules.
+ */
+function GeneratorTab() {
+  return (
+    <Shell>
+      <Header title="Generator" path="/generator" />
+      <div className="max-h-[460px] overflow-y-auto p-4">
+        <GeneratorPanel
+          footer={({ candidate, regenerate }) => (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={regenerate} className="flex-1">
+                <RefreshCw />
+                Regenerate
+              </Button>
+              <Button
+                disabled={!candidate}
+                className="flex-1"
+                onClick={() => {
+                  void copyWithAutoClear(candidate).then((ok) =>
+                    ok
+                      ? toast.success("Password copied", {
+                          description: "Your clipboard clears in 30 seconds.",
+                        })
+                      : toast.error("Could not copy"),
+                  );
+                }}
+              >
+                Copy
+              </Button>
+            </div>
+          )}
+        />
+      </div>
+      <TabBar path="/generator" />
+    </Shell>
+  );
+}
+
+function SettingRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm">{label}</span>
+        {hint ? (
+          <span className="text-muted-foreground block text-xs">{hint}</span>
+        ) : null}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** Everything that configures the extension, in one place rather than wedged
+ *  into the bottom of the item list. */
+function SettingsTab({ email, onLocked }: { email: string | null; onLocked: () => void }) {
+  const [lockMinutes, setLockMinutes] = useState(15);
+
+  useEffect(() => {
+    void chrome.storage.local
+      .get(LOCK_MINUTES_KEY)
+      .then((s) => setLockMinutes(normaliseLockMinutes(s[LOCK_MINUTES_KEY])));
+  }, []);
+
+  async function changeLock(minutes: number) {
+    setLockMinutes(minutes);
+    await chrome.storage.local.set({ [LOCK_MINUTES_KEY]: minutes });
+  }
+
+  return (
+    <Shell>
+      <Header title="Settings" />
+      <div className="max-h-[460px] divide-y overflow-y-auto">
+        <div className="px-4 py-3">
+          <p className="text-sm font-medium">{email ?? "Signed in"}</p>
+          <p className="text-muted-foreground text-xs">
+            Your vault is encrypted on this device.
+          </p>
         </div>
-      </footer>
+
+        <div>
+          <SectionLabel>Autofill</SectionLabel>
+          <InlineToggle />
+        </div>
+
+        <div>
+          <SectionLabel>Security</SectionLabel>
+          <SettingRow label="Lock after" hint="Idle time before the vault re-locks">
+            <select
+              value={lockMinutes}
+              onChange={(e) => void changeLock(Number(e.target.value))}
+              aria-label="Lock after"
+              className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
+            >
+              {LOCK_CHOICES.map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </select>
+          </SettingRow>
+          <SettingRow label="Lock now" hint="Forget the key until you unlock again">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void vault.lock().then(onLocked)}
+            >
+              <Lock />
+              Lock
+            </Button>
+          </SettingRow>
+        </div>
+
+        <div>
+          <SectionLabel>Account</SectionLabel>
+          <SettingRow label="Open full vault" hint="Folders, trash and everything else">
+            <Button variant="outline" size="sm" onClick={() => void popOut("/vault")}>
+              <ExternalLink />
+              Open
+            </Button>
+          </SettingRow>
+          <SettingRow label="Sign out" hint="Also forgets this device's session">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void vault.signOut().then(onLocked)}
+            >
+              <LogOut />
+              Sign out
+            </Button>
+          </SettingRow>
+        </div>
+
+        <p className="text-muted-foreground flex items-start gap-2 px-4 py-3 text-xs">
+          <Shield className="mt-0.5 size-3.5 shrink-0" />
+          Your master password never leaves this device, and neither does the key it
+          derives.
+        </p>
+      </div>
+      <TabBar path="/settings" />
     </Shell>
   );
 }
@@ -579,7 +738,7 @@ function App() {
   if (state === "loading") {
     return (
       <Shell>
-        <Header />
+        <Header title="passio" />
         <p className="text-muted-foreground p-4 text-sm">Checking…</p>
       </Shell>
     );
@@ -594,8 +753,8 @@ function App() {
     );
   }
 
-  // "/" is the fill list, which holds no secrets. Anything under /vault is an
-  // editor, and only those mount the full-plaintext provider.
+  // Editors take over the whole popup: they have their own back button, and a
+  // tab bar under a half-finished item invites losing it.
   if (path === "/vault/new" || /^\/vault\/.+$/.test(path)) {
     return (
       <Editor
@@ -604,6 +763,11 @@ function App() {
         onBack={() => (window.location.hash = "/")}
       />
     );
+  }
+
+  if (path === "/generator") return <GeneratorTab />;
+  if (path === "/settings") {
+    return <SettingsTab email={email} onLocked={() => setState("locked")} />;
   }
 
   return <Vault onLocked={() => setState("locked")} />;
