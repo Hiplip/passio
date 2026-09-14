@@ -4,8 +4,27 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
+import { keepOpenOnSpuriousFocusOut } from "./extension-popup"
 
-const Select = SelectPrimitive.Root
+/**
+ * Wraps Select.Root purely to suppress a spurious `focus-out` close inside
+ * Chrome extension popups, where the Select would otherwise open and shut in
+ * the same frame. See extension-popup.ts.
+ */
+function Select<Value, Multiple extends boolean | undefined = false>({
+  onOpenChange,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  return (
+    <SelectPrimitive.Root
+      onOpenChange={(open, details) => {
+        keepOpenOnSpuriousFocusOut(open, details)
+        onOpenChange?.(open, details)
+      }}
+      {...props}
+    />
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

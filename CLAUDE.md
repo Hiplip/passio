@@ -247,6 +247,22 @@ but `chrome.runtime`. It follows the page's modulepreload links rather than nami
 chunk, because Rolldown hoists shared code and a named chunk can silently become an
 8 kB stub that proves nothing.
 
+#### Base UI popups close instantly inside an extension popup
+
+A known Base UI bug (mui/base-ui#3546, same shape as radix-ui/primitives#2754): on an
+extension page a spurious `focus-out` fires right after a trigger is pressed, so every
+Select and dropdown opens and shuts in the same frame.
+
+`packages/ui/src/extension-popup.ts` cancels that one close reason, and only when
+`location.protocol === "chrome-extension:"`. Detected rather than configured, because
+the condition genuinely is "this is an extension page" - it needs no wiring through the
+components `vault-ui` shares with the web app, and web behaviour is unchanged, where
+closing on focus-out is correct.
+
+Worth knowing when debugging: **jsdom cannot reproduce it.** A component test of the
+same markup passes happily, because the bug lives in real focus handling. If a dropdown
+misbehaves only in the extension, suspect this before suspecting the markup.
+
 #### Two traps that cost real time
 
 - **`tldts` defaults to `allowPrivateDomains: false`.** With it off, `github.io` and
