@@ -36,20 +36,35 @@ The single most important check. Shared-hosting platforms give every user a subd
 Repeat with `*.github.io` if you have one. **A match here is a serious bug — stop and
 report it.**
 
-### A2 · Hidden fields are never filled
+### A2 + A3 · Use the test page
 
-Pages plant off-screen inputs to harvest autofill. This is a documented attack.
+`docs/autofill-test.html` has seven forms built to be awkward, each saying what passing
+looks like. Copy it down and open it:
 
-- [ ] On any login page, open devtools and set a password field's parent to
-      `display:none`, then add a second visible one
-- [ ] Fill. Only the visible field should receive anything
+```powershell
+scp you@your-dev-box:/home/dev/projects/passio/docs/autofill-test.html D:\Downloads\
+```
 
-### A3 · Change-password forms are refused
+**One setting first:** `chrome://extensions` → passio → Details → turn on **Allow access
+to file URLs**. Without it the extension cannot touch a `file://` page at all, and every
+section will look broken for the wrong reason. Turn it back off afterwards.
 
-- [ ] Go to any "change your password" form (two or three password boxes)
-- [ ] Fill from the popup → expect **"No login form on this page"**, and nothing typed
+Then open `file:///D:/Downloads/autofill-test.html` and work down it:
 
-Guessing which box is which is how a password manager overwrites the wrong one.
+- [ ] **1 Ordinary login** — fills both fields (the baseline; if this fails, nothing
+      below means anything)
+- [ ] **2 Hidden password trap** — only the visible field is filled. Confirm in the
+      console: `document.getElementById('trap-pw').value` must be `''`
+- [ ] **3 Hidden username trap** — `document.getElementById('trap-user').value` must
+      be `''`
+- [ ] **4 Change password** — **refuses**, types nothing. Both boxes stay empty
+- [ ] **5 Two-step login** — fills the email only
+- [ ] **6 Search box** — gets no passio button
+- [ ] **7 Disabled and read-only** — neither is filled or decorated
+
+Sections 2, 3 and 4 are the security ones. Planting an off-screen input to harvest
+autofill is a documented attack, and guessing which box is which on a change-password
+form is how a manager overwrites the wrong password.
 
 ### A4 · Nothing is ever submitted for you
 
@@ -68,15 +83,26 @@ The whole inline-suggestions design rests on this.
 - [ ] Turn on **Settings → Suggest logins on form fields**, accept Chrome's prompt
 - [ ] Confirm the in-field button appears on a login page
 - [ ] `chrome://extensions` → passio → Details → **Site access → On click**
-- [ ] Reload the login page: the button must be **gone, without restarting Chrome**
+- [ ] The button disappears from open tabs **immediately**, with no reload
+- [ ] Reload a login page — still gone, and no restart needed
 - [ ] The popup toggle now reads off
 
-### A7 · The key dies with the browser
+A reload used to be required: unregistering stops new injections, but Chrome cannot pull
+already-running script out of a page that is already open. The worker now tells every
+open tab to remove its overlay, so revoking takes effect at once.
 
-- [ ] Unlock, then quit Chrome completely and reopen
+### A7 · The key dies when the browser closes
+
+- [ ] Unlock, then close **every** window of the profile and reopen one
 - [ ] The extension asks for your master password again
+- [ ] Also quit the browser entirely (including the tray icon) and reopen
 
-It must never come back unlocked. The key is memory-only by design.
+It must never come back unlocked.
+
+Closing every window does **not** end the browser process — Chrome and Brave both keep
+running in the background, MV3 keeps the extension alive with them, and the offscreen
+document and key survived. The worker now locks when the last window closes, and again
+on profile startup, so this holds whether or not the process actually exits.
 
 ---
 

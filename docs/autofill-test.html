@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>passio autofill test page</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0 auto; max-width: 720px; padding: 32px 20px 80px;
+        font: 15px/1.6 system-ui, sans-serif; background: #17181b; color: #e8e8ea;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      h2 { font-size: 15px; margin: 0 0 4px; }
+      .lede { color: #9a9aa2; margin: 0 0 28px; }
+      section {
+        border: 1px solid #2e2f34; border-radius: 12px;
+        padding: 16px 18px 18px; margin-bottom: 16px; background: #1d1e22;
+      }
+      .expect {
+        color: #8ad7c4; font-size: 13px; margin: 2px 0 14px;
+      }
+      .expect b { color: #b8f0e2; }
+      label { display: block; font-size: 12px; color: #9a9aa2; margin: 10px 0 4px; }
+      input {
+        width: 100%; box-sizing: border-box; padding: 8px 10px;
+        border: 1px solid #3a3b42; border-radius: 7px;
+        background: #121317; color: #e8e8ea; font: inherit;
+      }
+      button {
+        margin-top: 14px; padding: 8px 14px; border: 0; border-radius: 7px;
+        background: #0d9488; color: #fff; font: inherit; cursor: pointer;
+      }
+      .trap { position: absolute; left: -9999px; top: -9999px; }
+      code { background: #121317; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h1>passio autofill test page</h1>
+    <p class="lede">
+      Each section is a form passio should treat differently. The green line says what
+      passing looks like. Nothing here submits anywhere — every form has
+      <code>onsubmit="return false"</code>.
+    </p>
+
+    <section>
+      <h2>1 · Ordinary login</h2>
+      <p class="expect">Baseline: fill should populate <b>both</b> fields.</p>
+      <form onsubmit="return false">
+        <label for="u1">Username</label>
+        <input id="u1" name="username" type="text" autocomplete="username" />
+        <label for="p1">Password</label>
+        <input id="p1" name="password" type="password" autocomplete="current-password" />
+        <button>Sign in</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>2 · Hidden password trap (A2)</h2>
+      <p class="expect">
+        There is an off-screen password field above the visible one. Only the
+        <b>visible</b> field may be filled. Check the hidden one with
+        <code>document.getElementById('trap-pw').value</code> — it must stay empty.
+      </p>
+      <form onsubmit="return false">
+        <input id="trap-pw" class="trap" type="password" name="password"
+               autocomplete="current-password" tabindex="-1" aria-hidden="true" />
+        <label for="u2">Username</label>
+        <input id="u2" name="username" type="text" autocomplete="username" />
+        <label for="p2">Password</label>
+        <input id="p2" name="realpassword" type="password" />
+        <button>Sign in</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>3 · Hidden username trap (A2)</h2>
+      <p class="expect">
+        An off-screen text field marked <code>autocomplete="username"</code>. It must
+        stay empty: check <code>document.getElementById('trap-user').value</code>.
+      </p>
+      <form onsubmit="return false">
+        <input id="trap-user" class="trap" type="text" name="username"
+               autocomplete="username" tabindex="-1" aria-hidden="true" />
+        <label for="u3">Email</label>
+        <input id="u3" type="email" />
+        <label for="p3">Password</label>
+        <input id="p3" type="password" />
+        <button>Sign in</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>4 · Change password (A3)</h2>
+      <p class="expect">
+        Two password fields. passio must <b>refuse</b> — "No login form on this page" —
+        and type nothing at all.
+      </p>
+      <form onsubmit="return false">
+        <label for="p4a">New password</label>
+        <input id="p4a" type="password" autocomplete="new-password" />
+        <label for="p4b">Confirm new password</label>
+        <input id="p4b" type="password" autocomplete="new-password" />
+        <button>Change password</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>5 · Two-step login</h2>
+      <p class="expect">
+        Email only, no password field yet — as Google and Microsoft do. Fill should
+        populate the <b>email</b> and leave it at that.
+      </p>
+      <form onsubmit="return false">
+        <label for="u5">Email</label>
+        <input id="u5" type="email" autocomplete="username" />
+        <button>Next</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>6 · Search box, not a login</h2>
+      <p class="expect">
+        An unmarked text field. It must get <b>no</b> passio button — otherwise every
+        search box on the web would sprout one.
+      </p>
+      <form onsubmit="return false">
+        <label for="q6">Search</label>
+        <input id="q6" type="text" placeholder="Search…" />
+      </form>
+    </section>
+
+    <section>
+      <h2>7 · Disabled and read-only</h2>
+      <p class="expect">Neither may be filled or decorated.</p>
+      <form onsubmit="return false">
+        <label for="u7">Username (disabled)</label>
+        <input id="u7" type="text" autocomplete="username" disabled />
+        <label for="p7">Password (read-only)</label>
+        <input id="p7" type="password" readonly />
+      </form>
+    </section>
+  </body>
+</html>

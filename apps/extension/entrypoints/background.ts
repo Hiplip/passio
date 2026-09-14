@@ -115,10 +115,41 @@ export default defineBackground(() => {
    */
   const sync = () => void syncInlineScript(scripting);
   sync();
-  chrome.runtime.onStartup.addListener(sync);
   chrome.runtime.onInstalled.addListener(sync);
   chrome.permissions.onAdded.addListener(sync);
-  chrome.permissions.onRemoved.addListener(sync);
+
+  chrome.runtime.onStartup.addListener(() => {
+    sync();
+    // A profile that has just started must never begin unlocked, whatever
+    // survived the shutdown.
+    void chrome.runtime
+      .sendMessage(forwarded({ target: "offscreen", kind: "lock" }))
+      .catch(() => undefined);
+  });
+
+  chrome.permissions.onRemoved.addListener(() => {
+    sync();
+    // Unregistering stops NEW injections; Chrome cannot pull already-running
+    // script out of a page that is already open. Without this the in-field
+    // button lingers on every open tab until each one is reloaded, which makes
+    // revoking access look like it did not work.
+    void (async () => {
+      const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+      const ids = tabs
+        .map((t) => t.id)
+        .filter((id): id is number => id !== undefined);
+
+      await Promise.all(
+        // A tab with no injected script simply has no receiver; that rejection
+        // is the normal case, not a failure.
+        ids.map((id) =>
+          chrome.tabs
+            .sendMessage(id, { kind: "passio-teardown" })
+            .catch(() => undefined),
+        ),
+      );
+    })();
+  });
 
   /**
    * Storage on behalf of the offscreen document.
@@ -214,6 +245,29 @@ export default defineBackground(() => {
     );
 
     return true;
+  });
+
+  /**
+   * Lock when the last browser window closes.
+   *
+   * Closing every window does NOT end the browser process - Chrome and Brave
+   * both keep running in the background, and MV3 keeps the extension alive with
+   * them, so the offscreen document and the vault key survive. Reopening then
+   * lands you in an unlocked vault, which is not what "closing the browser ends
+   * access" is supposed to mean.
+   *
+   * This makes the promise true regardless of whether the process actually
+   * exits.
+   */
+  chrome.windows.onRemoved.addListener(() => {
+    void (async () => {
+      const remaining = await chrome.windows.getAll();
+      if (remaining.length > 0) return;
+      await chrome.alarms.clear(LOCK_ALARM);
+      await chrome.runtime.sendMessage(forwarded({ target: "offscreen", kind: "lock" }));
+    })().catch(() => {
+      // No offscreen document to tell: it is already gone, which is locked.
+    });
   });
 
   chrome.alarms.onAlarm.addListener((alarm) => {

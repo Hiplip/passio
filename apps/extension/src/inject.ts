@@ -21,6 +21,12 @@ export type FillPayload = z.infer<typeof fillPayloadSchema>;
 
 export type FillOutcome = "filled" | "no-form";
 
+/** Sent to every open tab when page access is revoked, so the overlay removes
+ *  itself instead of lingering until that tab is reloaded. */
+export const teardownMessageSchema = z.object({
+  kind: z.literal("passio-teardown"),
+});
+
 /** Relayed to the content script when the suggestion iframe measures itself. */
 export const resizeMessageSchema = z.object({
   kind: z.literal("passio-resize"),
