@@ -157,28 +157,31 @@ Editing happens in the popup itself now.
 - [ ] Click **+** in the popup header → pick a type → fill it in → save. The item
       appears in the list, and in the web app.
 - [ ] On a row, **⋯ → Edit**, change something, save, reopen and confirm it stuck.
-- [ ] The **↗** button in the header reopens the current screen in a full tab.
-      Use it for anything long: **Chrome closes the popup whenever it loses focus**,
-      so clicking the page behind it mid-edit loses what you typed.
+- [ ] The **↗** button opens the vault in its own **window** — no tab strip, no
+      address bar, and it stays put when you click elsewhere. Use it for anything
+      long: **Chrome closes the toolbar popup whenever it loses focus**, so clicking
+      the page behind it mid-edit loses what you typed.
+- [ ] Press **↗** again — it should focus the window you already have, not open a
+      second one.
 
 The fill list deliberately carries no secrets; full plaintext enters the popup only
 while an editor screen is open, and leaves when you go back.
 
 ---
 
-## 9. The full vault page
+## 9. The vault window
 
-New: the popup's **Full vault** button (bottom left) opens the whole vault in a browser
-tab — the same interface as the web app, running inside the extension, already unlocked.
+The **↗** button opens the whole vault in a detached window — the same interface as the
+web app, running inside the extension, already unlocked.
 
-- [ ] Click **Full vault**. The item list appears with the sidebar, folders and search.
+- [ ] Click **↗**. The item list appears with the sidebar, folders and search.
 - [ ] Create an item. It should appear in the list and in the web app.
 - [ ] Edit an item, save, confirm the change sticks after a reload.
 - [ ] Create a folder, move an item into it, delete the folder — its items become
       unfiled rather than disappearing.
 - [ ] Delete an item, find it in Trash, restore it.
-- [ ] From the popup, open an item's **⋯ → Edit in full vault** — it should deep-link
-      straight to that item.
+- [ ] From the popup, **⋯ → Edit** edits in place; **↗** from there opens the same
+      item in the window.
 
 The vault key never enters this page: it sends plaintext to the offscreen document,
 which encrypts. That the page holds plaintext at all is a deliberate widening over the

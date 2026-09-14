@@ -31,6 +31,7 @@ import { ItemGlyph } from "../../src/item-glyph";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
 import type { FillOutcome, FillPayload } from "../../src/inject";
 import { useHashNavigation, usePath } from "../../src/hash-router";
+import { popOut } from "../../src/pop-out";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
 import { useExtensionVaultData } from "../../src/vault-data";
 
@@ -41,15 +42,6 @@ function Shell({ children }: { children: React.ReactNode }) {
       <Toaster position="bottom-center" />
     </div>
   );
-}
-
-/** Opens the current screen in a full tab. Chrome closes a popup the moment it
- *  loses focus, so anything longer than a quick edit wants real estate that
- *  does not vanish when you glance at the page behind it. */
-function popOut(path: string) {
-  void chrome.tabs.create({
-    url: chrome.runtime.getURL(`vault.html#${path === "/" ? "/vault" : path}`),
-  });
 }
 
 function Header({
@@ -88,8 +80,8 @@ function Header({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => popOut(path)}
-            aria-label="Open in a tab"
+            onClick={() => void popOut(path)}
+            aria-label="Open in a window"
           >
             <ExternalLink />
           </Button>
