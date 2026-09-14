@@ -133,7 +133,7 @@ it goes idle again like any other extension.
 - [ ] **Folder** filter, including "No folder"
 - [ ] **Type** filter: Logins / Notes / Cards
 - [ ] Filters combine with search, and with each other
-- [ ] On a matching site, "For this site" appears above "All items"
+- [ ] On a matching site, "For this site" appears above "Everything else"
 - [ ] "For this site" disappears while a filter is active
 
 ### B4 · Copy
@@ -152,7 +152,8 @@ it goes idle again like any other extension.
 
 With the permission granted:
 
-- [ ] A teal key button appears at the right of username **and** password fields
+- [ ] A small dark circle carrying a "p" appears at the right of username **and**
+      password fields, and turns violet on hover
 - [ ] Focusing a field opens the list without a click
 - [ ] The list is the **same width as the field**, aligned to its left edge
 - [ ] No scrollbar inside the list, and it does not cover the page below it
@@ -298,3 +299,30 @@ Three places carry everything I need:
 If a dropdown flashes open and shut, the console prints one line naming the close
 reason — paste that. It is the difference between a ten-second answer and an afternoon
 of guessing.
+
+---
+
+## What the redesign moved
+
+Everything below still works the same way; only where you click changed.
+
+| Was | Now |
+|---|---|
+| Tab bar across the bottom of the popup | Segmented control in the popup header |
+| "New" button in the popup header | A `+` icon in the header, beside the pop-out arrow |
+| Folder and type dropdowns | One row of filter pills, with folders behind a menu |
+| Sidebar of counts (web) | The same filter rail as the popup |
+| Category screen on a phone (web) | The same filter rail, wrapped |
+| Grey square icon per row | A coloured disc carrying the item's initial |
+| Teal key button in a form field | A dark circle carrying a "p" |
+
+Two things are worth a specific look, because neither could be verified without a
+browser:
+
+- **Fonts in the extension.** Every extension page previously rendered in the
+  browser's default face; they should now match the web app exactly. If the popup
+  still looks like Times or the system UI font, the self-hosted woff2 files are not
+  loading — check the popup's devtools Network tab for `assets/*.woff2`.
+- **The in-field button.** It now draws a literal "p" in a system monospace stack,
+  because it lives in a closed shadow root inside someone else's page and inherits
+  nothing. If the letter looks wrong or off-centre, say so and it goes back to an SVG.
