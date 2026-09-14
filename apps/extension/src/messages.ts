@@ -1,3 +1,4 @@
+import { itemSchema } from "@passio/core/schema";
 import { z } from "zod";
 
 /**
@@ -34,6 +35,45 @@ const requestSchema = z.discriminatedUnion("kind", [
     via,
     kind: z.literal("matchCount"),
     url: z.string(),
+  }),
+  // Full-vault operations. The popup never sends these; only the editor page
+  // does, and only it receives plaintext items back.
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("itemsFull") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("deletedItems") }),
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("folders") }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    kind: z.literal("saveItem"),
+    id: z.string().uuid(),
+    item: itemSchema,
+    isNew: z.boolean(),
+  }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    kind: z.literal("deleteItem"),
+    id: z.string().uuid(),
+  }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    kind: z.literal("restoreItem"),
+    id: z.string().uuid(),
+  }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    kind: z.literal("saveFolder"),
+    id: z.string().uuid(),
+    name: z.string().trim().min(1),
+    isNew: z.boolean(),
+  }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    kind: z.literal("deleteFolder"),
+    id: z.string().uuid(),
   }),
   z.object({
     target: z.literal("offscreen"),
@@ -117,6 +157,21 @@ export interface ItemSummary {
   hasTotp: boolean;
 }
 
+/** A decrypted item as the editor page needs it. Dates cross the message
+ *  boundary as ISO strings: structured clone would keep Date objects, but the
+ *  reply is JSON to every other reader. */
+export interface FullItem {
+  id: string;
+  data: z.infer<typeof itemSchema>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolderSummary {
+  id: string;
+  name: string;
+}
+
 export type Response =
   | { ok: true; kind: "status"; state: VaultState }
   | { ok: true; kind: "unlock" }
@@ -125,6 +180,14 @@ export type Response =
   | { ok: true; kind: "items"; items: ItemSummary[]; damaged: number }
   | { ok: true; kind: "matchCount"; count: number }
   | { ok: true; kind: "fieldValue"; value: string }
+  | { ok: true; kind: "itemsFull"; items: FullItem[]; damaged: string[] }
+  | { ok: true; kind: "deletedItems"; items: FullItem[]; damaged: string[] }
+  | { ok: true; kind: "folders"; folders: FolderSummary[] }
+  | { ok: true; kind: "saveItem" }
+  | { ok: true; kind: "deleteItem" }
+  | { ok: true; kind: "restoreItem" }
+  | { ok: true; kind: "saveFolder" }
+  | { ok: true; kind: "deleteFolder" }
   | { ok: false; error: string };
 
 export function parseRequest(value: unknown): Request | null {

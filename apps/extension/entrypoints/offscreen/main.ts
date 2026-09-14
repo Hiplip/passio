@@ -32,6 +32,29 @@ const custody = createCustody({
     return {
       getKeys: () => api.vault.getKeys.query(),
       listItems: () => api.item.list.query(),
+      listDeletedItems: () => api.item.listDeleted.query(),
+      createItem: async (id, ciphertext) => {
+        await api.item.create.mutate({ id, ciphertext });
+      },
+      updateItem: async (id, ciphertext) => {
+        await api.item.update.mutate({ id, ciphertext });
+      },
+      deleteItem: async (id) => {
+        await api.item.delete.mutate({ id });
+      },
+      restoreItem: async (id) => {
+        await api.item.restore.mutate({ id });
+      },
+      listFolders: () => api.folder.list.query(),
+      createFolder: async (id, ciphertext) => {
+        await api.folder.create.mutate({ id, ciphertext });
+      },
+      renameFolder: async (id, ciphertext) => {
+        await api.folder.rename.mutate({ id, ciphertext });
+      },
+      deleteFolder: async (id) => {
+        await api.folder.delete.mutate({ id });
+      },
     };
   },
 });
@@ -59,6 +82,27 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
         kind: "fieldValue",
         value: await custody.fieldValue(req.itemId, req.field),
       };
+    case "itemsFull":
+      return { ok: true, kind: "itemsFull", ...(await custody.itemsFull()) };
+    case "deletedItems":
+      return { ok: true, kind: "deletedItems", ...(await custody.deletedItems()) };
+    case "folders":
+      return { ok: true, kind: "folders", folders: await custody.folders() };
+    case "saveItem":
+      await custody.saveItem(req.id, req.item, req.isNew);
+      return { ok: true, kind: "saveItem" };
+    case "deleteItem":
+      await custody.removeItem(req.id);
+      return { ok: true, kind: "deleteItem" };
+    case "restoreItem":
+      await custody.restoreItem(req.id);
+      return { ok: true, kind: "restoreItem" };
+    case "saveFolder":
+      await custody.saveFolder(req.id, req.name, req.isNew);
+      return { ok: true, kind: "saveFolder" };
+    case "deleteFolder":
+      await custody.removeFolder(req.id);
+      return { ok: true, kind: "deleteFolder" };
   }
 }
 

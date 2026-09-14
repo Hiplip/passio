@@ -1,14 +1,40 @@
-import { unwrapVaultKey, type VaultKey } from "@passio/crypto";
+import {
+  encryptItem,
+  folderAad,
+  itemAad,
+  unwrapVaultKey,
+  type VaultKey,
+} from "@passio/crypto";
 import type { WrappingKey } from "@passio/crypto/types";
 import { copyActionsFor } from "@passio/core/actions";
+import {
+  decryptFolders,
+  type EncryptedFolderRow,
+} from "@passio/core/decrypt-folders";
 import { decryptVault, type EncryptedRow } from "@passio/core/decrypt-vault";
+import type { Item } from "@passio/core/schema";
 import { matchItemsToUrl } from "@passio/core/match";
 
-import type { FillField, ItemSummary, VaultState } from "./messages";
+import type {
+  FillField,
+  FolderSummary,
+  FullItem,
+  ItemSummary,
+  VaultState,
+} from "./messages";
 
 export interface CustodyApi {
   getKeys(): Promise<{ protectedVaultKey: string }>;
   listItems(): Promise<EncryptedRow[]>;
+  listDeletedItems(): Promise<EncryptedRow[]>;
+  createItem(id: string, ciphertext: string): Promise<void>;
+  updateItem(id: string, ciphertext: string): Promise<void>;
+  deleteItem(id: string): Promise<void>;
+  restoreItem(id: string): Promise<void>;
+  listFolders(): Promise<EncryptedFolderRow[]>;
+  createFolder(id: string, ciphertext: string): Promise<void>;
+  renameFolder(id: string, ciphertext: string): Promise<void>;
+  deleteFolder(id: string): Promise<void>;
 }
 
 export interface CustodyDeps {
@@ -59,12 +85,32 @@ export function createCustody(deps: CustodyDeps) {
     return deps.api(token);
   }
 
-  /** Decrypts the vault. Callers must already hold the key. */
-  async function loadVault(key: VaultKey) {
+  /** Runs an API call with the stored token, or refuses if there is none. */
+  async function withApi<T>(call: (api: CustodyApi) => Promise<T>): Promise<T> {
     const token = await deps.readToken();
     if (!token) throw new Error("The vault is locked.");
-    const rows = await deps.api(token).listItems();
+    return call(deps.api(token));
+  }
+
+  /** Decrypts the vault. Callers must already hold the key. */
+  async function loadVault(key: VaultKey) {
+    const rows = await withApi((api) => api.listItems());
     return decryptVault(rows, key);
+  }
+
+  /** Dates cross the message boundary as ISO strings; the reply is JSON. */
+  function toFullItem(item: {
+    id: string;
+    data: Item;
+    createdAt: Date;
+    updatedAt: Date;
+  }): FullItem {
+    return {
+      id: item.id,
+      data: item.data,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    };
   }
 
   function requireKey(): VaultKey {
@@ -125,6 +171,61 @@ export function createCustody(deps: CustodyDeps) {
       if (!vaultKey) return 0;
       const { items: summaries } = await items();
       return matchItemsToUrl(summaries, url).length;
+    },
+
+    /**
+     * The whole vault, decrypted.
+     *
+     * Unlike `items`, this carries plaintext - the editor cannot edit a
+     * summary. The popup deliberately keeps using `items`, so the only context
+     * that ever holds full plaintext is the editor page the user opened.
+     */
+    async itemsFull(): Promise<{ items: FullItem[]; damaged: string[] }> {
+      const { items: decrypted, damaged } = await loadVault(requireKey());
+      return { damaged, items: decrypted.map(toFullItem) };
+    },
+
+    async deletedItems(): Promise<{ items: FullItem[]; damaged: string[] }> {
+      const key = requireKey();
+      const rows = await withApi((api) => api.listDeletedItems());
+      const { items: decrypted, damaged } = await decryptVault(rows, key);
+      return { damaged, items: decrypted.map(toFullItem) };
+    },
+
+    async folders(): Promise<FolderSummary[]> {
+      const key = requireKey();
+      const rows = await withApi((api) => api.listFolders());
+      return decryptFolders(rows, key);
+    },
+
+    /** Encryption happens HERE, never in the page: it needs the key. */
+    async saveItem(id: string, item: Item, isNew: boolean): Promise<void> {
+      const ciphertext = await encryptItem(item, requireKey(), itemAad(id));
+      await withApi((api) =>
+        isNew ? api.createItem(id, ciphertext) : api.updateItem(id, ciphertext),
+      );
+    },
+
+    async removeItem(id: string): Promise<void> {
+      requireKey();
+      await withApi((api) => api.deleteItem(id));
+    },
+
+    async restoreItem(id: string): Promise<void> {
+      requireKey();
+      await withApi((api) => api.restoreItem(id));
+    },
+
+    async saveFolder(id: string, name: string, isNew: boolean): Promise<void> {
+      const ciphertext = await encryptItem({ name }, requireKey(), folderAad(id));
+      await withApi((api) =>
+        isNew ? api.createFolder(id, ciphertext) : api.renameFolder(id, ciphertext),
+      );
+    },
+
+    async removeFolder(id: string): Promise<void> {
+      requireKey();
+      await withApi((api) => api.deleteFolder(id));
     },
 
     /**

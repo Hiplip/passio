@@ -345,3 +345,28 @@ for the split beyond tidiness.
 Verified after the move: 451 tests across 38 files (unchanged), typecheck across all four
 workspace projects, lint, build, smoke on 9 routes, and `db:push` reporting no changes
 against the dev branch.
+
+## NEEDS-REVIEW: the extension's vault page holds plaintext
+
+The extension gained a full vault page (`vault.html`) that creates, edits and
+deletes items. Editing an item means holding its plaintext, so the popup's old
+property — that it renders only `ItemSummary` values with no secrets in them — does
+not extend to this page.
+
+**What has not changed.** The vault key exists only in the offscreen document. It is
+never serialised, never messaged, never in a page. Encryption still happens in the
+offscreen document: the editor sends plaintext and receives nothing but a result.
+
+**What has changed.** Plaintext for the items being edited now lives in a browser tab
+for as long as that tab is open. Plaintext already crossed this boundary for copy and
+fill, so this is a difference of degree — but it is a real widening, made deliberately
+in exchange for full parity with the web app, and it should be revisited if the page
+ever grows beyond editing.
+
+Structurally enforced, and proven rather than assumed:
+
+- `apps/extension/bundle.test.ts` asserts the offscreen document's whole module graph
+  mentions no extension API but `chrome.runtime`, and that the compiled derivation
+  (WebAssembly header, `hash-wasm`) appears in no page, worker or injected script.
+- Verified by reintroducing the original `chrome.storage` bug and confirming the gate
+  fails, then reverting.

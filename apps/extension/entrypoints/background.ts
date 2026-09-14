@@ -1,4 +1,5 @@
-import { chromeTokenStore, clearToken, readToken, writeToken } from "../src/auth";
+import { clearToken, readToken, writeToken } from "../src/auth";
+import { chromeTokenStore } from "../src/chrome-storage";
 import {
   forwarded,
   parseBackgroundRequest,

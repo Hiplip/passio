@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { encryptItem, generateVaultKey, itemAad, wrapVaultKey } from "@passio/crypto";
 import type { WrappingKey } from "@passio/crypto/types";
 
-import { createCustody, type CustodyDeps } from "./custody";
+import { createCustody, type CustodyApi, type CustodyDeps } from "./custody";
 
 const ITEM_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -39,6 +39,47 @@ async function fixture() {
 
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 
+interface Write {
+  op: string;
+  id: string;
+  ciphertext?: string;
+}
+
+/**
+ * A fake server that records every write.
+ *
+ * Module-level so a test can override one method by spreading the rest,
+ * rather than restating the whole eleven-method surface.
+ */
+function makeApi(f: Fixture, writes: Write[]): CustodyApi {
+  const record = (op: string) => (id: string, ciphertext?: string) => {
+    writes.push({ op, id, ciphertext });
+    return Promise.resolve();
+  };
+
+  return {
+    getKeys: () => Promise.resolve({ protectedVaultKey: f.protectedVaultKey }),
+    listItems: () =>
+      Promise.resolve([
+        {
+          id: ITEM_ID,
+          ciphertext: f.ciphertext,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]),
+    listDeletedItems: () => Promise.resolve([]),
+    listFolders: () => Promise.resolve([]),
+    createItem: record("createItem"),
+    updateItem: record("updateItem"),
+    deleteItem: record("deleteItem"),
+    restoreItem: record("restoreItem"),
+    createFolder: record("createFolder"),
+    renameFolder: record("renameFolder"),
+    deleteFolder: record("deleteFolder"),
+  };
+}
+
 /**
  * Builds a custody instance over fake dependencies.
  *
@@ -48,6 +89,7 @@ type Fixture = Awaited<ReturnType<typeof fixture>>;
  */
 function harness(over: Partial<CustodyDeps>, f: Fixture) {
   let stored: string | null = null;
+  const writes: Write[] = [];
 
   const signIn = vi.fn(() => Promise.resolve("TOKEN"));
   const writeToken = vi.fn((t: string) => { stored = t; return Promise.resolve(); });
@@ -59,22 +101,11 @@ function harness(over: Partial<CustodyDeps>, f: Fixture) {
     writeToken,
     clearToken,
     readToken: () => Promise.resolve(stored),
-    api: () => ({
-      getKeys: () => Promise.resolve({ protectedVaultKey: f.protectedVaultKey }),
-      listItems: () =>
-        Promise.resolve([
-          {
-            id: ITEM_ID,
-            ciphertext: f.ciphertext,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ]),
-    }),
+    api: () => makeApi(f, writes),
     ...over,
   };
 
-  return { custody: createCustody(deps), signIn, writeToken, clearToken };
+  return { custody: createCustody(deps), signIn, writeToken, clearToken, writes };
 }
 
 describe("custody", () => {
@@ -116,13 +147,13 @@ describe("custody", () => {
     const { custody, signIn } = harness({
       readToken: () => Promise.resolve("STALE"),
       api: () => ({
+        ...makeApi(f, []),
         getKeys: () => {
           calls += 1;
           return calls === 1
             ? Promise.reject(new Error("UNAUTHORIZED"))
             : Promise.resolve({ protectedVaultKey: f.protectedVaultKey });
         },
-        listItems: () => Promise.resolve([]),
       }),
     }, f);
     await custody.unlock("a@b.co", "master");
@@ -206,6 +237,83 @@ describe("custody", () => {
     await custody.unlock("a@b.co", "master");
     expect(await custody.matchCount("https://github.com/settings")).toBe(1);
     expect(await custody.matchCount("https://example.com/")).toBe(0);
+  });
+
+  it("returns full plaintext items for the editor", async () => {
+    // Unlike items(), this carries secrets - the editor cannot edit a summary.
+    const { custody } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    const { items } = await custody.itemsFull();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]!.data).toMatchObject({ title: "GitHub", password: "s3cret" });
+    // Dates cross the message boundary as strings, not Date objects.
+    expect(typeof items[0]!.createdAt).toBe("string");
+  });
+
+  it("encrypts on save, so the page never holds the key", async () => {
+    const { custody, writes } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    // A distinctive marker, not a single letter: base64url output contains
+    // every character eventually, so a one-character probe fails at random.
+    const MARKER = "PlaintextMarkerZZ";
+    await custody.saveItem(
+      ITEM_ID, { type: "note", title: MARKER, body: MARKER }, true,
+    );
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.op).toBe("createItem");
+    // Ciphertext, in the stored envelope shape - never the plaintext.
+    expect(writes[0]!.ciphertext).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+    expect(writes[0]!.ciphertext).not.toContain(MARKER);
+  });
+
+  it("updates rather than creates for an existing item", async () => {
+    const { custody, writes } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    await custody.saveItem(ITEM_ID, { type: "note", title: "N" }, false);
+    expect(writes[0]!.op).toBe("updateItem");
+  });
+
+  it("binds a saved item to its own id", async () => {
+    // The id is the AAD. A ciphertext written for one id must not decrypt in
+    // another row, which is what stops a malicious server swapping items.
+    const OTHER = "22222222-2222-4222-8222-222222222222";
+    const { custody, writes } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    await custody.saveItem(ITEM_ID, { type: "note", title: "A" }, true);
+    await custody.saveItem(OTHER, { type: "note", title: "A" }, true);
+    // Same plaintext, different id: the ciphertexts must differ.
+    expect(writes[0]!.ciphertext).not.toBe(writes[1]!.ciphertext);
+  });
+
+  it("deletes and restores items", async () => {
+    const { custody, writes } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    await custody.removeItem(ITEM_ID);
+    await custody.restoreItem(ITEM_ID);
+    expect(writes.map((w) => w.op)).toEqual(["deleteItem", "restoreItem"]);
+  });
+
+  it("encrypts folder names too", async () => {
+    const { custody, writes } = harness({}, f);
+    await custody.unlock("a@b.co", "master");
+    await custody.saveFolder(ITEM_ID, "CryptoWalletsMarker", true);
+
+    expect(writes[0]!.op).toBe("createFolder");
+    // A folder name leaks intent on its own, so it is encrypted like an item.
+    expect(writes[0]!.ciphertext).not.toContain("CryptoWalletsMarker");
+  });
+
+  it("refuses every write while locked", async () => {
+    const { custody, writes } = harness({}, f);
+    await expect(
+      custody.saveItem(ITEM_ID, { type: "note", title: "N" }, true),
+    ).rejects.toThrow(/locked/i);
+    await expect(custody.removeItem(ITEM_ID)).rejects.toThrow(/locked/i);
+    await expect(custody.saveFolder(ITEM_ID, "X", true)).rejects.toThrow(/locked/i);
+    await expect(custody.itemsFull()).rejects.toThrow(/locked/i);
+    expect(writes).toEqual([]);
   });
 
   it("reports zero matches while locked, rather than throwing", async () => {

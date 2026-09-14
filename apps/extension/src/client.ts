@@ -1,3 +1,5 @@
+import type { Item } from "@passio/core/schema";
+
 import type {
   FillField,
   ItemSummary,
@@ -56,6 +58,58 @@ export const vault = {
   async items(): Promise<{ items: ItemSummary[]; damaged: number }> {
     const res = expectKind(await send({ target: "offscreen", kind: "items" }), "items");
     return { items: res.items, damaged: res.damaged };
+  },
+
+  // --- full-vault operations, used only by the editor page ---
+
+  async itemsFull() {
+    const res = expectKind(
+      await send({ target: "offscreen", kind: "itemsFull" }), "itemsFull",
+    );
+    return { items: res.items, damaged: res.damaged };
+  },
+
+  async deletedItems() {
+    const res = expectKind(
+      await send({ target: "offscreen", kind: "deletedItems" }), "deletedItems",
+    );
+    return { items: res.items, damaged: res.damaged };
+  },
+
+  async folders() {
+    return expectKind(
+      await send({ target: "offscreen", kind: "folders" }), "folders",
+    ).folders;
+  },
+
+  async saveItem(id: string, item: Item, isNew: boolean): Promise<void> {
+    expectKind(
+      await send({ target: "offscreen", kind: "saveItem", id, item, isNew }),
+      "saveItem",
+    );
+  },
+
+  async deleteItem(id: string): Promise<void> {
+    expectKind(await send({ target: "offscreen", kind: "deleteItem", id }), "deleteItem");
+  },
+
+  async restoreItem(id: string): Promise<void> {
+    expectKind(
+      await send({ target: "offscreen", kind: "restoreItem", id }), "restoreItem",
+    );
+  },
+
+  async saveFolder(id: string, name: string, isNew: boolean): Promise<void> {
+    expectKind(
+      await send({ target: "offscreen", kind: "saveFolder", id, name, isNew }),
+      "saveFolder",
+    );
+  },
+
+  async deleteFolder(id: string): Promise<void> {
+    expectKind(
+      await send({ target: "offscreen", kind: "deleteFolder", id }), "deleteFolder",
+    );
   },
 
   async fieldValue(itemId: string, field: FillField): Promise<string> {

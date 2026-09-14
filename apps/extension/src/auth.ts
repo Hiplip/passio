@@ -1,5 +1,10 @@
 /**
- * Session storage and the sign-in exchange. **No key derivation lives here.**
+ * The session token, as pure logic, plus the sign-in exchange.
+ *
+ * **No key derivation and no chrome.storage live here.** Derivation would drag
+ * Argon2id into the service worker, which imports this. chrome.storage would
+ * put an API the offscreen document does not have into its module graph. Both
+ * belong elsewhere: the Web Worker, and chrome-storage.ts.
  *
  * The service worker imports the token helpers, and a module-level import of
  * performDerivation drags Argon2id and all of hash-wasm into the worker bundle
@@ -7,8 +12,6 @@
  * Derivation belongs to the offscreen document's Web Worker, and nowhere else.
  */
 
-const TOKEN_KEY = "passio.session-token";
-const EMAIL_KEY = "passio.email";
 
 /**
  * The slice of chrome.storage.local this module uses.
@@ -20,41 +23,6 @@ export interface TokenStore {
   get(): Promise<string | undefined>;
   set(value: string): Promise<void>;
   remove(): Promise<void>;
-}
-
-export const chromeTokenStore: TokenStore = {
-  async get() {
-    const r = await chrome.storage.local.get(TOKEN_KEY);
-    return r[TOKEN_KEY] as string | undefined;
-  },
-  async set(value) {
-    await chrome.storage.local.set({ [TOKEN_KEY]: value });
-  },
-  async remove() {
-    await chrome.storage.local.remove(TOKEN_KEY);
-  },
-};
-
-/**
- * The signed-in email address.
- *
- * Stored because unlocking re-derives the key, and derivation salts on the
- * email - so a locked vault needs it back without asking. It is not a secret,
- * and remembering it is the difference between a 15-minute auto-lock being
- * usable and being switched off.
- */
-export async function readEmail(): Promise<string | null> {
-  const r = await chrome.storage.local.get(EMAIL_KEY);
-  const v = r[EMAIL_KEY] as string | undefined;
-  return v ? v : null;
-}
-
-export async function writeEmail(email: string): Promise<void> {
-  await chrome.storage.local.set({ [EMAIL_KEY]: email });
-}
-
-export async function clearEmail(): Promise<void> {
-  await chrome.storage.local.remove(EMAIL_KEY);
 }
 
 export async function readToken(store: TokenStore): Promise<string | null> {

@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { toast } from "sonner";
 
-import { readEmail, writeEmail } from "../../src/auth";
+import { readEmail, writeEmail } from "../../src/chrome-storage";
 import { vault } from "../../src/client";
 import { ItemGlyph } from "../../src/item-glyph";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
@@ -290,7 +290,9 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   function openFullVault(itemId?: string) {
     void chrome.tabs.create({
-      url: chrome.runtime.getURL(itemId ? `vault.html#/item/${itemId}` : "vault.html"),
+      url: chrome.runtime.getURL(
+        itemId ? `vault.html#/vault/${itemId}` : "vault.html",
+      ),
     });
   }
 
