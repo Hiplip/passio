@@ -174,7 +174,7 @@ while an editor screen is open, and leaves when you go back.
 New, and **off until you turn it on** — it needs access to every page you visit, which
 the extension deliberately does not ask for at install.
 
-- [ ] In the popup footer, turn on **Suggest logins in password fields**.
+- [ ] In the popup footer, turn on **Suggest logins on form fields**.
       Chrome shows its own permission prompt. Accept it.
 - [ ] Go to a login page you have saved. A small teal **p** button appears at the
       right-hand end of the password field.

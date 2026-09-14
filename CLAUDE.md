@@ -167,6 +167,15 @@ it hangs forever.
   failing on roughly one run in three. It read like a data race and was memory pressure.
   Note both options are silently ignored inside a `projects[]` entry - only root works.
   The suite takes about two minutes as a result.
+- **`hookTimeout` is raised to 20s, matching `testTimeout`.** The db project's
+  `beforeEach`/`afterEach` are network round trips to Neon - the same work the tests
+  do - so they need the same budget. On vitest's 10s default this produced roughly one
+  `Hook timed out in 10000ms` per five full runs, always inside a fixture reset and
+  never inside an assertion, which reads like a race and is really latency.
+- **Fixture hooks batch their inserts** (`seedUsers(ALICE, BOB)`, one statement). The db
+  project is entirely network-bound - about 250s for 86 tests, ~3s each - and that time
+  is round trips, not computation. Adding a per-row `await` in a hook is the easiest way
+  to make the suite slower and flakier at once.
 - **The DB tests assume exclusive access to that database.** `vitest.config.ts` splits the
   suite into two projects: `unit` (in-memory, files in parallel) and `db` (single fork, one
   file at a time). That ordering holds *within* one vitest run. It does NOT hold across two

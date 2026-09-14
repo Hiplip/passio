@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 
-import { findLoginFields } from "./fields";
+import { findLoginFields, findSuggestableFields } from "./fields";
 
 /**
  * jsdom reports every element as zero-sized, so the visibility check would
@@ -138,5 +138,57 @@ describe("findLoginFields", () => {
   it("returns nulls for a page with no inputs at all", () => {
     expect(findLoginFields(dom(`<p>nothing here</p>`)))
       .toEqual({ username: null, password: null, totp: null });
+  });
+});
+
+describe("findSuggestableFields", () => {
+  it("returns the same fields as the strict finder on a normal form", () => {
+    const doc = dom(`
+      <form>
+        <input type="text" id="u" />
+        <input type="password" id="pw" />
+      </form>`);
+    const f = findSuggestableFields(doc);
+    expect(f.username?.id).toBe("u");
+    expect(f.password?.id).toBe("pw");
+  });
+
+  it("finds a lone email field on a two-step login", () => {
+    // Google, Microsoft and most SSO flows ask for the email first, with no
+    // password field on the page at all. Bitwarden shows its icon there.
+    const doc = dom(`<form><input type="email" id="email" /></form>`);
+    const f = findSuggestableFields(doc);
+    expect(f.username?.id).toBe("email");
+    expect(f.password).toBeNull();
+  });
+
+  it("finds a lone field marked autocomplete=username", () => {
+    const doc = dom(`<form><input type="text" id="u" autocomplete="username" /></form>`);
+    expect(findSuggestableFields(doc).username?.id).toBe("u");
+  });
+
+  it("does not decorate an unmarked text box", () => {
+    // Otherwise every search field on the web sprouts a button. Decorating is
+    // cheap to get wrong, but not free.
+    const doc = dom(`<form><input type="text" id="q" placeholder="Search" /></form>`);
+    expect(findSuggestableFields(doc).username).toBeNull();
+  });
+
+  it("still refuses a change-password form", () => {
+    // Two password fields: the strict finder returns nothing, and there is no
+    // lone username to fall back to either.
+    const doc = dom(`
+      <form>
+        <input type="password" id="new" />
+        <input type="password" id="confirm" />
+      </form>`);
+    const f = findSuggestableFields(doc);
+    expect(f.password).toBeNull();
+    expect(f.username).toBeNull();
+  });
+
+  it("never returns a hidden field", () => {
+    const doc = dom(`<form><input type="email" id="trap" data-invisible /></form>`);
+    expect(findSuggestableFields(doc).username).toBeNull();
   });
 });

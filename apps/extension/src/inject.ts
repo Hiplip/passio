@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { findLoginFields } from "./fields";
+import { findSuggestableFields } from "./fields";
 import { fillField } from "./fill";
 
 /**
@@ -28,14 +28,27 @@ export type FillOutcome = "filled" | "no-form";
  * of them is ours to make.
  */
 export function applyFill(payload: FillPayload, doc: Document): FillOutcome {
-  const fields = findLoginFields(doc);
-  if (!fields.password) return "no-form";
+  const fields = findSuggestableFields(doc);
+
+  let filled = false;
 
   if (payload.username && fields.username) {
     fillField(fields.username, payload.username);
+    filled = true;
   }
-  fillField(fields.password, payload.password);
-  if (payload.totp && fields.totp) fillField(fields.totp, payload.totp);
 
-  return "filled";
+  // Only ever when the strict rule found exactly one visible password field.
+  // A two-step login has none yet, and filling the username alone is the right
+  // answer there - the password page comes next.
+  if (fields.password) {
+    fillField(fields.password, payload.password);
+    filled = true;
+  }
+
+  if (payload.totp && fields.totp) {
+    fillField(fields.totp, payload.totp);
+    filled = true;
+  }
+
+  return filled ? "filled" : "no-form";
 }

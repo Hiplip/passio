@@ -57,6 +57,11 @@ export default defineConfig({
     // It costs about a minute a run, which is worth a gate that means something.
     fileParallelism: false,
     testTimeout: 20_000, // Argon2id at 64 MiB is deliberately slow
+    // The db project's beforeEach/afterEach are network round trips to Neon,
+    // the same work the tests do - so they get the same budget. Leaving them on
+    // vitest's 10s default produced roughly one "Hook timed out in 10000ms" per
+    // five full runs, always in a fixture reset and never in an assertion.
+    hookTimeout: 20_000,
     projects: [
       {
         // Everything that runs purely in memory: files in parallel, as usual.

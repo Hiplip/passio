@@ -36,6 +36,35 @@ function last<T>(items: T[], predicate: (item: T) => boolean): T | null {
 }
 
 /**
+ * Fields worth putting a suggestion button on.
+ *
+ * Deliberately more permissive than `findLoginFields`, because the two jobs
+ * carry different risk. Decorating the wrong field costs a stray button;
+ * filling the wrong field costs an account. So filling keeps the strict rule
+ * and suggesting relaxes one case: a page with NO password field at all, which
+ * is every two-step login that asks for your email first. Google, Microsoft
+ * and most SSO flows look like this, and Bitwarden shows its icon on them.
+ *
+ * The relaxation needs an explicit signal - `autocomplete="username"`, an email
+ * input, or a name that says so. It will not decorate any old text box, or
+ * every search field on the web would sprout a button.
+ */
+export function findSuggestableFields(doc: Document): LoginFields {
+  const strict = findLoginFields(doc);
+  if (strict.password ?? strict.username) return strict;
+
+  const inputs = [...doc.querySelectorAll("input")].filter(visible);
+  const candidates = inputs.filter((el) => el.type === "text" || el.type === "email");
+
+  const username =
+    last(candidates, (el) => el.getAttribute("autocomplete") === "username") ??
+    last(candidates, (el) => el.type === "email") ??
+    last(candidates, (el) => USERNAME_HINT.test(hints(el)));
+
+  return { username, password: null, totp: strict.totp };
+}
+
+/**
  * The username, password and one-time-code fields of a login form.
  *
  * Pure over a Document so it can be tested in jsdom, which matters more here

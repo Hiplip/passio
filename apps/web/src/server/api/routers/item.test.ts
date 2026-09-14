@@ -32,8 +32,8 @@ const BOB_CIPHERTEXT = "v1.bob-iv.bob-payload";
 type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 type Session = NonNullable<Context["session"]>;
 
-async function seedUser(id: string) {
-  await db.insert(user).values({
+function userFixture(id: string) {
+  return {
     id,
     name: "Test",
     email: `${id}@example.test`,
@@ -42,7 +42,13 @@ async function seedUser(id: string) {
     recoveryWrappedVaultKey: "v1.cccc.dddd",
     recoveryVerifier: `hashed-verifier-fixture-${id}`,
     kdfVersion: 1,
-  });
+  };
+}
+
+/** One statement, not one per user. Every hook here is a network round trip to
+ *  a serverless database, and they are what the run's wall-clock is made of. */
+async function seedUsers(...ids: string[]) {
+  await db.insert(user).values(ids.map(userFixture));
 }
 
 /**
@@ -110,8 +116,7 @@ async function removeFixtures() {
 beforeEach(async () => {
   // Also clears residue from a run that crashed before its afterEach.
   await removeFixtures();
-  await seedUser(ALICE);
-  await seedUser(BOB);
+  await seedUsers(ALICE, BOB);
 });
 
 afterEach(removeFixtures);

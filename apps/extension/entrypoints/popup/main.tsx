@@ -311,7 +311,7 @@ function InlineToggle() {
   return (
     <div className="flex items-center gap-2">
       <label htmlFor="inline" className="text-muted-foreground flex-1 text-xs">
-        Suggest logins in password fields
+        Suggest logins on form fields
         <span className="block text-[11px] opacity-70">
           Lets passio see the pages you visit
         </span>

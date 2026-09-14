@@ -108,3 +108,26 @@ describe("fillPayloadSchema", () => {
     }
   });
 });
+
+describe("applyFill on a two-step login", () => {
+  it("fills the username when the page has no password field yet", () => {
+    const doc = dom(`<form><input type="email" id="email" /></form>`);
+    expect(applyFill(payload(), doc)).toBe("filled");
+    expect(doc.querySelector<HTMLInputElement>("#email")!.value).toBe("ada");
+  });
+
+  it("reports no-form when there is nothing at all to fill", () => {
+    const doc = dom(`<p>nothing here</p>`);
+    expect(applyFill(payload(), doc)).toBe("no-form");
+  });
+
+  it("still refuses a change-password form", () => {
+    const doc = dom(`
+      <form>
+        <input type="password" id="old" />
+        <input type="password" id="new" />
+      </form>`);
+    expect(applyFill(payload(), doc)).toBe("no-form");
+    expect(doc.querySelector<HTMLInputElement>("#old")!.value).toBe("");
+  });
+});
