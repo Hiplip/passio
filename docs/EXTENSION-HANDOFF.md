@@ -103,21 +103,28 @@ the throwaway item and stop the server when you are done.
 - [ ] Lock, reopen: asks for the **master password only**, remembering the email
 - [ ] Wrong password → a clear error, not a hang
 
-### B2 · The key survives service-worker eviction
+### B2 · The vault stays unlocked while you are away (~90 seconds)
 
-**Set "Lock after" to 60 min first.** With it at 1 minute this test cannot tell an
-eviction apart from auto-lock working correctly, and the two look identical from the
-outside.
+**The 60 minutes below is a setting, not a wait.** It only stops auto-lock from
+interfering; the test itself takes about a minute and a half.
 
-- [ ] Settings → Lock after → **60 min**
-- [ ] Unlock, close the popup
-- [ ] `chrome://extensions` → watch the passio card for a minute or two
-- [ ] Open the popup → still unlocked
+- [ ] Settings → **Lock after → 60 min**
+- [ ] Unlock, then close the popup
+- [ ] Leave it alone for **90 seconds** — do not open the popup, do not click the icon
+- [ ] Open the popup → **still unlocked**
 
-The worker may now stay **active** the whole time rather than going Inactive: the
-offscreen document holds a port open while the vault is unlocked, which is deliberately
-what keeps it - and the key - from being collected. An unlocked vault keeping the worker
-alive is the fix, not a leak. Lock the vault and the worker goes idle like any other.
+That is the whole test. Chrome evicts an idle service worker after roughly 30 seconds,
+so 90 is comfortably past the window that used to lose your key.
+
+**Do not open the worker's DevTools to watch it.** Attaching a debugger keeps a service
+worker alive, so the test would pass for the wrong reason. Any check you can do by
+inspecting is a check you are no longer running.
+
+Optional, and only if you are curious: on `chrome://extensions` the card should now say
+**"service worker"** rather than **"service worker (Inactive)"** while the vault is
+unlocked. That is the fix working - the offscreen document holds a port open, which is
+what keeps the worker, the document and the key from being collected. Lock the vault and
+it goes idle again like any other extension.
 
 ### B3 · Finding things
 
@@ -192,20 +199,65 @@ total session time.
 
 ---
 
-# C · Edges and resilience
+# C · Edges and resilience (~10 min)
 
-- [ ] **Offline:** turn off Wi-Fi and open the popup → "Cannot reach passio" with a retry,
-      not a blank panel. There is no offline cache by design
-- [ ] **A page with no login form:** Fill says so and leaves the copy actions available
-- [ ] **A bank with an iframe login:** will not fill, by design. Copy still works
-- [ ] **`chrome://extensions` or a PDF:** no button, no errors, popup still usable
-- [ ] **Two browser windows:** unlock in one; the other is unlocked too (one offscreen
-      document serves the whole browser)
-- [ ] **An item with no password**, or no username: copy offers only what exists
-- [ ] **A very long folder name** in the filter dropdown — should truncate, not overflow
-- [ ] **A vault with one item, and with none:** empty states read sensibly
+Each of these has a concrete way to produce it.
 
----
+### C1 · Offline
+
+- [ ] Turn off Wi-Fi (or Airplane mode), then open the popup and unlock or list items
+- [ ] Expect **"Cannot reach passio"** with a **Try again** button — not a blank panel
+      and not a spinner that never ends
+- [ ] Turn Wi-Fi back on, press Try again → it recovers
+
+There is no offline cache by design, so failing is correct here. Failing *silently* is not.
+
+### C2 · A page with no login form
+
+- [ ] Open `https://en.wikipedia.org`
+- [ ] Popup → pick any item → **Fill**
+- [ ] Expect **"No login form on this page"**, and the copy actions still available
+
+### C3 · A page the extension must not touch
+
+- [ ] Open `chrome://extensions`, then any PDF (drag one into a tab)
+- [ ] No passio button appears, nothing errors, and the popup still opens and works
+- [ ] Fill from the popup says it cannot fill this kind of page
+
+### C4 · Two browser windows share one unlock
+
+- [ ] Unlock in one window, press **Ctrl+N** for a second
+- [ ] Open the popup there → already unlocked
+
+One offscreen document serves the whole browser, so this is expected. Two *profiles*
+are separate and would each need unlocking.
+
+### C5 · An item with nothing to copy
+
+- [ ] Create a login with a username but **no password**
+- [ ] Its `⋯` menu offers Copy username but **not** Copy password
+- [ ] Create a secure note — it has no Fill button at all
+
+Offering "Copy password" on an item with none puts an empty string on your clipboard and
+looks like the app lost it.
+
+### C6 · A long folder name
+
+- [ ] Create a folder called `Work accounts and everything else I keep for the office`
+- [ ] Open the popup's **Folder** filter → the name truncates, the dropdown does not
+      stretch the popup or grow a sideways scrollbar
+
+### C7 · Nothing matches
+
+- [ ] Search for `zzzzqqq` → "Nothing matches" rather than an empty void
+- [ ] Pick a folder and type filter that cannot both be true → "No items in this filter"
+
+### C8 · A slow or interrupted save
+
+- [ ] Start editing an item, turn off Wi-Fi, then press Save
+- [ ] Expect a clear failure saying nothing was changed — never a success message
+
+A password manager reporting a save that did not happen is the worst failure it has.
 
 # D · The web app still works
 
