@@ -169,7 +169,35 @@ while an editor screen is open, and leaves when you go back.
 
 ---
 
-## 9. The vault window
+## 9. Inline suggestions (opt-in)
+
+New, and **off until you turn it on** — it needs access to every page you visit, which
+the extension deliberately does not ask for at install.
+
+- [ ] In the popup footer, turn on **Suggest logins in password fields**.
+      Chrome shows its own permission prompt. Accept it.
+- [ ] Go to a login page you have saved. A small teal **p** button appears at the
+      right-hand end of the password field.
+- [ ] Click it. A list of matching logins appears, anchored to the field.
+- [ ] Click an entry — username and password fill, and the list closes.
+      **Nothing is submitted.**
+- [ ] Scroll the page. The button should track the field, not float away.
+- [ ] Press **Escape**, or click elsewhere — the list closes.
+- [ ] Lock the vault, then click the button. It should say passio is locked rather
+      than showing anything.
+
+Then confirm you can take it back:
+
+- [ ] `chrome://extensions` → passio → **Details** → **Site access**, set it back to
+      "On click". The button should stop appearing **without a browser restart**.
+- [ ] Or flip the popup toggle off, which does the same thing.
+
+If the button never appears: open the page console (F12) and check for errors, and
+confirm the toggle still reads as on — Chrome can revoke the grant independently.
+
+---
+
+## 10. The vault window
 
 The **↗** button opens the whole vault in a detached window — the same interface as the
 web app, running inside the extension, already unlocked.
