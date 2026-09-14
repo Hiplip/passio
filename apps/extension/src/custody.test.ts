@@ -173,6 +173,7 @@ describe("custody", () => {
       username: "ada",
       uri: "https://github.com/login",
       hasTotp: false,
+      folderId: undefined,
     }]);
     // The whole point of ItemSummary: no password reaches the popup.
     expect(JSON.stringify(items)).not.toContain("s3cret");

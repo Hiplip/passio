@@ -4,6 +4,7 @@ import type { DecryptedItem } from "./decrypt-vault";
 import {
   ALL_ITEMS,
   applyFilter,
+  applySummaryFilter,
   countByFolder,
   countByType,
   countTotp,
@@ -185,5 +186,41 @@ describe("viewsEqual", () => {
     expect(
       viewsEqual({ kind: "folder", folderId: WORK }, { kind: "folder", folderId: HOME }),
     ).toBe(false);
+  });
+});
+
+describe("applySummaryFilter", () => {
+  const summaries = [
+    { id: "a", type: "login" as const, folderId: "work", hasTotp: true },
+    { id: "b", type: "login" as const, hasTotp: false },
+    { id: "c", type: "note" as const, folderId: "work", hasTotp: false },
+    { id: "d", type: "card" as const, folderId: "gone", hasTotp: false },
+  ];
+  const known = new Set(["work"]);
+  const ids = (r: { id: string }[]) => r.map((i) => i.id);
+
+  it("returns everything for the all filter", () => {
+    expect(applySummaryFilter(summaries, { kind: "all" }, known)).toHaveLength(4);
+  });
+
+  it("filters by type", () => {
+    expect(ids(applySummaryFilter(summaries, { kind: "type", type: "login" }, known)))
+      .toEqual(["a", "b"]);
+  });
+
+  it("filters by folder", () => {
+    expect(ids(applySummaryFilter(summaries, { kind: "folder", folderId: "work" }, known)))
+      .toEqual(["a", "c"]);
+  });
+
+  it("treats a dangling folder id as unfiled, not invisible", () => {
+    // Item "d" points at a folder that no longer exists. Losing sight of an
+    // item is worse than misfiling it, and both clients must agree on that.
+    expect(ids(applySummaryFilter(summaries, { kind: "unfiled" }, known)))
+      .toEqual(["b", "d"]);
+  });
+
+  it("filters by one-time code", () => {
+    expect(ids(applySummaryFilter(summaries, { kind: "totp" }, known))).toEqual(["a"]);
   });
 });

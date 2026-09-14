@@ -55,28 +55,67 @@ export function filtersEqual(a: VaultFilter, b: VaultFilter): boolean {
  * cascade to its items, because the server cannot read which items reference
  * it, so without this those items would vanish from every view.
  */
+/** The only three things any filter looks at, in whichever shape they arrive. */
+export interface Filterable {
+  type: ItemType;
+  folderId?: string;
+  hasTotp: boolean;
+}
+
+function matches(
+  item: Filterable,
+  filter: VaultFilter,
+  knownFolderIds: ReadonlySet<string>,
+): boolean {
+  switch (filter.kind) {
+    case "all":
+    case "trash":
+      return true;
+    case "type":
+      return item.type === filter.type;
+    case "totp":
+      return item.hasTotp;
+    case "folder":
+      return item.folderId === filter.folderId;
+    case "unfiled":
+      // An item pointing at a folder that no longer exists is unfiled, not
+      // invisible. Losing sight of an item is worse than misfiling it.
+      return item.folderId === undefined || !knownFolderIds.has(item.folderId);
+  }
+}
+
 export function applyFilter(
   items: DecryptedItem[],
   filter: VaultFilter,
   knownFolderIds: ReadonlySet<string>,
 ): DecryptedItem[] {
-  switch (filter.kind) {
-    case "all":
-      return items;
-    case "type":
-      return items.filter((item) => item.data.type === filter.type);
-    case "totp":
-      return items.filter(hasTotp);
-    case "folder":
-      return items.filter((item) => item.data.folderId === filter.folderId);
-    case "unfiled":
-      return items.filter((item) => {
-        const id = item.data.folderId;
-        return id === undefined || !knownFolderIds.has(id);
-      });
-    case "trash":
-      return items;
-  }
+  return items.filter((item) =>
+    matches(
+      {
+        type: item.data.type,
+        folderId: item.data.folderId,
+        hasTotp: hasTotp(item),
+      },
+      filter,
+      knownFolderIds,
+    ),
+  );
+}
+
+/**
+ * The same filter over the extension's flat summary shape.
+ *
+ * Shares `matches` with `applyFilter` rather than reimplementing the rules, so
+ * the two clients cannot drift into disagreeing about which folder an item is
+ * in - and in particular so both keep treating a dangling folder id as unfiled
+ * rather than hiding the item.
+ */
+export function applySummaryFilter<T extends Filterable>(
+  items: T[],
+  filter: VaultFilter,
+  knownFolderIds: ReadonlySet<string>,
+): T[] {
+  return items.filter((item) => matches(item, filter, knownFolderIds));
 }
 
 /** How many items each folder holds, for the counts beside the sidebar entries. */

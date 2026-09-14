@@ -129,6 +129,7 @@ export function createCustody(deps: CustodyDeps) {
         username: data.type === "login" ? data.username : undefined,
         uri: data.type === "login" ? data.uri : undefined,
         hasTotp: data.type === "login" && data.totp !== undefined,
+        folderId: data.folderId,
       })),
     };
   }

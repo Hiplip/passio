@@ -184,6 +184,9 @@ export interface ItemSummary {
   username?: string;
   uri?: string;
   hasTotp: boolean;
+  /** For the folder filter. A UUID with no meaning outside the vault, and far
+   *  less revealing than the title beside it. */
+  folderId?: string;
 }
 
 /** A decrypted item as the editor page needs it. Dates cross the message

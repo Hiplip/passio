@@ -1,6 +1,7 @@
 import "@passio/ui/styles.css";
 
 import { searchSummaries } from "@passio/core/search";
+import { applySummaryFilter, type VaultFilter } from "@passio/core/filter";
 import { matchItemsToUrl } from "@passio/core/match";
 import { copyWithAutoClear } from "@passio/core/clipboard";
 import { Button } from "@passio/ui/button";
@@ -12,6 +13,13 @@ import {
 } from "@passio/ui/dropdown-menu";
 import { Field } from "@passio/ui/field";
 import { Input } from "@passio/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@passio/ui/select";
 import { Skeleton } from "@passio/ui/skeleton";
 import { Switch } from "@passio/ui/switch";
 import { Toaster } from "@passio/ui/sonner";
@@ -21,8 +29,8 @@ import { NavigationProvider } from "@passio/vault-ui/navigation";
 import { NewItem } from "@passio/vault-ui/new-item";
 import { GeneratorPanel } from "@passio/vault-ui/generator-panel";
 import {
-  ArrowLeft, ExternalLink, Lock, LogOut, MoreVertical, Plus,
-  RefreshCw, Search, Settings, Shield, Wallet,
+  ArrowLeft, ExternalLink, Folder as FolderIcon, Lock, LogOut, MoreVertical,
+  Plus, RefreshCw, Search, Settings, Shield, SlidersHorizontal, Wallet,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -31,7 +39,12 @@ import { toast } from "sonner";
 import { readEmail, writeEmail } from "../../src/chrome-storage";
 import { vault } from "../../src/client";
 import { ItemGlyph } from "../../src/item-glyph";
-import type { FillField, ItemSummary, VaultState } from "../../src/messages";
+import type {
+  FillField,
+  FolderSummary,
+  ItemSummary,
+  VaultState,
+} from "../../src/messages";
 import type { FillOutcome, FillPayload } from "../../src/inject";
 import { useHashNavigation, usePath } from "../../src/hash-router";
 import {
@@ -123,6 +136,13 @@ function Header({
     </header>
   );
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  all: "All types",
+  login: "Logins",
+  note: "Notes",
+  card: "Cards",
+};
 
 const TABS = [
   { path: "/", label: "Vault", Icon: Wallet },
@@ -391,17 +411,21 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Vault({ onLocked }: { onLocked: () => void }) {
   const [items, setItems] = useState<ItemSummary[] | null>(null);
+  const [folders, setFolders] = useState<FolderSummary[]>([]);
   const [damaged, setDamaged] = useState(0);
   const [query, setQuery] = useState("");
+  const [folderId, setFolderId] = useState("all");
+  const [type, setType] = useState("all");
   const [tabUrl, setTabUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await vault.items();
+      const [res, folderList] = await Promise.all([vault.items(), vault.folders()]);
       setItems(res.items);
       setDamaged(res.damaged);
+      setFolders(folderList);
     } catch (err) {
       if (err instanceof Error && /locked/i.test(err.message)) return onLocked();
       setError("Cannot reach passio.");
@@ -415,17 +439,56 @@ function Vault({ onLocked }: { onLocked: () => void }) {
       .then(([t]) => setTabUrl(t?.url ?? null));
   }, [load]);
 
-  const filtered = useMemo(
-    () => (items ? searchSummaries(items, query) : []),
-    [items, query],
+  const knownFolderIds = useMemo(
+    () => new Set(folders.map((f) => f.id)),
+    [folders],
   );
+
+  /**
+   * Search, then type, then folder.
+   *
+   * `applySummaryFilter` takes one filter at a time, so they compose by being
+   * applied in turn - which is also why they can be combined at all. The rules
+   * are the shared ones, so "no folder" still includes an item pointing at a
+   * folder that no longer exists rather than hiding it.
+   */
+  const filtered = useMemo(() => {
+    if (!items) return [];
+    let visible = searchSummaries(items, query);
+    if (type !== "all") {
+      visible = applySummaryFilter(
+        visible,
+        { kind: "type", type: type as ItemSummary["type"] },
+        knownFolderIds,
+      );
+    }
+    if (folderId !== "all") {
+      const filter: VaultFilter =
+        folderId === "none" ? { kind: "unfiled" } : { kind: "folder", folderId };
+      visible = applySummaryFilter(visible, filter, knownFolderIds);
+    }
+    return visible;
+  }, [items, query, type, folderId, knownFolderIds]);
+
+  const filtering = type !== "all" || folderId !== "all";
+
+  // Base UI renders the raw value unless the root is told how to label it,
+  // which is what once showed a bare uuid in the item form.
+  const folderLabels = useMemo(() => {
+    const labels: Record<string, string> = {
+      all: "All folders",
+      none: "No folder",
+    };
+    for (const f of folders) labels[f.id] = f.name;
+    return labels;
+  }, [folders]);
   const forSite = useMemo(
     () => (items && tabUrl ? matchItemsToUrl(items, tabUrl) : []),
     [items, tabUrl],
   );
 
   const canFill = tabUrl?.startsWith("http") ?? false;
-  const showSite = forSite.length > 0 && query === "";
+  const showSite = forSite.length > 0 && query === "" && !filtering;
   const rest = showSite
     ? filtered.filter((i) => !forSite.some((m) => m.id === i.id))
     : filtered;
@@ -539,7 +602,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         path="/"
       />
 
-      <div className="p-3">
+      <div className="grid gap-2 p-3">
         <div className="relative flex items-center">
           <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
           <Input
@@ -550,6 +613,46 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             aria-label="Search your vault"
             className="pl-9"
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            items={folderLabels}
+            value={folderId}
+            onValueChange={(next: string | null) => setFolderId(next ?? "all")}
+          >
+            <SelectTrigger aria-label="Filter by folder" className="w-full">
+              <FolderIcon className="text-muted-foreground size-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All folders</SelectItem>
+              <SelectItem value="none">No folder</SelectItem>
+              {folders.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            items={TYPE_LABELS}
+            value={type}
+            onValueChange={(next: string | null) => setType(next ?? "all")}
+          >
+            <SelectTrigger aria-label="Filter by type" className="w-full">
+              <SlidersHorizontal className="text-muted-foreground size-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -589,6 +692,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
           </>
         ) : query !== "" ? (
           <p className="text-muted-foreground p-4 text-sm">Nothing matches “{query}”.</p>
+        ) : filtering ? (
+          <p className="text-muted-foreground p-4 text-sm">
+            No items in this filter.
+          </p>
         ) : null}
       </Body>
 
