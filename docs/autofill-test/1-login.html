@@ -8,16 +8,18 @@
   <body>
     <nav><a href="./index.html">← all tests</a></nav>
     <h1>Ordinary login</h1>
-    <p class="expect">
-  The baseline. Fill should populate <b>both</b> fields. If this one fails, nothing on
-  the other pages means anything.
-</p>
+    <p class="expect">The baseline. Fill should populate <b>both</b> fields. If this one fails,
+    nothing on the other pages means anything.</p>
     <form onsubmit="return false">
   <label for="u">Username</label>
-  <input id="u" name="username" type="text" autocomplete="username" />
+  <input id="u" data-label="username" name="username" type="text" autocomplete="username" />
   <label for="p">Password</label>
-  <input id="p" name="password" type="password" autocomplete="current-password" />
+  <input id="p" data-label="password" name="password" type="password" autocomplete="current-password" />
   <button>Sign in</button>
 </form>
+    <script>
+      window.PASSIO_TEST = { mustFill: ['u', 'p'] };
+    </script>
+    <script src="./verify.js"></script>
   </body>
 </html>

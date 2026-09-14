@@ -8,10 +8,8 @@
   <body>
     <h1>passio autofill tests</h1>
     <p class="expect">
-      One scenario per page, deliberately. passio applies its safety rule to the
-      <b>whole document</b> — exactly one visible password field, or it fills nothing —
-      so putting every case on one page makes that rule refuse all of them, and tests
-      nothing.
+      Each page says <b>PASS</b> or <b>FAIL</b> at the bottom as you fill it — there is
+      nothing to check in a console.
     </p>
 
     <ol>
@@ -25,8 +23,14 @@
     </ol>
 
     <p>
-      Pages 2, 3 and 4 are the security ones. Nothing here submits anywhere; every form
-      has <code>onsubmit="return false"</code>.
+      One scenario per page, deliberately. passio applies its safety rule to the
+      <b>whole document</b> — exactly one visible password field, or it fills nothing —
+      so putting every case on one page makes that rule refuse all of them, and tests
+      nothing. Resist appending a new case to an existing page.
+    </p>
+    <p>
+      Pages 2, 3 and 4 are the security ones. Nothing submits anywhere; every form has
+      <code>onsubmit="return false"</code>.
     </p>
   </body>
 </html>

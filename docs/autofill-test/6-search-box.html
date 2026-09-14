@@ -8,14 +8,17 @@
   <body>
     <nav><a href="./index.html">← all tests</a></nav>
     <h1>Search box, not a login</h1>
-    <p class="expect">
-  An unmarked text field with no password anywhere. It must get <b>no</b> passio button
-  — otherwise every search box on the web would sprout one.
-</p>
+    <p class="expect">An unmarked text field with no password anywhere. It must get <b>no</b>
+    passio button — otherwise every search box on the web would sprout one. This one is
+    judged by eye: look at the right-hand end of the field.</p>
     <form onsubmit="return false">
   <label for="q">Search</label>
-  <input id="q" type="text" placeholder="Search…" />
+  <input id="q" data-label="the search box" type="text" placeholder="Search…" />
   <button>Search</button>
 </form>
+    <script>
+      window.PASSIO_TEST = { mustStayEmpty: ['q'] };
+    </script>
+    <script src="./verify.js"></script>
   </body>
 </html>

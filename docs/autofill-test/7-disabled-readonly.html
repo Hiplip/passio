@@ -8,15 +8,17 @@
   <body>
     <nav><a href="./index.html">← all tests</a></nav>
     <h1>Disabled and read-only</h1>
-    <p class="expect">
-  Neither field may be filled or decorated with a button.
-</p>
+    <p class="expect">Neither field may be filled, and neither may get a button.</p>
     <form onsubmit="return false">
   <label for="u">Username (disabled)</label>
-  <input id="u" type="text" autocomplete="username" disabled />
+  <input id="u" data-label="the disabled username" type="text" autocomplete="username" disabled />
   <label for="p">Password (read-only)</label>
-  <input id="p" type="password" readonly value="" />
+  <input id="p" data-label="the read-only password" type="password" readonly value="" />
   <button>Sign in</button>
 </form>
+    <script>
+      window.PASSIO_TEST = { mustStayEmpty: ['u', 'p'] };
+    </script>
+    <script src="./verify.js"></script>
   </body>
 </html>

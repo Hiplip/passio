@@ -27,3 +27,11 @@ button {
 code { background: #121317; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
 ol { padding-left: 20px; }
 li { margin-bottom: 8px; }
+
+.status {
+  position: sticky; bottom: 0; margin: 24px 0 0; padding: 12px 16px;
+  border-radius: 10px; font-size: 14px; font-weight: 500;
+}
+.status.idle { background: #23242a; color: #9a9aa2; border: 1px solid #33343b; }
+.status.pass { background: #0c2f2a; color: #7ff0d4; border: 1px solid #14584d; }
+.status.fail { background: #3a1417; color: #ff9c9c; border: 1px solid #7d2027; }

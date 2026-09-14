@@ -70,14 +70,19 @@ npx --yes http-server D:\Downloads\autofill-test -p 8080
 
 Then work through the pages:
 
-- [ ] **1 Ordinary login** — fills both fields. The baseline; if this fails, nothing
+**Each page says PASS or FAIL at the bottom as you fill it.** Nothing to check in a
+console: a box at the foot of every page watches the fields, including the hidden ones,
+and turns green or red. It polls rather than listening for events, so a fill that
+silently failed to dispatch them still shows up.
+
+- [ ] **1 Ordinary login** — both fields filled. The baseline; if this fails, nothing
       below means anything
-- [ ] **2 Hidden password trap** — only the visible field is filled. Confirm in the
-      console: `document.getElementById('trap').value` must be `''`
-- [ ] **3 Hidden username trap** — same check, `trap` must stay `''`
-- [ ] **4 Change password** — **refuses**, types nothing, both boxes stay empty
+- [ ] **2 Hidden password trap** — green. Red means the off-screen field was filled
+- [ ] **3 Hidden username trap** — green
+- [ ] **4 Change password** — **refuses**, and the box stays green because nothing was
+      typed
 - [ ] **5 Two-step login** — fills the email only
-- [ ] **6 Search box** — no passio button appears at all
+- [ ] **6 Search box** — judged by eye: no passio button at the right of the field
 - [ ] **7 Disabled and read-only** — neither is filled or decorated
 
 Pages 2, 3 and 4 are the security ones. Planting an off-screen input to harvest autofill

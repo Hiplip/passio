@@ -8,19 +8,20 @@
   <body>
     <nav><a href="./index.html">← all tests</a></nav>
     <h1>Hidden username trap</h1>
-    <p class="expect">
-  An off-screen text field marked <code>autocomplete="username"</code>. It must stay
-  empty.<br />
-  Check: <code>document.getElementById('trap').value</code> must be <code>''</code>.
-</p>
+    <p class="expect">An off-screen text field marked <code>autocomplete="username"</code> — the
+    strongest hint there is, deliberately. It must stay empty.</p>
     <form onsubmit="return false">
-  <input id="trap" class="trap" type="text" name="username"
-         autocomplete="username" tabindex="-1" aria-hidden="true" />
+  <input id="trap" data-label="the hidden username field" class="trap" type="text"
+         name="username" autocomplete="username" tabindex="-1" aria-hidden="true" />
   <label for="u">Email</label>
-  <input id="u" type="email" />
+  <input id="u" data-label="email" type="email" />
   <label for="p">Password</label>
-  <input id="p" type="password" />
+  <input id="p" data-label="password" type="password" />
   <button>Sign in</button>
 </form>
+    <script>
+      window.PASSIO_TEST = { mustFill: ['u', 'p'], mustStayEmpty: ['trap'] };
+    </script>
+    <script src="./verify.js"></script>
   </body>
 </html>
