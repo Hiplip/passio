@@ -13,6 +13,7 @@ import {
 import { Field } from "@passio/ui/field";
 import { Input } from "@passio/ui/input";
 import { Skeleton } from "@passio/ui/skeleton";
+import { Switch } from "@passio/ui/switch";
 import { Toaster } from "@passio/ui/sonner";
 import { VaultDataProvider } from "@passio/vault-ui/data";
 import { EditItem } from "@passio/vault-ui/edit-item";
@@ -31,6 +32,11 @@ import { ItemGlyph } from "../../src/item-glyph";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
 import type { FillOutcome, FillPayload } from "../../src/inject";
 import { useHashNavigation, usePath } from "../../src/hash-router";
+import {
+  dropInlineAccess,
+  hasInlineAccess,
+  requestInlineAccess,
+} from "../../src/inline-permission";
 import { popOut } from "../../src/pop-out";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
 import { useExtensionVaultData } from "../../src/vault-data";
@@ -279,6 +285,47 @@ function Row({
   );
 }
 
+/**
+ * Turns the in-page suggestion overlay on and off.
+ *
+ * Reads the REAL permission rather than a stored preference: it can be revoked
+ * from chrome://extensions at any time, and a toggle that disagreed with
+ * reality would be worse than no toggle.
+ *
+ * `requestInlineAccess` is called straight from the change handler, because
+ * Chrome only shows its consent prompt inside a user gesture - moving it behind
+ * an await makes it fail silently, which reads exactly like a refusal.
+ */
+function InlineToggle() {
+  const [on, setOn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void hasInlineAccess().then(setOn);
+  }, []);
+
+  function change(next: boolean) {
+    const pending = next ? requestInlineAccess() : dropInlineAccess();
+    void pending.then(() => hasInlineAccess()).then(setOn);
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="inline" className="text-muted-foreground flex-1 text-xs">
+        Suggest logins in password fields
+        <span className="block text-[11px] opacity-70">
+          Lets passio see the pages you visit
+        </span>
+      </label>
+      <Switch
+        id="inline"
+        checked={on ?? false}
+        disabled={on === null}
+        onCheckedChange={change}
+      />
+    </div>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-muted-foreground bg-muted/40 border-y px-4 py-1.5 text-[11px] font-medium tracking-wide">
@@ -492,7 +539,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         ) : null}
       </div>
 
-      <footer className="flex items-center gap-2 border-t p-3">
+      <footer className="grid gap-2.5 border-t p-3">
+        <InlineToggle />
+
+        <div className="flex items-center gap-2">
         <label htmlFor="lock" className="text-muted-foreground text-xs">
           Lock after
         </label>
@@ -508,6 +558,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             </option>
           ))}
         </select>
+        </div>
       </footer>
     </Shell>
   );

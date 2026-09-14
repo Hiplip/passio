@@ -124,6 +124,19 @@ const backgroundRequestSchema = z.discriminatedUnion("kind", [
     token: z.string().min(1),
   }),
   z.object({ target: z.literal("background"), kind: z.literal("tokenClear") }),
+  /**
+   * Sent by the suggestion iframe when someone picks an entry.
+   *
+   * The iframe never receives the password. It names an item; the service
+   * worker resolves the values from the offscreen document and relays them to
+   * the content script in the iframe's own tab, which the worker knows from
+   * `sender.tab` and the iframe cannot forge.
+   */
+  z.object({
+    target: z.literal("background"),
+    kind: z.literal("inlineFill"),
+    itemId: z.string().uuid(),
+  }),
 ]);
 
 export type BackgroundRequest = z.infer<typeof backgroundRequestSchema>;
@@ -132,6 +145,7 @@ export type BackgroundResponse =
   | { ok: true; kind: "tokenRead"; token: string | null }
   | { ok: true; kind: "tokenWrite" }
   | { ok: true; kind: "tokenClear" }
+  | { ok: true; kind: "inlineFill"; outcome: "filled" | "no-form" }
   | { ok: false; error: string };
 
 export function parseBackgroundRequest(value: unknown): BackgroundRequest | null {

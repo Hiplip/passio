@@ -1,5 +1,6 @@
 import { clearToken, readToken, writeToken } from "../src/auth";
 import { chromeTokenStore } from "../src/chrome-storage";
+import type { FillOutcome, FillPayload } from "../src/inject";
 import {
   forwarded,
   parseBackgroundRequest,
@@ -7,6 +8,7 @@ import {
   type OutboundRequest,
   type Response,
 } from "../src/messages";
+import { syncInlineScript, type ScriptingApi } from "../src/inline-script";
 import { normaliseLockMinutes } from "../src/prefs";
 
 const OFFSCREEN_PATH = "offscreen.html";
@@ -51,6 +53,34 @@ async function resetLockAlarm(): Promise<void> {
   await chrome.alarms.create(LOCK_ALARM, { delayInMinutes: minutes });
 }
 
+/**
+ * Resolves an item's values and sends them to the content script in one tab.
+ *
+ * The three strings are the only thing that crosses into page-adjacent code -
+ * never the item, never the key. Same contract the popup's fill path uses.
+ */
+async function fillTab(tabId: number, itemId: string): Promise<FillOutcome> {
+  await ensureOffscreen();
+
+  const ask = async (field: "username" | "password" | "totp") => {
+    const res: Response = await chrome.runtime.sendMessage(
+      forwarded({ target: "offscreen", kind: "fieldValue", itemId, field }),
+    );
+    return res.ok && res.kind === "fieldValue" ? res.value : "";
+  };
+
+  const payload: FillPayload = {
+    kind: "fill",
+    username: await ask("username"),
+    password: await ask("password"),
+    totp: await ask("totp"),
+  };
+
+  const outcome: FillOutcome = await chrome.tabs.sendMessage(tabId, payload);
+  await resetLockAlarm();
+  return outcome;
+}
+
 async function updateBadge(tabId: number, url: string | undefined): Promise<void> {
   let count = 0;
   if (url?.startsWith("http")) {
@@ -68,7 +98,28 @@ async function updateBadge(tabId: number, url: string | undefined): Promise<void
   await chrome.action.setBadgeBackgroundColor({ tabId, color: "#18181b" });
 }
 
+/** chrome.scripting, as the narrow interface syncInlineScript expects. */
+const scripting: ScriptingApi = {
+  getRegisteredContentScripts: () => chrome.scripting.getRegisteredContentScripts(),
+  registerContentScripts: (s) => chrome.scripting.registerContentScripts(s),
+  unregisterContentScripts: (f) => chrome.scripting.unregisterContentScripts(f),
+};
+
 export default defineBackground(() => {
+  /**
+   * Keep the inline content script in step with the permission.
+   *
+   * onAdded/onRemoved matter as much as startup: revoking access from
+   * chrome://extensions fires them, and without this the script would keep
+   * running on every page until the next browser restart.
+   */
+  const sync = () => void syncInlineScript(scripting);
+  sync();
+  chrome.runtime.onStartup.addListener(sync);
+  chrome.runtime.onInstalled.addListener(sync);
+  chrome.permissions.onAdded.addListener(sync);
+  chrome.permissions.onRemoved.addListener(sync);
+
   /**
    * Storage on behalf of the offscreen document.
    *
@@ -95,6 +146,18 @@ export default defineBackground(() => {
         case "tokenClear":
           await clearToken(chromeTokenStore);
           return { ok: true, kind: "tokenClear" };
+        case "inlineFill": {
+          // The tab comes from `sender`, never from the message: the iframe is
+          // on our origin but sits inside a page, and a tab id it supplied
+          // would let a hostile page aim a fill at a tab it does not own.
+          const tabId = sender.tab?.id;
+          if (tabId === undefined) throw new Error("No tab to fill.");
+          return {
+            ok: true,
+            kind: "inlineFill",
+            outcome: await fillTab(tabId, req.itemId),
+          };
+        }
       }
     })()
       .then(sendResponse)

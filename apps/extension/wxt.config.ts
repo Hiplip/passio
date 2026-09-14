@@ -35,6 +35,21 @@ export default defineConfig({
       "tabs", // read the active tab url for the badge
     ],
     host_permissions: ["https://passio-hiplip.vercel.app/*"],
+    // NOT granted at install. Inline suggestions need a content script running
+    // before any click, which activeTab cannot provide - so the broad grant is
+    // offered as an opt-in behind Chrome's own consent prompt instead of being
+    // demanded up front. Revoking it in chrome://extensions unregisters the
+    // script. See spec D3 and the inline-autofill plan.
+    optional_host_permissions: ["<all_urls>"],
+    web_accessible_resources: [
+      {
+        // The suggestion list renders here, on the extension's origin, so page
+        // script cannot read it. It renders nothing until the extension
+        // messages it.
+        resources: ["suggestions.html"],
+        matches: ["<all_urls>"],
+      },
+    ],
     content_security_policy: {
       // hash-wasm is WebAssembly. Without wasm-unsafe-eval it does not load at
       // all, and Argon2id is the first thing an unlock does.

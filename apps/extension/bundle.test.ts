@@ -46,6 +46,8 @@ const POPUP = "popup.html";
 const VAULT = "vault.html";
 const WORKER = "background.js";
 const FILL = "content-scripts/fill.js";
+const INLINE = "content-scripts/inline.js";
+const SUGGESTIONS = "suggestions.html";
 
 describe("offscreen document", () => {
   it("uses no extension API except chrome.runtime", () => {
@@ -67,8 +69,10 @@ describe("the vault key's blast radius", () => {
     for (const [name, source] of [
       ["popup", pageBundle(POPUP)],
       ["vault page", pageBundle(VAULT)],
+      ["suggestions iframe", pageBundle(SUGGESTIONS)],
       ["service worker", read(WORKER)],
       ["injected fill script", read(FILL)],
+      ["inline overlay script", read(INLINE)],
     ] as const) {
       expect(source, `${name} links WebAssembly`).not.toContain(WASM);
       expect(source, `${name} links hash-wasm`).not.toContain(HASH_WASM);
@@ -84,8 +88,10 @@ describe("bundle hygiene", () => {
       pageBundle(OFFSCREEN),
       pageBundle(POPUP),
       pageBundle(VAULT),
+      pageBundle(SUGGESTIONS),
       read(WORKER),
       read(FILL),
+      read(INLINE),
     ].join("\n");
 
     for (const marker of ["drizzle-orm", "better-auth", "pgTable", "postgresql://"]) {
@@ -96,6 +102,27 @@ describe("bundle hygiene", () => {
   it("ships the full vault page the popup opens", () => {
     expect(read(VAULT).length).toBeGreaterThan(0);
     expect(pageBundle(POPUP)).toContain("vault.html");
+  });
+
+  it("ships the inline overlay at the path the worker registers", () => {
+    // syncInlineScript registers this exact path. A renamed output file means
+    // enabling suggestions succeeds and then silently does nothing.
+    expect(read(INLINE).length).toBeGreaterThan(0);
+    expect(read(WORKER)).toContain(INLINE);
+  });
+
+  it("asks the worker to fill rather than fetching values itself", () => {
+    // The iframe lists titles and usernames; choosing an entry sends an ID to
+    // the service worker, which resolves the values and hands them to the
+    // content script, so no password travels through this document.
+    //
+    // Only the positive half is asserted. A "does not contain fieldValue" check
+    // fails for the wrong reason - the iframe shares a chunk with the popup, so
+    // the code is present without being reachable - and it would not defend
+    // anything either way: what keeps the page out of this document is the
+    // origin boundary the browser enforces, not which functions got bundled
+    // next to each other.
+    expect(pageBundle(SUGGESTIONS)).toContain("inlineFill");
   });
 
   it("ships the fill script at the path the popup injects", () => {

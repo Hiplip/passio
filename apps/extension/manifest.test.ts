@@ -18,6 +18,8 @@ interface Manifest {
   key?: string;
   permissions?: string[];
   host_permissions?: string[];
+  optional_host_permissions?: string[];
+  web_accessible_resources?: { resources: string[]; matches: string[] }[];
   content_security_policy?: { extension_pages?: string };
   content_scripts?: unknown;
   externally_connectable?: unknown;
@@ -55,7 +57,23 @@ describe("generated manifest", () => {
     ]);
   });
 
-  it("never requests broad host access", () => {
+  it("offers broad access as an opt-in, never a standing grant", () => {
+    // Inline suggestions need a script on every page before any click, which
+    // activeTab cannot give. Making it OPTIONAL means a default install still
+    // has no standing page access: Chrome prompts, and revoking unregisters.
+    expect(manifest.optional_host_permissions).toEqual(["<all_urls>"]);
+  });
+
+  it("exposes only the suggestion page to web pages", () => {
+    // web_accessible_resources leaks the listed URLs to every site. Only the
+    // suggestion iframe belongs here, and it renders nothing until the
+    // extension messages it.
+    expect(manifest.web_accessible_resources?.map((w) => w.resources)).toEqual([
+      ["suggestions.html"],
+    ]);
+  });
+
+  it("never requests broad host access as a standing grant", () => {
     const all = JSON.stringify([manifest.permissions, manifest.host_permissions]);
     expect(all).not.toContain("<all_urls>");
     expect(all).not.toContain("*://*/*");

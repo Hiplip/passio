@@ -370,3 +370,34 @@ Structurally enforced, and proven rather than assumed:
   (WebAssembly header, `hash-wasm`) appears in no page, worker or injected script.
 - Verified by reintroducing the original `chrome.storage` bug and confirming the gate
   fails, then reverting.
+
+## NEEDS-REVIEW: `<all_urls>` as an optional permission, for inline suggestions
+
+Spec D3 chose `activeTab` over `<all_urls>` deliberately: a bug in fill logic cannot
+reach a page the extension was never invoked on, and the extension has no standing read
+access to your bank or your email.
+
+Inline suggestions — a passio icon inside login fields — cannot work under `activeTab`,
+because the icon must exist before any click. Rather than reverse D3, the broad grant is
+declared as `optional_host_permissions` and requested at runtime:
+
+| | Default install | After opting in |
+|---|---|---|
+| Standing page access | none | every page |
+| Content script registered | no | yes |
+| Click-to-fill from the popup | yes | yes |
+
+Nothing is registered until the toggle is used, Chrome shows its own consent prompt, and
+revoking in `chrome://extensions` fires `permissions.onRemoved`, which unregisters the
+script immediately rather than at the next restart.
+
+The suggestion list renders in an iframe on the extension's origin rather than a shadow
+root: page script can walk a shadow root but cannot read across an origin. It carries
+titles and usernames only — choosing an entry sends an item ID to the service worker,
+which resolves the values and relays them to the content script. The password never
+travels through the iframe, and the tab is taken from `sender`, never from the message,
+so a hostile page cannot aim a fill at a tab it does not own.
+
+Asserted in `manifest.test.ts`: the broad grant appears only under
+`optional_host_permissions`, `host_permissions` still holds one API origin, and
+`content_scripts` is absent entirely.
