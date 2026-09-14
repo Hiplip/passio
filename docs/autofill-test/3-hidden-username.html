@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hidden username trap — passio autofill test</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <nav><a href="./index.html">← all tests</a></nav>
+    <h1>Hidden username trap</h1>
+    <p class="expect">
+  An off-screen text field marked <code>autocomplete="username"</code>. It must stay
+  empty.<br />
+  Check: <code>document.getElementById('trap').value</code> must be <code>''</code>.
+</p>
+    <form onsubmit="return false">
+  <input id="trap" class="trap" type="text" name="username"
+         autocomplete="username" tabindex="-1" aria-hidden="true" />
+  <label for="u">Email</label>
+  <input id="u" type="email" />
+  <label for="p">Password</label>
+  <input id="p" type="password" />
+  <button>Sign in</button>
+</form>
+  </body>
+</html>

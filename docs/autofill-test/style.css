@@ -1,0 +1,29 @@
+:root { color-scheme: dark; }
+body {
+  margin: 0 auto; max-width: 620px; padding: 32px 20px 80px;
+  font: 15px/1.6 system-ui, sans-serif; background: #17181b; color: #e8e8ea;
+}
+a { color: #5eead4; }
+h1 { font-size: 19px; margin: 0 0 6px; }
+nav { margin: 0 0 24px; font-size: 13px; }
+.expect {
+  border-left: 3px solid #0d9488; background: #14232170; padding: 10px 14px;
+  border-radius: 0 8px 8px 0; margin: 0 0 22px; font-size: 14px; color: #a7e8d8;
+}
+.expect b { color: #d3fff2; }
+form { border: 1px solid #2e2f34; border-radius: 12px; padding: 16px 18px 20px; background: #1d1e22; }
+label { display: block; font-size: 12px; color: #9a9aa2; margin: 12px 0 4px; }
+label:first-child { margin-top: 0; }
+input {
+  width: 100%; box-sizing: border-box; padding: 9px 11px;
+  border: 1px solid #3a3b42; border-radius: 7px;
+  background: #121317; color: #e8e8ea; font: inherit;
+}
+button {
+  margin-top: 16px; padding: 9px 16px; border: 0; border-radius: 7px;
+  background: #0d9488; color: #fff; font: inherit; cursor: pointer;
+}
+.trap { position: absolute; left: -9999px; top: -9999px; }
+code { background: #121317; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+ol { padding-left: 20px; }
+li { margin-bottom: 8px; }

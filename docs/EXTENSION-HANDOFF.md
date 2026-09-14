@@ -36,97 +36,57 @@ The single most important check. Shared-hosting platforms give every user a subd
 Repeat with `*.github.io` if you have one. **A match here is a serious bug — stop and
 report it.**
 
-### A2 + A3 · Use the test page
+### A2 + A3 · Use the test pages
 
-`docs/autofill-test.html` has seven forms built to be awkward, each saying what passing
-looks like. Copy it down and open it:
+`docs/autofill-test/` holds one scenario per page. That split is deliberate: passio
+applies its safety rule to the **whole document** — exactly one visible password field,
+or it fills nothing — so a single page containing every case makes that rule refuse all
+of them and tests nothing.
 
-```powershell
-scp you@your-dev-box:/home/dev/projects/passio/docs/autofill-test.html D:\Downloads\
-```
-
-**It has to be served over HTTP — `file://` cannot work**, and not because of a missing
-setting. Three deliberate rules block it: `matchItemsToUrl` refuses any non-http(s) URL
-(the same rule that stops a stored `javascript:` URI becoming launchable), the popup
-refuses to fill a non-http tab, and the inline content script is registered for
-`http://*/*` and `https://*/*` only. Relaxing any of those to suit a test would be
-backwards.
-
-Serve the folder and open it over HTTP:
+Copy the folder down:
 
 ```powershell
-npx --yes http-server D:\Downloads -p 8080
-# then open http://localhost:8080/autofill-test.html
+scp -r you@your-dev-box:/home/dev/projects/passio/docs/autofill-test D:\Downloads\
 ```
 
-(`python -m http.server 8080` from that folder does the same job if you have Python
-rather than Node.)
+**Serve it over HTTP — `file://` cannot work**, and not for want of a setting. Three
+deliberate rules block it: `matchItemsToUrl` refuses any non-http(s) URL (the same rule
+that stops a stored `javascript:` URI becoming launchable), the popup refuses to fill a
+non-http tab, and the inline content script is registered for `http://*/*` and
+`https://*/*` only.
+
+```powershell
+npx --yes http-server D:\Downloads\autofill-test -p 8080
+# then open http://localhost:8080/
+```
+
+(`python -m http.server 8080` from that folder does the same job.)
 
 **Make one throwaway item first**, so there is something to fill with:
 
-- Title: `Autofill test`
-- Username: `test@example.com`
-- Password: anything
-- **URL: `http://localhost:8080`** — this is what makes it appear under "For this site"
+- Title `Autofill test`, username `test@example.com`, any password
+- **URL: `http://localhost:8080`** — this is what puts it under "For this site" and in
+  the inline suggestion list
 
-Then work down the page:
+Then work through the pages:
 
-- [ ] **1 Ordinary login** — fills both fields (the baseline; if this fails, nothing
-      below means anything)
+- [ ] **1 Ordinary login** — fills both fields. The baseline; if this fails, nothing
+      below means anything
 - [ ] **2 Hidden password trap** — only the visible field is filled. Confirm in the
-      console: `document.getElementById('trap-pw').value` must be `''`
-- [ ] **3 Hidden username trap** — `document.getElementById('trap-user').value` must
-      be `''`
-- [ ] **4 Change password** — **refuses**, types nothing. Both boxes stay empty
+      console: `document.getElementById('trap').value` must be `''`
+- [ ] **3 Hidden username trap** — same check, `trap` must stay `''`
+- [ ] **4 Change password** — **refuses**, types nothing, both boxes stay empty
 - [ ] **5 Two-step login** — fills the email only
-- [ ] **6 Search box** — gets no passio button
+- [ ] **6 Search box** — no passio button appears at all
 - [ ] **7 Disabled and read-only** — neither is filled or decorated
 
-Sections 2, 3 and 4 are the security ones. Planting an off-screen input to harvest
-autofill is a documented attack, and guessing which box is which on a change-password
-form is how a manager overwrites the wrong password.
+Pages 2, 3 and 4 are the security ones. Planting an off-screen input to harvest autofill
+is a documented attack, and guessing which box is which on a change-password form is how
+a manager overwrites the wrong password.
 
-For sections 1-5 you can also just pick any item from the popup and press **Fill** — a
-matching URL is only needed for the "For this site" group and the inline suggestion
-list. Delete the throwaway item and stop the server when you are done.
-
-### A4 · Nothing is ever submitted for you
-
-- [ ] Fill a login. The form must **not** submit. You press the button
-
-### A5 · A locked vault reveals nothing
-
-- [ ] Lock the vault (Settings → Lock now)
-- [ ] Click a field's passio button → "passio is locked", no titles, no usernames
-- [ ] The toolbar badge shows no count
-
-### A6 · The broad permission is genuinely revocable
-
-The whole inline-suggestions design rests on this.
-
-- [ ] Turn on **Settings → Suggest logins on form fields**, accept Chrome's prompt
-- [ ] Confirm the in-field button appears on a login page
-- [ ] `chrome://extensions` → passio → Details → **Site access → On click**
-- [ ] The button disappears from open tabs **immediately**, with no reload
-- [ ] Reload a login page — still gone, and no restart needed
-- [ ] The popup toggle now reads off
-
-A reload used to be required: unregistering stops new injections, but Chrome cannot pull
-already-running script out of a page that is already open. The worker now tells every
-open tab to remove its overlay, so revoking takes effect at once.
-
-### A7 · The key dies when the browser closes
-
-- [ ] Unlock, then close **every** window of the profile and reopen one
-- [ ] The extension asks for your master password again
-- [ ] Also quit the browser entirely (including the tray icon) and reopen
-
-It must never come back unlocked.
-
-Closing every window does **not** end the browser process — Chrome and Brave both keep
-running in the background, MV3 keeps the extension alive with them, and the offscreen
-document and key survived. The worker now locks when the last window closes, and again
-on profile startup, so this holds whether or not the process actually exits.
+For pages 1-5 you can also just pick any item in the popup and press **Fill** — a
+matching URL is only needed for the "For this site" group and the inline list. Delete
+the throwaway item and stop the server when you are done.
 
 ---
 

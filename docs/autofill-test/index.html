@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>passio autofill tests</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>passio autofill tests</h1>
+    <p class="expect">
+      One scenario per page, deliberately. passio applies its safety rule to the
+      <b>whole document</b> — exactly one visible password field, or it fills nothing —
+      so putting every case on one page makes that rule refuse all of them, and tests
+      nothing.
+    </p>
+
+    <ol>
+      <li><a href="./1-login.html">1. Ordinary login</a></li>
+      <li><a href="./2-hidden-password.html">2. Hidden password trap</a></li>
+      <li><a href="./3-hidden-username.html">3. Hidden username trap</a></li>
+      <li><a href="./4-change-password.html">4. Change password</a></li>
+      <li><a href="./5-two-step.html">5. Two-step login</a></li>
+      <li><a href="./6-search-box.html">6. Search box, not a login</a></li>
+      <li><a href="./7-disabled-readonly.html">7. Disabled and read-only</a></li>
+    </ol>
+
+    <p>
+      Pages 2, 3 and 4 are the security ones. Nothing here submits anywhere; every form
+      has <code>onsubmit="return false"</code>.
+    </p>
+  </body>
+</html>

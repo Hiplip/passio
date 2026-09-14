@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Two-step login — passio autofill test</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <nav><a href="./index.html">← all tests</a></nav>
+    <h1>Two-step login</h1>
+    <p class="expect">
+  Email only, no password field yet — the shape Google and Microsoft use. Fill should
+  populate the <b>email</b> and stop there.
+</p>
+    <form onsubmit="return false">
+  <label for="u">Email</label>
+  <input id="u" type="email" autocomplete="username" />
+  <button>Next</button>
+</form>
+  </body>
+</html>

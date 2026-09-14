@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search box, not a login — passio autofill test</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <nav><a href="./index.html">← all tests</a></nav>
+    <h1>Search box, not a login</h1>
+    <p class="expect">
+  An unmarked text field with no password anywhere. It must get <b>no</b> passio button
+  — otherwise every search box on the web would sprout one.
+</p>
+    <form onsubmit="return false">
+  <label for="q">Search</label>
+  <input id="q" type="text" placeholder="Search…" />
+  <button>Search</button>
+</form>
+  </body>
+</html>
