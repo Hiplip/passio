@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { Button } from "@passio/ui/button";
+import { VaultAdapter } from "~/components/vault-adapter";
 import { useAutoLock } from "~/hooks/use-auto-lock";
 import { useLockTimeout } from "~/hooks/use-lock-timeout";
 import { useVault } from "~/hooks/use-vault";
@@ -54,7 +55,9 @@ export function VaultShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-5 py-8">{children}</main>
+      <main className="mx-auto max-w-4xl px-5 py-8">
+        <VaultAdapter>{children}</VaultAdapter>
+      </main>
     </div>
   );
 }

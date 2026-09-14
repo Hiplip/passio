@@ -1,21 +1,20 @@
 "use client";
 
 import { ArrowLeft, Plus, Search } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@passio/ui/button";
 import { Input } from "@passio/ui/input";
 import { Skeleton } from "@passio/ui/skeleton";
-import { FolderDialog } from "~/components/vault/folder-dialog";
-import { ItemList } from "~/components/vault/item-list";
-import { VaultOverview } from "~/components/vault/vault-overview";
-import { VaultSidebar } from "~/components/vault/vault-sidebar";
-import { useFolders, type DecryptedFolder } from "~/hooks/use-folders";
+import { routes, useNavigation } from "./navigation";
+import { FolderDialog } from "./folder-dialog";
+import { ItemList } from "./item-list";
+import { VaultOverview } from "./vault-overview";
+import { VaultSidebar } from "./vault-sidebar";
+import type { DecryptedFolder } from "@passio/core/decrypt-folders";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
-import { useVault } from "~/hooks/use-vault";
-import { useVaultItems } from "~/hooks/use-vault-items";
+import { useVaultData } from "./data";
 import {
   ALL_ITEMS,
   applyFilter,
@@ -26,7 +25,6 @@ import {
   type VaultView,
 } from "@passio/core/filter";
 import { searchItems } from "@passio/core/search";
-import { api } from "~/trpc/react";
 
 function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {
   switch (filter.kind) {
@@ -46,13 +44,16 @@ function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string
 }
 
 export function VaultBrowser() {
-  const { vaultKey } = useVault();
-  const { items, damaged, isLoading } = useVaultItems(vaultKey);
-  const { folders } = useFolders(vaultKey);
-  const utils = api.useUtils();
-  const removeFolder = api.folder.delete.useMutation();
-  const restoreItem = api.item.restore.useMutation();
-  const deleteItem = api.item.delete.useMutation();
+  const { Link } = useNavigation();
+  const {
+    live,
+    deleted,
+    folders,
+    deleteFolder: removeFolder,
+    restoreItem,
+    deleteItem,
+  } = useVaultData();
+  const { items, damaged, isLoading } = live;
 
   const [view, setView] = useState<VaultView>("overview");
   const [query, setQuery] = useState("");
@@ -79,14 +80,10 @@ export function VaultBrowser() {
 
   const inTrash = filter.kind === "trash";
 
-  // The badge needs a count at all times, but a count needs no decryption -
-  // just the number of rows. Decryption happens only when trash is open.
-  const deletedRows = api.item.listDeleted.useQuery(undefined, {
-    enabled: vaultKey !== null,
-  });
-  const trashCount = deletedRows.data?.length ?? 0;
-
-  const deleted = useVaultItems(vaultKey, { deleted: true, enabled: inTrash });
+  // Damaged rows are still in the trash, so they count toward the badge. An
+  // item missing from the count is the bug that made trash read 1 and then
+  // show nothing.
+  const trashCount = deleted.items.length + deleted.damaged.length;
 
   const source = inTrash ? deleted.items : items;
   const loading = inTrash ? deleted.isLoading : isLoading;
@@ -102,11 +99,7 @@ export function VaultBrowser() {
 
   async function restore(itemId: string) {
     try {
-      await restoreItem.mutateAsync({ id: itemId });
-      await Promise.all([
-        utils.item.list.invalidate(),
-        utils.item.listDeleted.invalidate(),
-      ]);
+      await restoreItem(itemId);
       toast.success("Item restored");
     } catch {
       toast.error("Could not restore that item.");
@@ -119,11 +112,7 @@ export function VaultBrowser() {
     }
 
     try {
-      await deleteItem.mutateAsync({ id: item.id });
-      await Promise.all([
-        utils.item.list.invalidate(),
-        utils.item.listDeleted.invalidate(),
-      ]);
+      await deleteItem(item.id);
       toast.success("Item deleted", { description: "You can restore it from Trash." });
     } catch {
       toast.error("Could not delete that item.");
@@ -140,8 +129,7 @@ export function VaultBrowser() {
     }
 
     try {
-      await removeFolder.mutateAsync({ id: folder.id });
-      await utils.folder.list.invalidate();
+      await removeFolder(folder.id);
       setView("overview");
       toast.success("Folder deleted", { description: "Its items are now unfiled." });
     } catch {
@@ -207,7 +195,7 @@ export function VaultBrowser() {
             </p>
           </div>
 
-          <Button render={<Link href="/vault/new" />} className="ml-auto">
+          <Button render={<Link href={routes.newItem} />} className="ml-auto">
             <Plus />
             Add item
           </Button>

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { VaultShell } from "~/components/layout/vault-shell";
 import { getSession } from "~/server/better-auth/server";
 
-import { EditItem } from "./edit-item";
+import { EditItem } from "@passio/vault-ui/edit-item";
 
 export default async function ItemPage({
   params,

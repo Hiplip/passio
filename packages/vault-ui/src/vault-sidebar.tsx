@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@passio/ui/dropdown-menu";
-import type { DecryptedFolder } from "~/hooks/use-folders";
+import type { DecryptedFolder } from "@passio/core/decrypt-folders";
 import { viewsEqual, type VaultView } from "@passio/core/filter";
 import type { ItemType } from "@passio/core/schema";
 import { cn } from "@passio/ui/cn";

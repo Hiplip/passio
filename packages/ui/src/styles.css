@@ -12,6 +12,7 @@
  * Add a line here whenever a new package renders markup.
  */
 @source "../../ui/src";
+@source "../../vault-ui/src";
 @source "../../../apps/web/src";
 
 @custom-variant dark (&:is(.dark *));

@@ -1,11 +1,11 @@
 "use client";
 
 import { CreditCard, KeyRound, StickyNote } from "lucide-react";
-import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
-import { ItemRowActions } from "~/components/vault/item-row-actions";
+import { ItemRowActions } from "./item-row-actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
+import { routes, useNavigation } from "./navigation";
 import type { ItemType } from "@passio/core/schema";
 
 const TYPE_ICON: Record<ItemType, typeof KeyRound> = {
@@ -40,6 +40,8 @@ export function ItemList({
   onDelete,
   emptyMessage,
 }: ItemListProps) {
+  const { Link } = useNavigation();
+
   return (
     <div className="grid gap-4">
       {damaged.length > 0 ? (
@@ -74,7 +76,7 @@ export function ItemList({
                 {/* The link covers the text only. The action buttons beside it
                     must not be nested inside an anchor. */}
                 <Link
-                  href={`/vault/${item.id}`}
+                  href={routes.item(item.id)}
                   className="focus-visible:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-4 py-3 outline-none"
                 >
                   <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">

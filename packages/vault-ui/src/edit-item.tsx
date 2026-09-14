@@ -1,17 +1,16 @@
 "use client";
 
 import { ArrowLeft, CreditCard, KeyRound, StickyNote } from "lucide-react";
-import Link from "next/link";
 
-import { ItemEditor } from "~/app/vault/item-editor";
+import { ItemEditor } from "./item-editor";
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
 import { Skeleton } from "@passio/ui/skeleton";
-import { useVault } from "~/hooks/use-vault";
-import { useVaultItems } from "~/hooks/use-vault-items";
+import { useVaultData } from "./data";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import type { ItemType } from "@passio/core/schema";
-import { relativeTime } from "~/lib/relative-time";
+import { routes, useNavigation } from "./navigation";
+import { relativeTime } from "./relative-time";
 
 const TYPE_META: Record<ItemType, { label: string; Icon: typeof KeyRound }> = {
   login: { label: "Login", Icon: KeyRound },
@@ -20,11 +19,13 @@ const TYPE_META: Record<ItemType, { label: string; Icon: typeof KeyRound }> = {
 };
 
 function BackToVault() {
+  const { Link } = useNavigation();
+
   return (
     <Button
       variant="ghost"
       size="sm"
-      render={<Link href="/vault" />}
+      render={<Link href={routes.vault} />}
       className="text-muted-foreground -ml-2 justify-self-start"
     >
       <ArrowLeft />
@@ -53,8 +54,8 @@ function ItemHeader({ item }: { item: DecryptedItem }) {
 }
 
 export function EditItem({ itemId }: { itemId: string }) {
-  const { vaultKey } = useVault();
-  const { items, damaged, isLoading } = useVaultItems(vaultKey);
+  const { live } = useVaultData();
+  const { items, damaged, isLoading } = live;
 
   if (isLoading) {
     return (

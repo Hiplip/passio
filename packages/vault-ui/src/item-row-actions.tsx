@@ -1,7 +1,6 @@
 "use client";
 
 import { Copy, ExternalLink, MoreVertical, RotateCcw } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 
 import { Button } from "@passio/ui/button";
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@passio/ui/dropdown-menu";
 import { copyWithAutoClear } from "@passio/core/clipboard";
+import { routes, useNavigation } from "./navigation";
 import { copyActionsFor, launchUrlFor } from "@passio/core/actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 
@@ -34,6 +34,7 @@ async function copy(label: string, value: string) {
 }
 
 export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProps) {
+  const { Link } = useNavigation();
   // Resolved on open rather than on render, so a one-time code is always the
   // current one.
   const actions = () => copyActionsFor(item.data);
@@ -125,7 +126,7 @@ export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProp
 
           <DropdownMenuItem
             className="whitespace-nowrap"
-            render={<Link href={`/vault/${item.id}`} />}
+            render={<Link href={routes.item(item.id)} />}
           >
             Edit
           </DropdownMenuItem>

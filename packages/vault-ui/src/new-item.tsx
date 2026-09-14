@@ -1,11 +1,11 @@
 "use client";
 
 import { ChevronRight, CreditCard, KeyRound, StickyNote } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { ItemEditor } from "~/app/vault/item-editor";
+import { ItemEditor } from "./item-editor";
 import { Button } from "@passio/ui/button";
+import { routes, useNavigation } from "./navigation";
 import {
   newCardItem,
   newLoginItem,
@@ -42,6 +42,7 @@ function blank(type: ItemType): Item {
 }
 
 export function NewItem() {
+  const { Link } = useNavigation();
   const [type, setType] = useState<ItemType | null>(null);
 
   // Generated here, before encryption, because the id is the item's additional
@@ -79,7 +80,7 @@ export function NewItem() {
           ))}
         </ul>
 
-        <Button variant="ghost" render={<Link href="/vault" />} className="justify-self-start">
+        <Button variant="ghost" render={<Link href={routes.vault} />} className="justify-self-start">
           Cancel
         </Button>
       </div>

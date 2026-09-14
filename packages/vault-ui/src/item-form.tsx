@@ -16,11 +16,10 @@ import {
   SelectValue,
 } from "@passio/ui/select";
 import { Textarea } from "@passio/ui/textarea";
-import { GeneratorDialog } from "~/components/vault/generator-dialog";
-import { SecretField } from "~/components/vault/secret-field";
-import { TotpDisplay } from "~/components/vault/totp-display";
-import { useFolders } from "~/hooks/use-folders";
-import { useVault } from "~/hooks/use-vault";
+import { GeneratorDialog } from "./generator-dialog";
+import { SecretField } from "./secret-field";
+import { TotpDisplay } from "./totp-display";
+import { useVaultData } from "./data";
 import { digitsOnly, formatCardNumber, maskCardNumber } from "@passio/core/mask";
 import type { CardItem, Item, LoginItem, NoteItem } from "@passio/core/schema";
 import { parseTotpInput } from "@passio/core/totp";
@@ -126,8 +125,7 @@ function FolderPicker({
   value: Item;
   onChange: (next: Item) => void;
 }) {
-  const { vaultKey } = useVault();
-  const { folders } = useFolders(vaultKey);
+  const { folders } = useVaultData();
 
   // Base UI renders the raw value unless the root is told how to label it,
   // which is why this field used to show a bare folder uuid.

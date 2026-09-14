@@ -13,9 +13,7 @@ import {
   DialogTitle,
 } from "@passio/ui/dialog";
 import { Field } from "@passio/ui/field";
-import { encryptFolderName } from "~/hooks/use-folders";
-import { useVault } from "~/hooks/use-vault";
-import { api } from "~/trpc/react";
+import { useVaultData } from "./data";
 
 interface FolderDialogProps {
   open: boolean;
@@ -25,10 +23,7 @@ interface FolderDialogProps {
 }
 
 export function FolderDialog({ open, onOpenChange, existing }: FolderDialogProps) {
-  const { vaultKey } = useVault();
-  const utils = api.useUtils();
-  const create = api.folder.create.useMutation();
-  const rename = api.folder.rename.useMutation();
+  const { createFolder, renameFolder } = useVaultData();
 
   const [name, setName] = useState(existing?.name ?? "");
   const [busy, setBusy] = useState(false);
@@ -44,22 +39,22 @@ export function FolderDialog({ open, onOpenChange, existing }: FolderDialogProps
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!vaultKey || name.trim().length === 0 || busy) return;
+    if (name.trim().length === 0 || busy) return;
 
     setBusy(true);
     setError(null);
 
     try {
+      // The id is generated before the name is encrypted, because the id is
+      // the folder's additional authenticated data.
       const id = existing?.id ?? crypto.randomUUID();
-      const ciphertext = await encryptFolderName(id, name.trim(), vaultKey);
 
       if (existing) {
-        await rename.mutateAsync({ id, ciphertext });
+        await renameFolder(id, name.trim());
       } else {
-        await create.mutateAsync({ id, ciphertext });
+        await createFolder(id, name.trim());
       }
 
-      await utils.folder.list.invalidate();
       toast.success(existing ? "Folder renamed" : "Folder created");
       onOpenChange(false);
     } catch {

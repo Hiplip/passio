@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@passio/ui/button";
-import type { DecryptedFolder } from "~/hooks/use-folders";
+import type { DecryptedFolder } from "@passio/core/decrypt-folders";
 import type { VaultFilter } from "@passio/core/filter";
 import type { ItemType } from "@passio/core/schema";
 
