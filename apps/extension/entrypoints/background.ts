@@ -146,6 +146,18 @@ export default defineBackground(() => {
         case "tokenClear":
           await clearToken(chromeTokenStore);
           return { ok: true, kind: "tokenClear" };
+        case "inlineResize": {
+          // Relayed to the content script in the iframe's own tab, which the
+          // worker knows from `sender` and the iframe cannot forge.
+          const tabId = sender.tab?.id;
+          if (tabId !== undefined) {
+            await chrome.tabs.sendMessage(tabId, {
+              kind: "passio-resize",
+              height: req.height,
+            });
+          }
+          return { ok: true, kind: "inlineResize" };
+        }
         case "inlineFill": {
           // The tab comes from `sender`, never from the message: the iframe is
           // on our origin but sits inside a page, and a tab id it supplied

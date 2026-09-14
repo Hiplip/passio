@@ -137,6 +137,19 @@ const backgroundRequestSchema = z.discriminatedUnion("kind", [
     kind: z.literal("inlineFill"),
     itemId: z.string().uuid(),
   }),
+  /**
+   * The suggestion iframe reporting how tall its content actually is.
+   *
+   * Estimating this from a match count was always going to be wrong somewhere:
+   * a notice that wraps to two lines does not fit a one-line box, and the
+   * iframe then grows its own scrollbar inside a panel that is already small.
+   * Measuring is exact, and the iframe is the only thing that can measure it.
+   */
+  z.object({
+    target: z.literal("background"),
+    kind: z.literal("inlineResize"),
+    height: z.number().int().positive().max(2000),
+  }),
 ]);
 
 export type BackgroundRequest = z.infer<typeof backgroundRequestSchema>;
@@ -146,6 +159,7 @@ export type BackgroundResponse =
   | { ok: true; kind: "tokenWrite" }
   | { ok: true; kind: "tokenClear" }
   | { ok: true; kind: "inlineFill"; outcome: "filled" | "no-form" }
+  | { ok: true; kind: "inlineResize" }
   | { ok: false; error: string };
 
 export function parseBackgroundRequest(value: unknown): BackgroundRequest | null {

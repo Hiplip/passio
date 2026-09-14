@@ -21,6 +21,12 @@ export type FillPayload = z.infer<typeof fillPayloadSchema>;
 
 export type FillOutcome = "filled" | "no-form";
 
+/** Relayed to the content script when the suggestion iframe measures itself. */
+export const resizeMessageSchema = z.object({
+  kind: z.literal("passio-resize"),
+  height: z.number().int().positive().max(2000),
+});
+
 /**
  * Runs inside the page.
  *

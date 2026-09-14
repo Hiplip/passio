@@ -1,5 +1,5 @@
 import { createOverlay } from "../src/inline/overlay";
-import { applyFill, fillPayloadSchema } from "../src/inject";
+import { applyFill, fillPayloadSchema, resizeMessageSchema } from "../src/inject";
 
 /**
  * The inline suggestion overlay.
@@ -24,6 +24,13 @@ export default defineContentScript({
 
     chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
       if (sender.id !== chrome.runtime.id) return false;
+
+      const resize = resizeMessageSchema.safeParse(raw);
+      if (resize.success) {
+        overlay.resize(resize.data.height);
+        return false;
+      }
+
       const parsed = fillPayloadSchema.safeParse(raw);
       if (!parsed.success) return false;
 

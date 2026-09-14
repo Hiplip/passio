@@ -46,10 +46,10 @@ export function createOverlay() {
    *  the only one there is. */
   const buttons = new Map<HTMLInputElement, HTMLButtonElement>();
   let anchored: HTMLInputElement | null = null;
-  /** Matches for this page, so the iframe can be sized to its contents. Asked
-   *  for once per open; `matchCount` answers 0 while locked, which is the same
-   *  single-notice height. */
-  let matches = 0;
+  /** The iframe's real height, reported by the iframe once it has rendered.
+   *  Until then `listHeight` supplies an estimate purely to avoid a flash at
+   *  the wrong size. */
+  let measured = 0;
 
   /** The passio key mark. Inline SVG rather than a letter: at 20px a glyph reads
    *  as an affordance and a character reads as a typo in the field. */
@@ -113,7 +113,7 @@ export function createOverlay() {
     }
 
     if (anchored?.isConnected) {
-      const height = listHeight(matches);
+      const height = measured || listHeight(0);
       const list = listPosition(box(anchored), viewport(), height);
       frame.style.top = `${list.top}px`;
       frame.style.left = `${list.left}px`;
@@ -132,29 +132,11 @@ export function createOverlay() {
     );
     frame.style.display = "block";
     place();
-
-    // Resize once the count is known. Reuses the badge's existing count rather
-    // than adding a channel for the iframe to report its own height.
-    void chrome.runtime
-      .sendMessage({
-        target: "offscreen",
-        kind: "matchCount",
-        url: window.location.href,
-      })
-      .then((res: { ok: boolean; kind?: string; count?: number }) => {
-        if (anchored !== field) return;
-        matches = res.ok && res.kind === "matchCount" ? (res.count ?? 0) : 0;
-        place();
-      })
-      .catch(() => {
-        matches = 0;
-        place();
-      });
   }
 
   function hide() {
     anchored = null;
-    matches = 0;
+    measured = 0;
     frame.style.display = "none";
     frame.removeAttribute("src");
   }
@@ -208,6 +190,13 @@ export function createOverlay() {
   scan();
 
   return {
+    /** The iframe measured itself; size it exactly and reposition, since a
+     *  taller list may no longer fit below the field. */
+    resize(height: number) {
+      if (!anchored) return;
+      measured = height;
+      place();
+    },
     /** Called after a fill lands, and when the vault locks. */
     close: hide,
     destroy() {

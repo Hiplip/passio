@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq, inArray } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { type createTRPCContext } from "~/server/api/trpc";
@@ -9,7 +9,7 @@ import { item, user } from "~/server/db/schema";
 
 /**
  * These tests run against the real dev database. Every row they need is created
- * by the test itself and removed in `afterEach`, so a failed run leaves nothing
+ * by the test itself and removed in `beforeEach`, so a failed run leaves nothing
  * behind. Two users are seeded for every test so ownership isolation is
  * exercised with a real second owner rather than a missing row.
  */
@@ -108,18 +108,33 @@ async function rowOf(id: string) {
   return row;
 }
 
-async function removeFixtures() {
+/**
+ * Per-test cleanup: the rows a test creates, and nothing else.
+ *
+ * The users are NOT touched here. Every hook is a network round trip to a
+ * serverless database whose latency has a long tail - a median around 115ms
+ * but individual queries reaching several seconds - and three round trips
+ * before every test was enough to put a fixture reset past its timeout about
+ * once in five full runs. Seeding the users once per file and clearing only
+ * their rows per test cuts that from three to one.
+ */
+async function removeRows() {
   await db.delete(item).where(inArray(item.userId, [ALICE, BOB]));
+}
+
+async function removeFixtures() {
+  await removeRows();
   await db.delete(user).where(inArray(user.id, [ALICE, BOB]));
 }
 
-beforeEach(async () => {
-  // Also clears residue from a run that crashed before its afterEach.
+beforeAll(async () => {
+  // Also clears residue from a run that crashed before its afterAll.
   await removeFixtures();
   await seedUsers(ALICE, BOB);
 });
 
-afterEach(removeFixtures);
+beforeEach(removeRows);
+afterAll(removeFixtures);
 
 describe("item.create", () => {
   it("creates an item the caller can read back", async () => {
@@ -444,6 +459,11 @@ describe("test hygiene", () => {
 
     expect(items).toHaveLength(0);
     expect(users).toHaveLength(0);
+
+    // Put back what this test deliberately tore down. The users are seeded once
+    // per file now, not before every test, so leaving them deleted breaks
+    // everything that runs after this.
+    await seedUsers(ALICE, BOB);
   });
 });
 

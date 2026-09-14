@@ -43,12 +43,41 @@ import { popOut } from "../../src/pop-out";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
 import { useExtensionVaultData } from "../../src/vault-data";
 
-function Shell({ children }: { children: React.ReactNode }) {
+/**
+ * The popup frame.
+ *
+ * `tall` fixes the height for the tabbed screens so switching tabs does not
+ * resize the window under the cursor, and pins the tab bar to the bottom
+ * instead of letting it float up under short content. Unlock and the editors
+ * size to their content.
+ *
+ * `overflow-hidden` matters as much as the height: without it a single wide
+ * child gives the whole popup a horizontal scrollbar.
+ */
+function Shell({
+  children,
+  tall = false,
+}: {
+  children: React.ReactNode;
+  tall?: boolean;
+}) {
   return (
-    <div className="bg-background text-foreground min-h-[180px] w-[400px]">
+    <div
+      className={`bg-background text-foreground flex w-[400px] flex-col overflow-hidden ${
+        tall ? "h-[560px]" : "min-h-[180px]"
+      }`}
+    >
       {children}
       <Toaster position="bottom-center" />
     </div>
+  );
+}
+
+/** The scrolling middle of a tabbed screen. Grows to fill, scrolls vertically
+ *  only, and never horizontally. */
+function Body({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</div>
   );
 }
 
@@ -338,20 +367,17 @@ function InlineToggle() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="inline" className="text-muted-foreground flex-1 text-xs">
-        Suggest logins on form fields
-        <span className="block text-[11px] opacity-70">
-          Lets passio see the pages you visit
-        </span>
-      </label>
+    <SettingRow
+      label="Suggest logins on form fields"
+      hint="Lets passio see the pages you visit"
+    >
       <Switch
         id="inline"
         checked={on ?? false}
         disabled={on === null}
         onCheckedChange={change}
       />
-    </div>
+    </SettingRow>
   );
 }
 
@@ -460,14 +486,16 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   if (error) {
     return (
-      <Shell>
+      <Shell tall>
         <Header title="Vault" />
+        <Body>
         <div className="grid gap-3 p-4">
           <p className="text-destructive text-sm">{error}</p>
           <Button variant="outline" onClick={() => void load()}>
             Try again
           </Button>
         </div>
+        </Body>
         <TabBar path="/" />
       </Shell>
     );
@@ -475,8 +503,9 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   if (!items) {
     return (
-      <Shell>
+      <Shell tall>
         <Header title="Vault" />
+        <Body>
         <div className="grid gap-3 p-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3">
@@ -488,6 +517,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             </div>
           ))}
         </div>
+        </Body>
         <TabBar path="/" />
       </Shell>
     );
@@ -502,7 +532,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   });
 
   return (
-    <Shell>
+    <Shell tall>
       <Header
         title="Vault"
         onAdd={() => (window.location.hash = "/vault/new")}
@@ -530,7 +560,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         </p>
       ) : null}
 
-      <div className="max-h-[380px] overflow-y-auto">
+      <Body>
         {items.length === 0 ? (
           <p className="text-muted-foreground p-4 text-sm">
             Your vault is empty. Add your first item in the full vault.
@@ -560,7 +590,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         ) : query !== "" ? (
           <p className="text-muted-foreground p-4 text-sm">Nothing matches “{query}”.</p>
         ) : null}
-      </div>
+      </Body>
 
       <TabBar path="/" />
     </Shell>
@@ -576,9 +606,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
  */
 function GeneratorTab() {
   return (
-    <Shell>
+    <Shell tall>
       <Header title="Generator" path="/generator" />
-      <div className="max-h-[460px] overflow-y-auto p-4">
+      <Body>
+        <div className="p-4">
         <GeneratorPanel
           footer={({ candidate, regenerate }) => (
             <div className="flex gap-2">
@@ -602,9 +633,10 @@ function GeneratorTab() {
                 Copy
               </Button>
             </div>
-          )}
-        />
-      </div>
+            )}
+          />
+        </div>
+      </Body>
       <TabBar path="/generator" />
     </Shell>
   );
@@ -620,14 +652,16 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
+    <div className="flex items-center gap-3 px-4 py-3">
       <span className="min-w-0 flex-1">
-        <span className="block text-sm">{label}</span>
+        <span className="block text-[13px] leading-tight">{label}</span>
         {hint ? (
-          <span className="text-muted-foreground block text-xs">{hint}</span>
+          <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+            {hint}
+          </span>
         ) : null}
       </span>
-      {children}
+      <span className="shrink-0">{children}</span>
     </div>
   );
 }
@@ -649,9 +683,10 @@ function SettingsTab({ email, onLocked }: { email: string | null; onLocked: () =
   }
 
   return (
-    <Shell>
+    <Shell tall>
       <Header title="Settings" />
-      <div className="max-h-[460px] divide-y overflow-y-auto">
+      <Body>
+        <div className="divide-y">
         <div className="px-4 py-3">
           <p className="text-sm font-medium">{email ?? "Signed in"}</p>
           <p className="text-muted-foreground text-xs">
@@ -712,12 +747,15 @@ function SettingsTab({ email, onLocked }: { email: string | null; onLocked: () =
           </SettingRow>
         </div>
 
-        <p className="text-muted-foreground flex items-start gap-2 px-4 py-3 text-xs">
-          <Shield className="mt-0.5 size-3.5 shrink-0" />
-          Your master password never leaves this device, and neither does the key it
-          derives.
-        </p>
-      </div>
+          <p className="text-muted-foreground flex items-start gap-2 px-4 py-3.5 text-[11px] leading-relaxed">
+            <Shield className="mt-px size-3.5 shrink-0" />
+            <span>
+              Your master password never leaves this device, and neither does the key
+              it derives.
+            </span>
+          </p>
+        </div>
+      </Body>
       <TabBar path="/settings" />
     </Shell>
   );

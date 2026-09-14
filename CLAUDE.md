@@ -172,10 +172,18 @@ it hangs forever.
   do - so they need the same budget. On vitest's 10s default this produced roughly one
   `Hook timed out in 10000ms` per five full runs, always inside a fixture reset and
   never inside an assertion, which reads like a race and is really latency.
-- **Fixture hooks batch their inserts** (`seedUsers(ALICE, BOB)`, one statement). The db
-  project is entirely network-bound - about 250s for 86 tests, ~3s each - and that time
-  is round trips, not computation. Adding a per-row `await` in a hook is the easiest way
-  to make the suite slower and flakier at once.
+- **Fixture hooks do ONE round trip per test.** Users are seeded once per file in
+  `beforeAll`; `beforeEach` clears only the rows a test creates. The db project is
+  entirely network-bound and the dev branch has a long latency tail - a median round
+  trip near 115ms but individual queries reaching 4-7s - so three round trips before
+  every test put a fixture reset past its timeout roughly once in five full runs.
+  Measured, not guessed: it is not pool exhaustion (only 1-2 connections are open
+  during a run) and not a data race. Cutting the hooks to one round trip also took the
+  project from ~262s to ~210s.
+- **A test that tears down shared fixtures must put them back.** The `test hygiene`
+  tests call `removeFixtures()` deliberately and then re-seed. With per-file seeding,
+  leaving them deleted breaks every test that runs afterwards - and relying on being
+  the last `describe` in the file is not a guarantee.
 - **The DB tests assume exclusive access to that database.** `vitest.config.ts` splits the
   suite into two projects: `unit` (in-memory, files in parallel) and `db` (single fork, one
   file at a time). That ordering holds *within* one vitest run. It does NOT hold across two

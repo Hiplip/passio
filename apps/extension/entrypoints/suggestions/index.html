@@ -3,8 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <title>passio suggestions</title>
+    <style>
+      /* The iframe is sized to this document from the outside, so it must never
+         grow its own scrollbar - that is what made the panel look cramped. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+    </style>
   </head>
-  <body class="bg-transparent">
+  <body>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
   </body>

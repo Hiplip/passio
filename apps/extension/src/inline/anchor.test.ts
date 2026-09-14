@@ -6,7 +6,7 @@ import {
   iconPosition,
   listHeight,
   listPosition,
-  LIST_WIDTH,
+  MIN_LIST_WIDTH,
   type Box,
 } from "./anchor";
 
@@ -51,10 +51,22 @@ describe("listPosition", () => {
     expect(left + width).toBeLessThanOrEqual(viewport.width);
   });
 
+  it("matches the field's width and left edge", () => {
+    // Aligning to the input is most of what makes the overlay read as part of
+    // the page rather than something floating near it.
+    const { left, width } = listPosition(field, viewport, 200);
+    expect(width).toBe(field.width);
+    expect(left).toBe(field.left);
+  });
+
+  it("does not shrink below a usable width for a tiny field", () => {
+    const tiny: Box = { ...field, width: 90 };
+    expect(listPosition(tiny, viewport, 200).width).toBe(MIN_LIST_WIDTH);
+  });
+
   it("narrows to fit a small window rather than overflowing", () => {
     const { width } = listPosition(field, { width: 200, height: 600 }, 200);
     expect(width).toBeLessThanOrEqual(200);
-    expect(width).toBeLessThan(LIST_WIDTH);
   });
 });
 

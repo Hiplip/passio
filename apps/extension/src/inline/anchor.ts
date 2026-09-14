@@ -14,8 +14,15 @@ export interface Viewport {
 export const ICON_SIZE = 20;
 const ICON_INSET = 6;
 
-/** Width of the suggestion list, and how far it sits from the field. */
-export const LIST_WIDTH = 260;
+/**
+ * The list matches the field's width and left edge.
+ *
+ * A fixed width floating near the input is what makes an overlay look bolted
+ * on; aligning it to the field is most of why Bitwarden's reads as part of the
+ * page. The minimum stops a very narrow field producing a list too small to
+ * show a username.
+ */
+export const MIN_LIST_WIDTH = 220;
 const LIST_GAP = 4;
 
 const ROW_HEIGHT = 44;
@@ -25,11 +32,13 @@ const NOTICE_HEIGHT = 46;
 const MAX_ROWS = 4;
 
 /**
- * How tall the suggestion iframe should be for a given number of matches.
+ * A first-paint estimate, replaced the moment the iframe measures itself.
  *
- * Sized to its contents rather than fixed, because the iframe is transparent:
- * any empty space below a short list is an invisible sheet over the page that
- * silently swallows clicks meant for whatever is underneath.
+ * Sizing matters because the iframe is transparent: empty space below a short
+ * list is an invisible sheet over the page that swallows clicks meant for
+ * whatever is underneath. An estimate alone was never going to be right - a
+ * notice that wraps to two lines does not fit a one-line box - so the iframe
+ * reports its real height and this only avoids a flash at the wrong size.
  */
 export function listHeight(matchCount: number): number {
   if (matchCount <= 0) return NOTICE_HEIGHT;
@@ -70,8 +79,10 @@ export function listPosition(
   const fitsBelow = below + listHeight <= viewport.height;
   const top = fitsBelow ? below : Math.max(LIST_GAP, field.top - LIST_GAP - listHeight);
 
-  const width = Math.min(LIST_WIDTH, viewport.width - LIST_GAP * 2);
-  // Keep it on screen even when the field is at the very edge.
+  const available = viewport.width - LIST_GAP * 2;
+  const width = Math.min(Math.max(field.width, MIN_LIST_WIDTH), available);
+  // Aligned to the field's left edge, but kept on screen when the field sits at
+  // the very edge of a narrow window.
   const left = Math.max(
     LIST_GAP,
     Math.min(field.left, viewport.width - width - LIST_GAP),
