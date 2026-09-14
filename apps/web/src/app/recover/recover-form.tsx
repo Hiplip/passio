@@ -6,7 +6,7 @@ import { useState } from "react";
 import { RecoveryKit } from "~/components/recovery-kit";
 import { Alert, AlertDescription } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import { Field } from "@passio/ui/field";
 import { buildRecoveryPayload } from "~/lib/auth/recovery";
 import { api } from "~/trpc/react";
@@ -70,16 +70,16 @@ export function RecoverForm() {
 
   if (newRecoveryKey) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Save your new recovery key</CardTitle>
-          <CardDescription>
+      <div className="grid gap-7">
+        <div className="grid gap-1.5">
+          <h1>Save your new recovery key</h1>
+          <p className="text-muted-foreground">
             Your old recovery key no longer works. Everything in your vault is
             unchanged.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
 
-        <CardContent className="grid gap-5">
+        <div className="grid gap-5">
           <RecoveryKit recoveryKey={newRecoveryKey} email={email} />
 
           <label className="flex items-start gap-3 text-sm print:hidden">
@@ -93,27 +93,27 @@ export function RecoverForm() {
           </label>
 
           <Button
+            size="lg"
             disabled={!saved}
             onClick={() => router.push("/login")}
             className="w-full print:hidden"
           >
             Sign in with my new password
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Use your recovery key</CardTitle>
-        <CardDescription>
+    <div className="grid gap-7">
+      <div className="grid gap-1.5">
+        <h1>Use your recovery key</h1>
+        <p className="text-muted-foreground">
           This sets a new master password. Your vault contents are not affected.
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
 
-      <CardContent>
       <form onSubmit={(e) => void submit(e)} className="grid gap-5">
 
       <Field
@@ -165,11 +165,17 @@ export function RecoverForm() {
         </Alert>
       ) : null}
 
-      <Button type="submit" disabled={!canSubmit} className="w-full">
-        {busy ? "Checking your recovery key…" : "Set a new master password"}
-      </Button>
+      {busy ? (
+        <CipherReadout
+          label="Unwrapping your vault key and sealing it again…"
+          className="py-1"
+        />
+      ) : (
+        <Button type="submit" size="lg" disabled={!canSubmit} className="w-full">
+          Set a new master password
+        </Button>
+      )}
       </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

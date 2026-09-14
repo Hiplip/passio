@@ -8,7 +8,9 @@ import { EditItem } from "@passio/vault-ui/edit-item";
 import { NavigationProvider } from "@passio/vault-ui/navigation";
 import { NewItem } from "@passio/vault-ui/new-item";
 import { VaultBrowser } from "@passio/vault-ui/vault-browser";
-import { KeyRound, Lock } from "lucide-react";
+import { Wordmark } from "@passio/ui/wordmark";
+import { CipherReadout } from "@passio/ui/cipher-readout";
+import { Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -21,13 +23,13 @@ import { useExtensionVaultData } from "../../src/vault-data";
 function Chrome({ children, onLock }: { children: React.ReactNode; onLock?: () => void }) {
   return (
     <div className="bg-background text-foreground min-h-screen">
-      <header className="bg-background/80 sticky top-0 z-30 border-b backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-4xl items-center gap-3 px-5">
-          <a href="#/vault" className="flex items-center gap-2.5">
-            <span className="bg-primary text-primary-foreground grid size-7 place-items-center rounded-md">
-              <KeyRound className="size-3.5" />
-            </span>
-            <span className="text-sm font-semibold tracking-tight">passio</span>
+      <header className="bg-background sticky top-0 z-30 border-b">
+        <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-5">
+          <a
+            href="#/vault"
+            className="focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-[3px]"
+          >
+            <Wordmark size="sm" />
           </a>
           {onLock ? (
             <Button variant="outline" size="sm" onClick={onLock} className="ml-auto">
@@ -37,7 +39,7 @@ function Chrome({ children, onLock }: { children: React.ReactNode; onLock?: () =
           ) : null}
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-5 py-8">{children}</main>
+      <main className="mx-auto max-w-3xl px-5 py-8">{children}</main>
       <Toaster position="bottom-center" />
     </div>
   );
@@ -67,28 +69,32 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
 
   return (
     <Chrome>
-      <form onSubmit={(e) => void submit(e)} className="mx-auto grid max-w-sm gap-4">
-        <div>
+      <form onSubmit={(e) => void submit(e)} className="mx-auto grid max-w-sm gap-5">
+        <div className="grid gap-1">
           <h1>{knownEmail ? "Welcome back" : "Sign in"}</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-[13px]">
             {knownEmail ?? "Your vault is encrypted on this device."}
           </p>
         </div>
         {knownEmail ? null : (
           <Field
-            label="Email" type="email" autoComplete="username" required
+            label="Email" type="email" autoComplete="username" required disabled={busy}
             value={email} onChange={(e) => setEmail(e.target.value)}
           />
         )}
         <Field
           label="Master password" type="password" autoComplete="current-password"
-          required autoFocus secret value={password}
+          required autoFocus secret disabled={busy} value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={error ?? undefined}
         />
-        <Button type="submit" disabled={busy}>
-          {busy ? "Unlocking…" : "Unlock"}
-        </Button>
+        {busy ? (
+          <CipherReadout label="Deriving your key on this device…" />
+        ) : (
+          <Button type="submit" size="lg">
+            Unlock vault
+          </Button>
+        )}
       </form>
     </Chrome>
   );
@@ -110,9 +116,17 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   if (error) {
     return (
       <Chrome onLock={() => void vault.lock().then(onLocked)}>
-        <div className="grid max-w-sm gap-3">
-          <p className="text-destructive text-sm">{error}</p>
-          <Button variant="outline" onClick={reload} className="justify-self-start">
+        <div className="grid max-w-sm gap-1">
+          <p className="font-medium">{error}</p>
+          <p className="text-muted-foreground text-[13px] leading-relaxed">
+            Your vault is unharmed. This is usually a dropped connection.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reload}
+            className="mt-3 justify-self-start"
+          >
             Try again
           </Button>
         </div>
@@ -145,7 +159,7 @@ function App() {
   if (state === "loading") {
     return (
       <Chrome>
-        <p className="text-muted-foreground text-sm">Checking…</p>
+        <p className="text-muted-foreground text-[13px]">Checking your vault…</p>
       </Chrome>
     );
   }

@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Alert, AlertDescription } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import { Field } from "@passio/ui/field";
 import { normalizeEmail } from "@passio/crypto";
 import { deriveInWorker } from "@passio/crypto/worker/client";
@@ -50,52 +50,64 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>
+    <div className="grid gap-7">
+      <div className="grid gap-1.5">
+        <h1>Welcome back</h1>
+        <p className="text-muted-foreground">
           Your master password is used on this device only.
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
 
-      <CardContent>
-        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
-          <Field
-            label="Email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={busy}
+        />
 
-          <Field
-            label="Master password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        <Field
+          label="Master password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          secret
+          disabled={busy}
+        />
 
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-          <Button type="submit" disabled={busy || !email || !password} className="w-full">
-            {busy ? "Checking…" : "Sign in"}
-          </Button>
-
-          <Link
-            href="/recover"
-            className="text-muted-foreground hover:text-foreground justify-self-center text-sm underline-offset-4 hover:underline"
+        {/* Signing in derives the same key unlocking does, and takes just as
+            long, so it says the same thing while it works. */}
+        {busy ? (
+          <CipherReadout label="Deriving your key on this device…" className="py-1" />
+        ) : (
+          <Button
+            type="submit"
+            size="lg"
+            disabled={!email || !password}
+            className="w-full"
           >
-            Forgotten your master password?
-          </Link>
-        </form>
-      </CardContent>
-    </Card>
+            Sign in
+          </Button>
+        )}
+
+        <Link
+          href="/recover"
+          className="text-muted-foreground hover:text-foreground justify-self-center text-[13px] underline-offset-4 hover:underline"
+        >
+          Forgotten your master password?
+        </Link>
+      </form>
+    </div>
   );
 }

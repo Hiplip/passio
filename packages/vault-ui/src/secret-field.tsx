@@ -93,7 +93,7 @@ export function SecretField({
             disabled={value.length === 0}
             onClick={() => void copy()}
           >
-            {justCopied ? <Check className="text-primary" /> : <Copy />}
+            {justCopied ? <Check className="text-cipher" /> : <Copy />}
           </Button>
         </div>
       </div>

@@ -7,10 +7,11 @@ import {
   applySummaryFilter,
   countByFolder,
   countByType,
+  countFilters,
+  countItemFilters,
   countTotp,
   filtersEqual,
   type VaultFilter,
-  viewsEqual,
 } from "./filter";
 
 const now = new Date();
@@ -174,20 +175,6 @@ describe("verification codes", () => {
   });
 });
 
-describe("viewsEqual", () => {
-  it("matches the overview only with itself", () => {
-    expect(viewsEqual("overview", "overview")).toBe(true);
-    expect(viewsEqual("overview", ALL_ITEMS)).toBe(false);
-    expect(viewsEqual(ALL_ITEMS, "overview")).toBe(false);
-  });
-
-  it("falls through to filter comparison for real filters", () => {
-    expect(viewsEqual({ kind: "totp" }, { kind: "totp" })).toBe(true);
-    expect(
-      viewsEqual({ kind: "folder", folderId: WORK }, { kind: "folder", folderId: HOME }),
-    ).toBe(false);
-  });
-});
 
 describe("applySummaryFilter", () => {
   const summaries = [
@@ -222,5 +209,77 @@ describe("applySummaryFilter", () => {
 
   it("filters by one-time code", () => {
     expect(ids(applySummaryFilter(summaries, { kind: "totp" }, known))).toEqual(["a"]);
+  });
+});
+
+describe("countFilters", () => {
+  const known = new Set(["work", "home"]);
+  const summaries = [
+    { id: "a", type: "login" as const, folderId: "work", hasTotp: true },
+    { id: "b", type: "login" as const, hasTotp: false },
+    { id: "c", type: "note" as const, folderId: "work", hasTotp: false },
+    { id: "d", type: "card" as const, folderId: "gone", hasTotp: false },
+    { id: "e", type: "login" as const, folderId: "home", hasTotp: true },
+  ];
+
+  it("counts everything in one pass", () => {
+    const counts = countFilters(summaries, known);
+    expect(counts.total).toBe(5);
+    expect(counts.totp).toBe(2);
+    expect(counts.byType.get("login")).toBe(3);
+    expect(counts.byType.get("note")).toBe(1);
+    expect(counts.byType.get("card")).toBe(1);
+    expect(counts.byFolder.get("work")).toBe(2);
+    expect(counts.byFolder.get("home")).toBe(1);
+  });
+
+  it("counts a dangling folder id as unfiled, matching where the item is shown", () => {
+    // "b" has no folder, "d" points at one that is gone. Both appear under
+    // "No folder", so both must be counted there or the pill lies.
+    const counts = countFilters(summaries, known);
+    expect(counts.unfiled).toBe(2);
+    expect(counts.byFolder.get("gone")).toBeUndefined();
+  });
+
+  it("agrees with applySummaryFilter for every filter", () => {
+    const counts = countFilters(summaries, known);
+    const size = (filter: VaultFilter) =>
+      applySummaryFilter(summaries, filter, known).length;
+
+    expect(counts.total).toBe(size({ kind: "all" }));
+    expect(counts.totp).toBe(size({ kind: "totp" }));
+    expect(counts.unfiled).toBe(size({ kind: "unfiled" }));
+    for (const type of ["login", "note", "card"] as const) {
+      expect(counts.byType.get(type) ?? 0).toBe(size({ kind: "type", type }));
+    }
+    for (const folderId of known) {
+      expect(counts.byFolder.get(folderId) ?? 0).toBe(
+        size({ kind: "folder", folderId }),
+      );
+    }
+  });
+
+  it("returns empty counts for an empty vault", () => {
+    const counts = countFilters([], known);
+    expect(counts.total).toBe(0);
+    expect(counts.unfiled).toBe(0);
+    expect(counts.byType.size).toBe(0);
+  });
+});
+
+describe("countItemFilters", () => {
+  it("matches the summary counts for the same vault", () => {
+    const counts = countItemFilters(items, known);
+    expect(counts.total).toBe(5);
+    expect(counts.byType.get("login")).toBe(3);
+    expect(counts.byFolder.get(WORK)).toBe(1);
+    expect(counts.byFolder.get(HOME)).toBe(2);
+    // "4" has no folder and "5" points at a deleted one.
+    expect(counts.unfiled).toBe(2);
+  });
+
+  it("never counts a one-time code on a non-login", () => {
+    const odd = [make("x", { type: "note", title: "N", totp: { secret: "AAAA" } })];
+    expect(countItemFilters(odd, known).totp).toBe(0);
   });
 });

@@ -35,12 +35,12 @@ export function RecoveryKit({ recoveryKey, email }: RecoveryKitProps) {
 
   return (
     <div className="grid gap-4">
-      <div className="bg-muted/50 grid gap-3 rounded-xl border p-5 print:border-black print:bg-white">
+      <div className="bg-cipher-soft grid gap-3 rounded-xl p-5 print:border print:border-black print:bg-white">
         <p className="text-muted-foreground text-xs print:text-black">
           Recovery key for {email}
         </p>
 
-        <div className="secret grid grid-cols-2 gap-x-4 gap-y-1.5 text-[15px] sm:grid-cols-4 print:text-black">
+        <div className="secret text-cipher grid grid-cols-2 gap-x-4 gap-y-1.5 text-[15px] sm:grid-cols-4 print:text-black">
           <span className="text-muted-foreground col-span-2 sm:col-span-4 print:text-black">
             PASSIO-{version}
           </span>

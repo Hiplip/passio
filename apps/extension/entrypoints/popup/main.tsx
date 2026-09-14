@@ -1,10 +1,11 @@
 import "@passio/ui/styles.css";
 
 import { searchSummaries } from "@passio/core/search";
-import { applySummaryFilter, type VaultFilter } from "@passio/core/filter";
+import { applySummaryFilter, countFilters, type VaultFilter } from "@passio/core/filter";
 import { matchItemsToUrl } from "@passio/core/match";
 import { copyWithAutoClear } from "@passio/core/clipboard";
 import { Button } from "@passio/ui/button";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,14 +24,17 @@ import {
 import { Skeleton } from "@passio/ui/skeleton";
 import { Switch } from "@passio/ui/switch";
 import { Toaster } from "@passio/ui/sonner";
+import { Wordmark } from "@passio/ui/wordmark";
 import { VaultDataProvider } from "@passio/vault-ui/data";
 import { EditItem } from "@passio/vault-ui/edit-item";
+import { ItemMark } from "@passio/vault-ui/item-mark";
 import { NavigationProvider } from "@passio/vault-ui/navigation";
 import { NewItem } from "@passio/vault-ui/new-item";
 import { GeneratorPanel } from "@passio/vault-ui/generator-panel";
+import { SettingsGroup, SettingsRow } from "@passio/vault-ui/settings-list";
+import { VaultFilters } from "@passio/vault-ui/vault-filters";
 import {
-  ArrowLeft, ExternalLink, Folder as FolderIcon, Lock, LogOut, MoreVertical,
-  Plus, RefreshCw, Search, Settings, Shield, SlidersHorizontal, Wallet,
+  ArrowLeft, ExternalLink, Lock, LogOut, MoreVertical, Plus, RefreshCw, Search, X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -38,7 +42,6 @@ import { toast } from "sonner";
 
 import { readEmail, writeEmail } from "../../src/chrome-storage";
 import { vault } from "../../src/client";
-import { ItemGlyph } from "../../src/item-glyph";
 import type {
   FillField,
   FolderSummary,
@@ -60,9 +63,8 @@ import { useExtensionVaultData } from "../../src/vault-data";
  * The popup frame.
  *
  * `tall` fixes the height for the tabbed screens so switching tabs does not
- * resize the window under the cursor, and pins the tab bar to the bottom
- * instead of letting it float up under short content. Unlock and the editors
- * size to their content.
+ * resize the window under the cursor. Unlock and the editors size to their
+ * content.
  *
  * `overflow-hidden` matters as much as the height: without it a single wide
  * child gives the whole popup a horizontal scrollbar.
@@ -94,86 +96,126 @@ function Body({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Header({
-  title,
-  onBack,
-  onAdd,
-  path,
-}: {
-  title: string;
-  onBack?: () => void;
-  onAdd?: () => void;
-  path?: string;
-}) {
-  return (
-    <header className="flex h-12 items-center gap-1.5 border-b px-3">
-      {onBack ? (
-        <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="Back">
-          <ArrowLeft />
-        </Button>
-      ) : null}
-
-      <span className="ml-1 text-sm font-semibold tracking-tight">{title}</span>
-
-      <span className="ml-auto flex items-center gap-1">
-        {onAdd ? (
-          <Button size="sm" onClick={onAdd}>
-            <Plus />
-            New
-          </Button>
-        ) : null}
-        {path !== undefined ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => void popOut(path)}
-            aria-label="Open in a window"
-          >
-            <ExternalLink />
-          </Button>
-        ) : null}
-      </span>
-    </header>
-  );
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  all: "All types",
-  login: "Logins",
-  note: "Notes",
-  card: "Cards",
-};
-
 const TABS = [
-  { path: "/", label: "Vault", Icon: Wallet },
-  { path: "/generator", label: "Generator", Icon: RefreshCw },
-  { path: "/settings", label: "Settings", Icon: Settings },
+  { path: "/", label: "Vault" },
+  { path: "/generator", label: "Generator" },
+  { path: "/settings", label: "Settings" },
 ] as const;
 
-/** Bottom navigation. Three destinations, always visible, so nothing is more
- *  than one tap away - and no "Send", which this product does not do. */
-function TabBar({ path }: { path: string }) {
+/**
+ * Navigation, as a segmented control in the header.
+ *
+ * It used to be a bar of icon-and-label tabs pinned to the bottom edge, which
+ * is where every other password manager puts it. Moving it to the top puts
+ * navigation where the eye starts, and buys back 44px of a 560px window - a
+ * whole extra row of the list.
+ */
+function SegmentedNav({ path }: { path: string }) {
   return (
-    <nav className="flex border-t">
-      {TABS.map(({ path: to, label, Icon }) => {
+    <nav className="bg-muted flex rounded-full p-0.5" aria-label="Sections">
+      {TABS.map(({ path: to, label }) => {
         const active = to === path;
         return (
           <a
             key={to}
             href={`#${to}`}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors ${
+            className={`flex-1 rounded-full px-3 py-1 text-center text-[12px] leading-5 transition-colors ${
               active
-                ? "text-primary font-medium"
+                ? "bg-background text-foreground font-medium shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="size-4" />
             {label}
           </a>
         );
       })}
     </nav>
+  );
+}
+
+/** The header of a tabbed screen: the mark, the sections, and the way out. */
+function TabHeader({ path, onAdd }: { path: string; onAdd?: () => void }) {
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+      <Wordmark size="sm" showName={false} />
+      <div className="min-w-0 flex-1">
+        <SegmentedNav path={path} />
+      </div>
+      {onAdd ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-full"
+          onClick={onAdd}
+          aria-label="Add item"
+        >
+          <Plus />
+        </Button>
+      ) : null}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="rounded-full"
+        onClick={() => void popOut(path === "/" ? "/vault" : path)}
+        aria-label="Open in a window"
+      >
+        <ExternalLink />
+      </Button>
+    </header>
+  );
+}
+
+/** The header of a screen that took over the popup: back, title, and nothing
+ *  else competing with the form below it. */
+function StackHeader({
+  title,
+  onBack,
+  path,
+}: {
+  title: string;
+  onBack: () => void;
+  path?: string;
+}) {
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-1.5 border-b px-3">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="rounded-full"
+        onClick={onBack}
+        aria-label="Back"
+      >
+        <ArrowLeft />
+      </Button>
+      <span className="font-medium">{title}</span>
+      {path !== undefined ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="ml-auto rounded-full"
+          onClick={() => void popOut(path)}
+          aria-label="Open in a window"
+        >
+          <ExternalLink />
+        </Button>
+      ) : null}
+    </header>
+  );
+}
+
+/** A failure that says what happened and offers the way out of it. */
+function Problem({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="grid justify-items-center gap-1 px-6 py-12 text-center">
+      <p className="font-medium">{message}</p>
+      <p className="text-muted-foreground max-w-[17rem] text-[13px] leading-relaxed">
+        Your vault is unharmed. This is usually a dropped connection.
+      </p>
+      <Button variant="outline" size="sm" onClick={onRetry} className="mt-3">
+        Try again
+      </Button>
+    </div>
   );
 }
 
@@ -197,12 +239,7 @@ function Editor({
   const { data, error, reload } = useExtensionVaultData(onLocked);
 
   const body = error ? (
-    <div className="grid gap-3 p-4">
-      <p className="text-destructive text-sm">{error}</p>
-      <Button variant="outline" onClick={reload} className="justify-self-start">
-        Try again
-      </Button>
-    </div>
+    <Problem message={error} onRetry={reload} />
   ) : (
     <div className="max-h-[520px] overflow-y-auto p-4">
       {path === "/vault/new" ? (
@@ -217,7 +254,7 @@ function Editor({
     <NavigationProvider value={navigation}>
       <VaultDataProvider value={data}>
         <Shell>
-          <Header
+          <StackHeader
             title={path === "/vault/new" ? "New item" : "Edit item"}
             onBack={onBack}
             path={path}
@@ -253,13 +290,12 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
 
   return (
     <Shell>
-      <Header title="passio" />
-      <form onSubmit={(e) => void submit(e)} className="grid gap-4 p-4">
-        <div>
-          <h1 className="text-sm font-semibold">
-            {knownEmail ? "Welcome back" : "Sign in"}
-          </h1>
-          <p className="text-muted-foreground text-xs">
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5 p-5">
+        <Wordmark size="md" />
+
+        <div className="grid gap-0.5">
+          <h1 className="text-base">{knownEmail ? "Welcome back" : "Sign in"}</h1>
+          <p className="text-muted-foreground text-[13px]">
             {knownEmail ?? "Your vault is encrypted on this device."}
           </p>
         </div>
@@ -270,6 +306,7 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
             type="email"
             autoComplete="username"
             required
+            disabled={busy}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -282,16 +319,21 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
           required
           autoFocus
           secret
+          disabled={busy}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={error ?? undefined}
         />
 
-        {/* Argon2id at 64 MiB takes about a second. A silent button reads as a
-            broken one. */}
-        <Button type="submit" disabled={busy}>
-          {busy ? "Unlocking…" : "Unlock"}
-        </Button>
+        {/* Argon2id at 64 MiB takes about a second. The readout says what that
+            second is for, in the same face the key itself is shown in. */}
+        {busy ? (
+          <CipherReadout label="Deriving your key on this device…" />
+        ) : (
+          <Button type="submit" size="lg">
+            Unlock vault
+          </Button>
+        )}
       </form>
     </Shell>
   );
@@ -311,31 +353,35 @@ function Row({
   onOpen: () => void;
 }) {
   return (
-    <li className="hover:bg-muted/40 flex items-center gap-3 px-4 py-2.5 transition-colors">
-      <ItemGlyph type={item.type} />
+    <li className="hover:bg-muted/50 flex items-center gap-3 px-3 py-2 transition-colors">
+      <ItemMark name={item.title} type={item.type} size="sm" />
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{item.title}</span>
+        <span className="block truncate text-[13px] font-medium">{item.title}</span>
         {item.username ? (
-          <span className="text-muted-foreground block truncate text-xs">
+          <span className="text-muted-foreground block truncate text-[11.5px]">
             {item.username}
           </span>
         ) : null}
       </span>
 
       {canFill && item.type === "login" ? (
-        <Button size="sm" onClick={onFill}>
+        <Button size="xs" onClick={onFill}>
           Fill
         </Button>
       ) : null}
 
-      {/* One menu rather than three more buttons. The web app's rows already
-          work this way, and four equal-weight buttons per row made nothing
-          read as the primary action. */}
+      {/* One menu rather than three more buttons. Four equal-weight buttons per
+          row made nothing read as the primary action. */}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${item.title}`} />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label={`Actions for ${item.title}`}
+            />
           }
         >
           <MoreVertical />
@@ -387,7 +433,7 @@ function InlineToggle() {
   }
 
   return (
-    <SettingRow
+    <SettingsRow
       label="Suggest logins on form fields"
       hint="Lets passio see the pages you visit"
     >
@@ -397,15 +443,45 @@ function InlineToggle() {
         disabled={on === null}
         onCheckedChange={change}
       />
-    </SettingRow>
+    </SettingsRow>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+/**
+ * The heading above a run of rows.
+ *
+ * Sentence case at reading size, on the page ground. The version this replaced
+ * was a tinted, tracked-out, all-caps band between every group, which made two
+ * short lists look like a settings screen.
+ */
+function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-muted-foreground bg-muted/40 border-y px-4 py-1.5 text-[11px] font-medium tracking-wide">
+    <p className="text-muted-foreground px-3 pt-3 pb-1.5 text-[11.5px] font-medium">
       {children}
     </p>
+  );
+}
+
+/** Nothing to show, and what to do about it. */
+function Nothing({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="grid justify-items-center gap-1 px-6 py-12 text-center">
+      <p className="font-medium">{title}</p>
+      {hint ? (
+        <p className="text-muted-foreground max-w-[17rem] text-[13px] leading-relaxed">
+          {hint}
+        </p>
+      ) : null}
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
   );
 }
 
@@ -414,8 +490,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   const [folders, setFolders] = useState<FolderSummary[]>([]);
   const [damaged, setDamaged] = useState(0);
   const [query, setQuery] = useState("");
-  const [folderId, setFolderId] = useState("all");
-  const [type, setType] = useState("all");
+  const [filter, setFilter] = useState<VaultFilter>({ kind: "all" });
   const [tabUrl, setTabUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -445,50 +520,32 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   );
 
   /**
-   * Search, then type, then folder.
+   * Search, then the filter.
    *
-   * `applySummaryFilter` takes one filter at a time, so they compose by being
-   * applied in turn - which is also why they can be combined at all. The rules
-   * are the shared ones, so "no folder" still includes an item pointing at a
-   * folder that no longer exists rather than hiding it.
+   * Both are the shared implementations, so "no folder" still includes an item
+   * pointing at a folder that no longer exists rather than hiding it - exactly
+   * as it does in the web app.
    */
   const filtered = useMemo(() => {
     if (!items) return [];
-    let visible = searchSummaries(items, query);
-    if (type !== "all") {
-      visible = applySummaryFilter(
-        visible,
-        { kind: "type", type: type as ItemSummary["type"] },
-        knownFolderIds,
-      );
-    }
-    if (folderId !== "all") {
-      const filter: VaultFilter =
-        folderId === "none" ? { kind: "unfiled" } : { kind: "folder", folderId };
-      visible = applySummaryFilter(visible, filter, knownFolderIds);
-    }
-    return visible;
-  }, [items, query, type, folderId, knownFolderIds]);
+    return applySummaryFilter(searchSummaries(items, query), filter, knownFolderIds);
+  }, [items, query, filter, knownFolderIds]);
 
-  const filtering = type !== "all" || folderId !== "all";
+  const counts = useMemo(
+    () => countFilters(items ?? [], knownFolderIds),
+    [items, knownFolderIds],
+  );
 
-  // Base UI renders the raw value unless the root is told how to label it,
-  // which is what once showed a bare uuid in the item form.
-  const folderLabels = useMemo(() => {
-    const labels: Record<string, string> = {
-      all: "All folders",
-      none: "No folder",
-    };
-    for (const f of folders) labels[f.id] = f.name;
-    return labels;
-  }, [folders]);
+  const filtering = filter.kind !== "all";
+  const searching = query.trim().length > 0;
+
   const forSite = useMemo(
     () => (items && tabUrl ? matchItemsToUrl(items, tabUrl) : []),
     [items, tabUrl],
   );
 
   const canFill = tabUrl?.startsWith("http") ?? false;
-  const showSite = forSite.length > 0 && query === "" && !filtering;
+  const showSite = forSite.length > 0 && !searching && !filtering;
   const rest = showSite
     ? filtered.filter((i) => !forSite.some((m) => m.id === i.id))
     : filtered;
@@ -546,20 +603,13 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     window.location.hash = `/vault/${itemId}`;
   }
 
-
   if (error) {
     return (
       <Shell tall>
-        <Header title="Vault" />
+        <TabHeader path="/" />
         <Body>
-        <div className="grid gap-3 p-4">
-          <p className="text-destructive text-sm">{error}</p>
-          <Button variant="outline" onClick={() => void load()}>
-            Try again
-          </Button>
-        </div>
+          <Problem message={error} onRetry={() => void load()} />
         </Body>
-        <TabBar path="/" />
       </Shell>
     );
   }
@@ -567,21 +617,20 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   if (!items) {
     return (
       <Shell tall>
-        <Header title="Vault" />
+        <TabHeader path="/" />
         <Body>
-        <div className="grid gap-3 p-4">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Skeleton className="size-8 rounded-lg" />
-              <div className="grid flex-1 gap-1.5">
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-2.5 w-20" />
+          <div className="grid gap-4 p-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="size-7 rounded-full" />
+                <div className="grid flex-1 gap-1.5">
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-2.5 w-20" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         </Body>
-        <TabBar path="/" />
       </Shell>
     );
   }
@@ -596,13 +645,9 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   return (
     <Shell tall>
-      <Header
-        title="Vault"
-        onAdd={() => (window.location.hash = "/vault/new")}
-        path="/"
-      />
+      <TabHeader path="/" onAdd={() => (window.location.hash = "/vault/new")} />
 
-      <div className="grid gap-2 p-3">
+      <div className="grid shrink-0 gap-2.5 p-3">
         <div className="relative flex items-center">
           <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
           <Input
@@ -611,53 +656,36 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your vault"
             aria-label="Search your vault"
-            className="pl-9"
+            className="h-9 rounded-lg pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden"
           />
+          {searching ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="text-muted-foreground absolute right-1.5 rounded-full"
+            >
+              <X />
+            </Button>
+          ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Select
-            items={folderLabels}
-            value={folderId}
-            onValueChange={(next: string | null) => setFolderId(next ?? "all")}
-          >
-            <SelectTrigger aria-label="Filter by folder" className="w-full">
-              <FolderIcon className="text-muted-foreground size-3.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All folders</SelectItem>
-              <SelectItem value="none">No folder</SelectItem>
-              {folders.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            items={TYPE_LABELS}
-            value={type}
-            onValueChange={(next: string | null) => setType(next ?? "all")}
-          >
-            <SelectTrigger aria-label="Filter by type" className="w-full">
-              <SlidersHorizontal className="text-muted-foreground size-3.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* The same rail the web app uses. A filter cannot mean two different
+            things in two windows if there is only one of it. */}
+        <VaultFilters
+          filter={filter}
+          onFilterChange={(next) => {
+            setQuery("");
+            setFilter(next);
+          }}
+          folders={folders}
+          counts={counts}
+        />
       </div>
 
       {damaged > 0 ? (
-        <p className="text-destructive px-4 pb-2 text-xs">
+        <p className="text-destructive shrink-0 px-3 pb-2 text-[11.5px]">
           {damaged} item{damaged === 1 ? "" : "s"} could not be decrypted. Nothing is
           lost — open the full vault to look.
         </p>
@@ -665,14 +693,24 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
       <Body>
         {items.length === 0 ? (
-          <p className="text-muted-foreground p-4 text-sm">
-            Your vault is empty. Add your first item in the full vault.
-          </p>
+          <Nothing
+            title="Your vault is empty"
+            hint="Add a login and passio will offer it the next time you meet that sign-in form."
+            action={
+              <Button
+                size="sm"
+                onClick={() => (window.location.hash = "/vault/new")}
+              >
+                <Plus />
+                Add your first item
+              </Button>
+            }
+          />
         ) : null}
 
         {showSite ? (
           <>
-            <SectionLabel>For this site</SectionLabel>
+            <GroupLabel>For this site</GroupLabel>
             <ul>
               {forSite.map((i) => (
                 <Row key={i.id} {...rowProps(i)} />
@@ -683,23 +721,33 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
         {rest.length > 0 ? (
           <>
-            {showSite ? <SectionLabel>All items</SectionLabel> : null}
+            {showSite ? <GroupLabel>Everything else</GroupLabel> : null}
             <ul>
               {rest.map((i) => (
                 <Row key={i.id} {...rowProps(i)} />
               ))}
             </ul>
           </>
-        ) : query !== "" ? (
-          <p className="text-muted-foreground p-4 text-sm">Nothing matches “{query}”.</p>
-        ) : filtering ? (
-          <p className="text-muted-foreground p-4 text-sm">
-            No items in this filter.
-          </p>
+        ) : items.length > 0 && !showSite ? (
+          <Nothing
+            title={
+              searching ? `Nothing matches “${query.trim()}”` : "Nothing in this filter"
+            }
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setQuery("");
+                  setFilter({ kind: "all" });
+                }}
+              >
+                Show all items
+              </Button>
+            }
+          />
         ) : null}
       </Body>
-
-      <TabBar path="/" />
     </Shell>
   );
 }
@@ -714,62 +762,37 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 function GeneratorTab() {
   return (
     <Shell tall>
-      <Header title="Generator" path="/generator" />
+      <TabHeader path="/generator" />
       <Body>
         <div className="p-4">
-        <GeneratorPanel
-          footer={({ candidate, regenerate }) => (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={regenerate} className="flex-1">
-                <RefreshCw />
-                Regenerate
-              </Button>
-              <Button
-                disabled={!candidate}
-                className="flex-1"
-                onClick={() => {
-                  void copyWithAutoClear(candidate).then((ok) =>
-                    ok
-                      ? toast.success("Password copied", {
-                          description: "Your clipboard clears in 30 seconds.",
-                        })
-                      : toast.error("Could not copy"),
-                  );
-                }}
-              >
-                Copy
-              </Button>
-            </div>
+          <GeneratorPanel
+            footer={({ candidate, regenerate }) => (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={regenerate} className="flex-1">
+                  <RefreshCw />
+                  Regenerate
+                </Button>
+                <Button
+                  disabled={!candidate}
+                  className="flex-1"
+                  onClick={() => {
+                    void copyWithAutoClear(candidate).then((ok) =>
+                      ok
+                        ? toast.success("Password copied", {
+                            description: "Your clipboard clears in 30 seconds.",
+                          })
+                        : toast.error("Could not copy"),
+                    );
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
             )}
           />
         </div>
       </Body>
-      <TabBar path="/generator" />
     </Shell>
-  );
-}
-
-function SettingRow({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] leading-tight">{label}</span>
-        {hint ? (
-          <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
-            {hint}
-          </span>
-        ) : null}
-      </span>
-      <span className="shrink-0">{children}</span>
-    </div>
   );
 }
 
@@ -789,81 +812,81 @@ function SettingsTab({ email, onLocked }: { email: string | null; onLocked: () =
     await chrome.storage.local.set({ [LOCK_MINUTES_KEY]: minutes });
   }
 
+  // Base UI renders the raw value unless the root is told how to label it,
+  // which is what once showed a bare uuid in the item form.
+  const lockLabels = Object.fromEntries(
+    LOCK_CHOICES.map((m) => [String(m), `${m} min`]),
+  );
+
   return (
     <Shell tall>
-      <Header title="Settings" />
+      <TabHeader path="/settings" />
       <Body>
-        <div className="divide-y">
-        <div className="px-4 py-3">
-          <p className="text-sm font-medium">{email ?? "Signed in"}</p>
-          <p className="text-muted-foreground text-xs">
-            Your vault is encrypted on this device.
-          </p>
-        </div>
+        <div className="grid gap-7 p-4">
+          <SettingsGroup title="Autofill">
+            <InlineToggle />
+          </SettingsGroup>
 
-        <div>
-          <SectionLabel>Autofill</SectionLabel>
-          <InlineToggle />
-        </div>
+          <SettingsGroup title="Security">
+            <SettingsRow label="Lock after" hint="Idle time before the vault re-locks">
+              <Select
+                items={lockLabels}
+                value={String(lockMinutes)}
+                onValueChange={(v: string | null) =>
+                  void changeLock(normaliseLockMinutes(Number(v)))
+                }
+              >
+                <SelectTrigger aria-label="Lock after" className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCK_CHOICES.map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {m} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsRow>
 
-        <div>
-          <SectionLabel>Security</SectionLabel>
-          <SettingRow label="Lock after" hint="Idle time before the vault re-locks">
-            <select
-              value={lockMinutes}
-              onChange={(e) => void changeLock(Number(e.target.value))}
-              aria-label="Lock after"
-              className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
-            >
-              {LOCK_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-          </SettingRow>
-          <SettingRow label="Lock now" hint="Forget the key until you unlock again">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void vault.lock().then(onLocked)}
-            >
-              <Lock />
-              Lock
-            </Button>
-          </SettingRow>
-        </div>
+            <SettingsRow label="Lock now" hint="Forget the key until you unlock again">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void vault.lock().then(onLocked)}
+              >
+                <Lock />
+                Lock
+              </Button>
+            </SettingsRow>
+          </SettingsGroup>
 
-        <div>
-          <SectionLabel>Account</SectionLabel>
-          <SettingRow label="Open full vault" hint="Folders, trash and everything else">
-            <Button variant="outline" size="sm" onClick={() => void popOut("/vault")}>
-              <ExternalLink />
-              Open
-            </Button>
-          </SettingRow>
-          <SettingRow label="Sign out" hint="Also forgets this device's session">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void vault.signOut().then(onLocked)}
-            >
-              <LogOut />
-              Sign out
-            </Button>
-          </SettingRow>
-        </div>
+          <SettingsGroup title="Account" description={email ?? undefined}>
+            <SettingsRow label="Open full vault" hint="Folders, trash and everything else">
+              <Button variant="outline" size="sm" onClick={() => void popOut("/vault")}>
+                <ExternalLink />
+                Open
+              </Button>
+            </SettingsRow>
 
-          <p className="text-muted-foreground flex items-start gap-2 px-4 py-3.5 text-[11px] leading-relaxed">
-            <Shield className="mt-px size-3.5 shrink-0" />
-            <span>
-              Your master password never leaves this device, and neither does the key
-              it derives.
-            </span>
+            <SettingsRow label="Sign out" hint="Also forgets this device's session">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void vault.signOut().then(onLocked)}
+              >
+                <LogOut />
+                Sign out
+              </Button>
+            </SettingsRow>
+          </SettingsGroup>
+
+          <p className="text-muted-foreground text-[11.5px] leading-relaxed">
+            Your master password never leaves this device, and neither does the key
+            it derives.
           </p>
         </div>
       </Body>
-      <TabBar path="/settings" />
     </Shell>
   );
 }
@@ -883,8 +906,10 @@ function App() {
   if (state === "loading") {
     return (
       <Shell>
-        <Header title="passio" />
-        <p className="text-muted-foreground p-4 text-sm">Checking…</p>
+        <div className="grid gap-5 p-5">
+          <Wordmark size="md" />
+          <p className="text-muted-foreground text-[13px]">Checking your vault…</p>
+        </div>
       </Shell>
     );
   }

@@ -80,7 +80,7 @@ export function GeneratorPanel({
     <div className="grid gap-4">
       <div
         aria-live="polite"
-        className="bg-muted secret grid min-h-16 place-items-center rounded-lg border px-4 py-3 text-center text-[15px] leading-relaxed break-all"
+        className="bg-cipher-soft text-cipher secret grid min-h-16 place-items-center rounded-xl px-4 py-3.5 text-center text-[15px] leading-relaxed break-all"
       >
         {candidate || <span className="text-destructive text-sm">{error}</span>}
       </div>

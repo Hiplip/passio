@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Plus, Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,28 +8,20 @@ import { Button } from "@passio/ui/button";
 import { Input } from "@passio/ui/input";
 import { Skeleton } from "@passio/ui/skeleton";
 import { routes, useNavigation } from "./navigation";
+import { EmptyState } from "./empty-state";
 import { FolderDialog } from "./folder-dialog";
 import { ItemList } from "./item-list";
-import { VaultOverview } from "./vault-overview";
-import { VaultSidebar } from "./vault-sidebar";
+import { VaultFilters } from "./vault-filters";
 import type { DecryptedFolder } from "@passio/core/decrypt-folders";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import { useVaultData } from "./data";
-import {
-  ALL_ITEMS,
-  applyFilter,
-  countByFolder,
-  countByType,
-  countTotp,
-  type VaultFilter,
-  type VaultView,
-} from "@passio/core/filter";
+import { applyFilter, countItemFilters, type VaultFilter } from "@passio/core/filter";
 import { searchItems } from "@passio/core/search";
 
 function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {
   switch (filter.kind) {
     case "all":
-      return "All items";
+      return "Vault";
     case "type":
       return { login: "Logins", note: "Secure notes", card: "Cards" }[filter.type];
     case "totp":
@@ -55,7 +47,7 @@ export function VaultBrowser() {
   } = useVaultData();
   const { items, damaged, isLoading } = live;
 
-  const [view, setView] = useState<VaultView>("overview");
+  const [filter, setFilter] = useState<VaultFilter>({ kind: "all" });
   const [query, setQuery] = useState("");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<DecryptedFolder | undefined>();
@@ -63,21 +55,6 @@ export function VaultBrowser() {
   const knownFolderIds = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
 
   const searching = query.trim().length > 0;
-
-  /**
-   * Desktop and phones browse differently on purpose.
-   *
-   * A phone opens on the category screen, because a flat list is hard to
-   * navigate with no room for a sidebar. A desktop has the sidebar permanently
-   * in view, so a category screen there would be a redundant extra click
-   * between the user and their items - it opens straight on all items.
-   *
-   * Both share one `view` state; the split is pure CSS, so there is no
-   * breakpoint guessing during hydration.
-   */
-  const atLanding = view === "overview" && !searching;
-  const filter: VaultFilter = view === "overview" ? ALL_ITEMS : view;
-
   const inTrash = filter.kind === "trash";
 
   // Damaged rows are still in the trash, so they count toward the badge. An
@@ -92,10 +69,7 @@ export function VaultBrowser() {
   // debounce and neither tells the server anything.
   const visible = searchItems(applyFilter(source, filter, knownFolderIds), query);
 
-  const folderCounts = countByFolder(items);
-  const typeCounts = countByType(items);
-  const totpCount = countTotp(items);
-  const unfiledCount = applyFilter(items, { kind: "unfiled" }, knownFolderIds).length;
+  const counts = countItemFilters(items, knownFolderIds);
 
   async function restore(itemId: string) {
     try {
@@ -130,7 +104,7 @@ export function VaultBrowser() {
 
     try {
       await removeFolder(folder.id);
-      setView("overview");
+      setFilter({ kind: "all" });
       toast.success("Folder deleted", { description: "Its items are now unfiled." });
     } catch {
       toast.error("Could not delete that folder.");
@@ -142,126 +116,130 @@ export function VaultBrowser() {
     setFolderDialogOpen(true);
   };
 
-  const itemList = (
-    <ItemList
-      items={visible}
-      damaged={inTrash ? deleted.damaged : damaged}
-      query={query}
-      onRestore={inTrash ? (item) => void restore(item.id) : undefined}
-      onDelete={inTrash ? undefined : (item) => void softDelete(item)}
-      emptyMessage={inTrash ? "Nothing deleted." : "Nothing here yet."}
+  const title = searching ? "Results" : describeFilter(filter, folders);
+  const count = searching || filter.kind !== "all" ? visible.length : items.length;
+
+  const empty = searching ? (
+    <EmptyState
+      title={`Nothing matches “${query.trim()}”`}
+      hint="Search looks at names, usernames and web addresses — never at what is inside an item."
+      action={
+        <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+          Clear search
+        </Button>
+      }
+    />
+  ) : inTrash ? (
+    <EmptyState
+      title="Trash is empty"
+      hint="Items you delete land here first, so nothing is ever lost to a mis-click."
+    />
+  ) : items.length === 0 ? (
+    <EmptyState
+      title="Your vault is empty"
+      hint="Add your first login and passio will offer it the next time you meet that sign-in form."
+      action={
+        <Button render={<Link href={routes.newItem} />}>
+          <Plus />
+          Add your first item
+        </Button>
+      }
+    />
+  ) : (
+    <EmptyState
+      title="Nothing in this filter"
+      hint="Pick another filter above, or add an item here."
+      action={
+        <Button variant="outline" size="sm" onClick={() => setFilter({ kind: "all" })}>
+          Show all items
+        </Button>
+      }
     />
   );
 
   return (
-    // items-start stops the sidebar's height stretching this pane, and
-    // content-start stops each row inside it stretching to fill that height -
-    // which is what put the search icon below its own input.
-    <div className="grid items-start gap-6 md:grid-cols-[13rem_1fr] md:gap-8">
-      <VaultSidebar
-        view={view}
-        onViewChange={setView}
+    <div className="grid content-start gap-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate">{title}</h1>
+          <p className="text-muted-foreground text-[13px]">
+            {loading
+              ? "Decrypting…"
+              : searching || filter.kind !== "all"
+                ? `${count} ${count === 1 ? "item" : "items"}`
+                : `${count} ${count === 1 ? "item" : "items"}, encrypted on this device`}
+          </p>
+        </div>
+
+        <Button render={<Link href={routes.newItem} />} size="lg">
+          <Plus />
+          Add item
+        </Button>
+      </div>
+
+      {/*
+        Search is the hero, not the sidebar this replaced. In a personal vault
+        you look something up far more often than you browse a category, so the
+        thing you use most is the largest thing on the screen.
+      */}
+      <div className="relative flex items-center">
+        <Search className="text-muted-foreground pointer-events-none absolute left-4 size-[18px]" />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your vault"
+          aria-label="Search your vault"
+          className="h-12 rounded-xl pr-11 pl-12 text-[15px] [&::-webkit-search-cancel-button]:hidden"
+        />
+        {searching ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Clear search"
+            onClick={() => setQuery("")}
+            className="text-muted-foreground absolute right-2 rounded-full"
+          >
+            <X />
+          </Button>
+        ) : null}
+      </div>
+
+      <VaultFilters
+        filter={filter}
+        onFilterChange={(next) => {
+          setQuery("");
+          setFilter(next);
+        }}
         folders={folders}
-        totalCount={items.length}
-        totpCount={totpCount}
-        typeCounts={typeCounts}
-        folderCounts={folderCounts}
-        unfiledCount={unfiledCount}
+        counts={counts}
         trashCount={trashCount}
         onNewFolder={() => openFolderDialog()}
         onRenameFolder={openFolderDialog}
         onDeleteFolder={(folder) => void deleteFolder(folder)}
       />
 
-      <div className="grid min-w-0 content-start gap-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate">
-              {atLanding ? (
-                <>
-                  <span className="md:hidden">Your vault</span>
-                  <span className="hidden md:inline">All items</span>
-                </>
-              ) : (
-                describeFilter(filter, folders)
-              )}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {loading
-                ? "Decrypting…"
-                : atLanding
-                  ? `${items.length} ${items.length === 1 ? "item" : "items"}, encrypted on this device`
-                  : `${visible.length} ${visible.length === 1 ? "item" : "items"}`}
-            </p>
-          </div>
-
-          <Button render={<Link href={routes.newItem} />} className="ml-auto">
-            <Plus />
-            Add item
-          </Button>
-        </div>
-
-        <div className="relative flex items-center">
-          <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your vault"
-            aria-label="Search your vault"
-            className="pl-9"
-          />
-        </div>
-
-        {/* On a phone there is no sidebar, so this is the only way back up. */}
-        {!atLanding ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-self-start md:hidden"
-            onClick={() => {
-              setQuery("");
-              setView("overview");
-            }}
-          >
-            <ArrowLeft />
-            All categories
-          </Button>
-        ) : null}
-
-        {loading ? (
-          <div className="grid gap-px overflow-hidden rounded-xl border">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="bg-card flex items-center gap-3 px-4 py-3">
-                <Skeleton className="size-9 rounded-lg" />
-                <div className="grid flex-1 gap-2">
-                  <Skeleton className="h-3.5 w-40" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
+      {loading ? (
+        <ul className="rows border-border border-y">
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="flex items-center gap-3.5 py-2.5 pl-2">
+              <Skeleton className="size-9 rounded-full" />
+              <div className="grid flex-1 gap-2">
+                <Skeleton className="h-3.5 w-40" />
+                <Skeleton className="h-3 w-24" />
               </div>
-            ))}
-          </div>
-        ) : atLanding ? (
-          <>
-            <div className="md:hidden">
-              <VaultOverview
-                onSelect={setView}
-                folders={folders}
-                totalCount={items.length}
-                totpCount={totpCount}
-                typeCounts={typeCounts}
-                folderCounts={folderCounts}
-                unfiledCount={unfiledCount}
-                trashCount={trashCount}
-                onNewFolder={() => openFolderDialog()}
-              />
-            </div>
-            <div className="hidden md:block">{itemList}</div>
-          </>
-        ) : (
-          itemList
-        )}
-      </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ItemList
+          items={visible}
+          damaged={inTrash ? deleted.damaged : damaged}
+          empty={empty}
+          onRestore={inTrash ? (item) => void restore(item.id) : undefined}
+          onDelete={inTrash ? undefined : (item) => void softDelete(item)}
+        />
+      )}
 
       <FolderDialog
         open={folderDialogOpen}

@@ -93,8 +93,8 @@ export function NewItem() {
 
   return (
     <div className="grid gap-5">
-      <div className="flex items-center gap-3">
-        <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-xl">
+      <div className="flex items-center gap-3.5">
+        <span className="bg-muted text-muted-foreground grid size-11 shrink-0 place-items-center rounded-full">
           <Icon className="size-5" />
         </span>
         <div className="min-w-0">

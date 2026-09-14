@@ -3,6 +3,7 @@
 import { ArrowLeft, CreditCard, KeyRound, StickyNote } from "lucide-react";
 
 import { ItemEditor } from "./item-editor";
+import { ItemMark } from "./item-mark";
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
 import { Skeleton } from "@passio/ui/skeleton";
@@ -34,19 +35,22 @@ function BackToVault() {
   );
 }
 
-/** Title block: the type icon and last-changed line orient you at a glance. */
+/**
+ * Title block.
+ *
+ * Carries the same mark the row in the list carried, so opening an item is
+ * visibly the same object continuing rather than a new screen appearing.
+ */
 function ItemHeader({ item }: { item: DecryptedItem }) {
-  const { label, Icon } = TYPE_META[item.data.type];
+  const { label } = TYPE_META[item.data.type];
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-xl">
-        <Icon className="size-5" />
-      </span>
+    <div className="flex items-center gap-3.5">
+      <ItemMark name={item.data.title} type={item.data.type} size="lg" />
       <div className="min-w-0">
         <h1 className="truncate">{item.data.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {label} · Updated {relativeTime(item.updatedAt)}
+        <p className="text-muted-foreground text-[13px]">
+          {label}, updated {relativeTime(item.updatedAt)}
         </p>
       </div>
     </div>

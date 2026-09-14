@@ -96,7 +96,8 @@ async function updateBadge(tabId: number, url: string | undefined): Promise<void
     }
   }
   await chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : "" });
-  await chrome.action.setBadgeBackgroundColor({ tabId, color: "#18181b" });
+  // Ink, matching the mark in the popup and the one on every login form.
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: "#221f2b" });
 }
 
 /** chrome.scripting, as the narrow interface syncInlineScript expects. */

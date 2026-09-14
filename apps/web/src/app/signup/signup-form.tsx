@@ -7,7 +7,7 @@ import { useState } from "react";
 import { RecoveryKit } from "~/components/recovery-kit";
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import { Field } from "@passio/ui/field";
 import { buildSignupPayload } from "~/lib/auth/signup-payload";
 import { authClient } from "~/server/better-auth/client";
@@ -75,16 +75,16 @@ export function SignupForm() {
 
   if (recoveryKey) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Save your recovery key</CardTitle>
-          <CardDescription>
+      <div className="grid gap-7">
+        <div className="grid gap-1.5">
+          <h1>Save your recovery key</h1>
+          <p className="text-muted-foreground">
             This is the only way back in if you forget your master password. It is
             shown once and cannot be shown again.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
 
-        <CardContent className="grid gap-5">
+        <div className="grid gap-5">
           <RecoveryKit recoveryKey={recoveryKey} email={email} />
 
           <label className="flex items-start gap-3 text-sm print:hidden">
@@ -98,90 +98,100 @@ export function SignupForm() {
           </label>
 
           <Button
+            size="lg"
             disabled={!saved}
             onClick={() => router.push("/vault")}
             className="w-full print:hidden"
           >
             Open my vault
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create your vault</CardTitle>
-        <CardDescription>
+    <div className="grid gap-7">
+      <div className="grid gap-1.5">
+        <h1>Create your vault</h1>
+        <p className="text-muted-foreground">
           Your master password never leaves this device. It unlocks everything.
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
 
-      <CardContent>
-        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
-          <Field
-            label="Email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
 
-          <Field
-            label="Master password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={tooShort ? `Use at least ${MIN_MASTER_PASSWORD} characters.` : undefined}
-            hint="Long and memorable beats short and complicated."
-            required
-          />
+        <Field
+          label="Master password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={tooShort ? `Use at least ${MIN_MASTER_PASSWORD} characters.` : undefined}
+          hint="Long and memorable beats short and complicated."
+          required
+          secret
+          disabled={busy}
+        />
 
-          <Field
-            label="Confirm master password"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            error={mismatch ? "These do not match." : undefined}
-            required
-          />
+        <Field
+          label="Confirm master password"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          error={mismatch ? "These do not match." : undefined}
+          required
+          secret
+          disabled={busy}
+        />
 
+        <Alert variant="destructive">
+          <ShieldAlert />
+          <AlertTitle>There is no password reset</AlertTitle>
+          <AlertDescription>
+            <p>
+              Your vault is encrypted on this device, so nobody, including this
+              server, can unlock it for you. Forget your master password and lose
+              your recovery key, and everything in the vault is gone permanently.
+            </p>
+            <label className="mt-3 flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={understood}
+                onChange={(e) => setUnderstood(e.target.checked)}
+                className="accent-destructive mt-0.5 size-4"
+              />
+              <span>I understand my vault cannot be recovered without these.</span>
+            </label>
+          </AlertDescription>
+        </Alert>
+
+        {error ? (
           <Alert variant="destructive">
-            <ShieldAlert />
-            <AlertTitle>There is no password reset</AlertTitle>
-            <AlertDescription>
-              <p>
-                Your vault is encrypted on this device, so nobody, including this
-                server, can unlock it for you. Forget your master password and lose
-                your recovery key, and everything in the vault is gone permanently.
-              </p>
-              <label className="mt-3 flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={understood}
-                  onChange={(e) => setUnderstood(e.target.checked)}
-                  className="accent-destructive mt-0.5 size-4"
-                />
-                <span>I understand my vault cannot be recovered without these.</span>
-              </label>
-            </AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
+        ) : null}
 
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <Button type="submit" disabled={!canSubmit} className="w-full">
-            {busy ? "Encrypting your vault…" : "Create vault"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      {busy ? (
+        <CipherReadout
+          label="Deriving your key and sealing the vault…"
+          className="py-1"
+        />
+      ) : (
+        <Button type="submit" size="lg" disabled={!canSubmit} className="w-full">
+          Create vault
+        </Button>
+      )}
+      </form>
+    </div>
   );
 }

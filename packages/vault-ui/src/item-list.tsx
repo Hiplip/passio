@@ -1,18 +1,10 @@
 "use client";
 
-import { CreditCard, KeyRound, StickyNote } from "lucide-react";
-
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
+import { ItemMark } from "./item-mark";
 import { ItemRowActions } from "./item-row-actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import { routes, useNavigation } from "./navigation";
-import type { ItemType } from "@passio/core/schema";
-
-const TYPE_ICON: Record<ItemType, typeof KeyRound> = {
-  login: KeyRound,
-  note: StickyNote,
-  card: CreditCard,
-};
 
 function subtitle(item: DecryptedItem): string {
   const data = item.data;
@@ -25,20 +17,26 @@ interface ItemListProps {
   items: DecryptedItem[];
   /** Ids that failed to decrypt. Surfaced, never silently hidden. */
   damaged: string[];
-  query: string;
+  /** Shown in place of the list when there is nothing to show. */
+  empty: React.ReactNode;
   /** Present only in trash: rows offer restore instead of the usual actions. */
   onRestore?: (item: DecryptedItem) => void;
   onDelete?: (item: DecryptedItem) => void;
-  emptyMessage?: string;
 }
 
+/**
+ * The vault, as a list.
+ *
+ * No card, no shadow, no outer border: the list is the page, and wrapping it
+ * in a panel would only announce that fact a second time. Rows are separated
+ * by hairlines and told apart by their marks.
+ */
 export function ItemList({
   items,
   damaged,
-  query,
+  empty,
   onRestore,
   onDelete,
-  emptyMessage,
 }: ItemListProps) {
   const { Link } = useNavigation();
 
@@ -59,50 +57,39 @@ export function ItemList({
       ) : null}
 
       {items.length === 0 ? (
-        <p className="text-muted-foreground py-16 text-center text-sm">
-          {query.trim().length > 0
-            ? `Nothing matches “${query}”.`
-            : (emptyMessage ?? "Nothing saved yet.")}
-        </p>
+        empty
       ) : (
-        <ul className="divide-border bg-card divide-y overflow-hidden rounded-xl border">
-          {items.map((item) => {
-            const Icon = TYPE_ICON[item.data.type];
-            return (
-              <li
-                key={item.id}
-                className="hover:bg-muted/40 flex items-center gap-2 pr-2 transition-colors"
+        <ul className="rows border-border border-y">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="hover:bg-muted/50 group/item flex items-center gap-1 pr-2 transition-colors"
+            >
+              {/* The link covers the text only. The action buttons beside it
+                  must not be nested inside an anchor. */}
+              <Link
+                href={routes.item(item.id)}
+                className="focus-visible:bg-muted flex min-w-0 flex-1 items-center gap-3.5 rounded-md py-2.5 pl-2 outline-none"
               >
-                {/* The link covers the text only. The action buttons beside it
-                    must not be nested inside an anchor. */}
-                <Link
-                  href={routes.item(item.id)}
-                  className="focus-visible:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-4 py-3 outline-none"
-                >
-                  <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">
-                    <Icon className="size-4" />
-                  </span>
+                <ItemMark name={item.data.title} type={item.data.type} />
 
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {item.data.title}
-                    </span>
-                    {/* Never a password: the list is the most
-                        over-the-shoulder-visible surface in the app. */}
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {subtitle(item)}
-                    </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{item.data.title}</span>
+                  {/* Never a password: the list is the most
+                      over-the-shoulder-visible surface in the app. */}
+                  <span className="text-muted-foreground block truncate text-[13px]">
+                    {subtitle(item)}
                   </span>
-                </Link>
+                </span>
+              </Link>
 
-                <ItemRowActions
-                  item={item}
-                  onRestore={onRestore ? () => onRestore(item) : undefined}
-                  onDelete={onDelete ? () => onDelete(item) : undefined}
-                />
-              </li>
-            );
-          })}
+              <ItemRowActions
+                item={item}
+                onRestore={onRestore ? () => onRestore(item) : undefined}
+                onDelete={onDelete ? () => onDelete(item) : undefined}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </div>

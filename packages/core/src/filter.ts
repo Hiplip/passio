@@ -5,7 +5,7 @@ import type { ItemType } from "./schema";
  * What the vault list is currently showing.
  *
  * A tagged union rather than a bag of optional fields, so "a folder and a type
- * at once" is unrepresentable and the sidebar always has exactly one thing
+ * at once" is unrepresentable and the filter rail always has exactly one thing
  * highlighted.
  */
 export type VaultFilter =
@@ -22,14 +22,6 @@ export type VaultFilter =
   | { kind: "trash" };
 
 export const ALL_ITEMS: VaultFilter = { kind: "all" };
-
-/** What the vault screen is showing: the browse screen, or one filter. */
-export type VaultView = VaultFilter | "overview";
-
-export function viewsEqual(a: VaultView, b: VaultView): boolean {
-  if (a === "overview" || b === "overview") return a === b;
-  return filtersEqual(a, b);
-}
 
 /** True when an item can produce a one-time code. */
 export function hasTotp(item: DecryptedItem): boolean {
@@ -48,7 +40,7 @@ export function filtersEqual(a: VaultFilter, b: VaultFilter): boolean {
 }
 
 /**
- * Applies the sidebar selection.
+ * Applies the filter rail's selection.
  *
  * `knownFolderIds` decides what "unfiled" means. An item pointing at a folder
  * that no longer exists is unfiled, not invisible - deleting a folder cannot
@@ -84,21 +76,22 @@ function matches(
   }
 }
 
+/** The flat shape every rule below works on, from a decrypted item. */
+function toFilterable(item: DecryptedItem): Filterable {
+  return {
+    type: item.data.type,
+    folderId: item.data.folderId,
+    hasTotp: hasTotp(item),
+  };
+}
+
 export function applyFilter(
   items: DecryptedItem[],
   filter: VaultFilter,
   knownFolderIds: ReadonlySet<string>,
 ): DecryptedItem[] {
   return items.filter((item) =>
-    matches(
-      {
-        type: item.data.type,
-        folderId: item.data.folderId,
-        hasTotp: hasTotp(item),
-      },
-      filter,
-      knownFolderIds,
-    ),
+    matches(toFilterable(item), filter, knownFolderIds),
   );
 }
 
@@ -118,7 +111,48 @@ export function applySummaryFilter<T extends Filterable>(
   return items.filter((item) => matches(item, filter, knownFolderIds));
 }
 
-/** How many items each folder holds, for the counts beside the sidebar entries. */
+/** Every number the filter rail shows, in one pass. */
+export interface FilterCounts {
+  total: number;
+  totp: number;
+  byType: Map<ItemType, number>;
+  byFolder: Map<string, number>;
+  unfiled: number;
+}
+
+/**
+ * Counts each filter's contents.
+ *
+ * One pass, one implementation, over the flat shape both clients can produce -
+ * so a pill in the web app and the same pill in the extension popup can never
+ * disagree about how many items are behind it.
+ */
+export function countFilters(
+  items: readonly Filterable[],
+  knownFolderIds: ReadonlySet<string>,
+): FilterCounts {
+  const byType = new Map<ItemType, number>();
+  const byFolder = new Map<string, number>();
+  let totp = 0;
+  let unfiled = 0;
+
+  for (const item of items) {
+    byType.set(item.type, (byType.get(item.type) ?? 0) + 1);
+    if (item.hasTotp) totp += 1;
+
+    if (item.folderId !== undefined && knownFolderIds.has(item.folderId)) {
+      byFolder.set(item.folderId, (byFolder.get(item.folderId) ?? 0) + 1);
+    } else {
+      // A dangling folder id counts as unfiled, matching where the item is
+      // actually shown.
+      unfiled += 1;
+    }
+  }
+
+  return { total: items.length, totp, byType, byFolder, unfiled };
+}
+
+/** How many items each folder holds, for the counts on the filter rail. */
 export function countByFolder(items: DecryptedItem[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const item of items) {
@@ -135,4 +169,12 @@ export function countByType(items: DecryptedItem[]): Map<ItemType, number> {
     counts.set(item.data.type, (counts.get(item.data.type) ?? 0) + 1);
   }
   return counts;
+}
+
+/** `countFilters` over already-decrypted items. */
+export function countItemFilters(
+  items: DecryptedItem[],
+  knownFolderIds: ReadonlySet<string>,
+): FilterCounts {
+  return countFilters(items.map(toFilterable), knownFolderIds);
 }

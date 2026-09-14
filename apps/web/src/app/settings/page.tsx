@@ -11,10 +11,10 @@ export default async function SettingsPage() {
 
   return (
     <VaultShell>
-      <div>
-        <div className="mb-6">
+      <div className="grid gap-8">
+        <div className="grid gap-1">
           <h1>Settings</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-[13px]">
             How this vault behaves on this device.
           </p>
         </div>

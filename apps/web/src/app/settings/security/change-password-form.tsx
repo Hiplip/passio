@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Alert, AlertDescription } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import { Field } from "@passio/ui/field";
 import { buildPasswordChangePayload } from "~/lib/auth/recovery";
 import { api } from "~/trpc/react";
@@ -60,33 +60,29 @@ export function ChangePasswordForm({ email }: { email: string }) {
 
   if (done) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Master password changed</CardTitle>
-          <CardDescription>
+      <div className="grid justify-items-start gap-5">
+        <div className="grid gap-1.5">
+          <h2>Master password changed</h2>
+          <p className="text-muted-foreground max-w-prose leading-relaxed">
             Everything in your vault is unchanged. Other devices will need to sign
             in again, and your recovery key still works.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => router.push("/unlock")}>
-            Unlock with my new password
-          </Button>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <Button size="lg" onClick={() => router.push("/unlock")}>
+          Unlock with my new password
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>
-          Changing your master password re-encrypts only the key to your vault, so
-          it is fast and nothing inside is touched.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+    <div className="grid gap-6">
+      <p className="text-muted-foreground max-w-prose leading-relaxed">
+        Changing your master password re-encrypts only the key to your vault, so
+        it is fast and nothing inside is touched.
+      </p>
+
+      <form onSubmit={(e) => void submit(e)} className="grid max-w-md gap-5">
 
       <Field
         label="Current master password"
@@ -128,11 +124,17 @@ export function ChangePasswordForm({ email }: { email: string }) {
         </Alert>
       ) : null}
 
-      <Button type="submit" disabled={!canSubmit}>
-        {busy ? "Re-wrapping your vault key…" : "Change master password"}
-      </Button>
+      {busy ? (
+        <CipherReadout
+          label="Deriving the new key and re-sealing your vault…"
+          className="py-1"
+        />
+      ) : (
+        <Button type="submit" size="lg" disabled={!canSubmit}>
+          Change master password
+        </Button>
+      )}
       </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

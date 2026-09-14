@@ -401,3 +401,70 @@ so a hostile page cannot aim a fill at a tab it does not own.
 Asserted in `manifest.test.ts`: the broad grant appears only under
 `optional_host_permissions`, `host_permissions` still holds one API origin, and
 `content_scripts` is absent entirely.
+
+---
+
+## Visual identity: "legible / illegible"
+
+The interface looked like Bitwarden — a teal primary action, a sidebar of counts beside
+a flat list, and rounded-square favicon-shaped tiles on every row. Those are the three
+structural tells, and all three are gone.
+
+The palette is built around one rule: **colour means something.** Chrome is ink, not
+brand. Colour marks a secret, an item's identity, or danger, and nothing else. Every
+password manager on the market brands its primary button in a security blue or teal;
+taking the accent out of the buttons entirely is what actually breaks the resemblance,
+more than changing which hue it is.
+
+**Item identity is computed, never fetched.** This is the part the product's own
+constraint made possible. A zero-knowledge vault cannot request favicons — asking a CDN
+for github.com's icon tells that CDN you hold a GitHub account, and doing it per row
+hands over the whole index. So `@passio/core/identity` derives a stable hue and monogram
+from an item's title, locally, with no network and no stored state. Eight hues at one
+fixed lightness and chroma, so forty items read as a palette rather than a bag of
+sweets. A vault's colours end up a fingerprint of its owner's accounts.
+
+**One orchestrated moment.** Argon2id at 64 MiB takes about a second, and that second
+used to be a dead button reading "Unlocking…". It is the most characteristic thing the
+product does, so `CipherReadout` shows it: a band of monospace glyphs with a bright head
+sweeping across, indeterminate because the work takes as long as the device takes. It is
+the only unprompted motion in the product and it holds still under
+`prefers-reduced-motion`.
+
+### NEEDS-REVIEW: the sidebar was deleted, not restyled
+
+`vault-sidebar.tsx` (281 lines, desktop) and `vault-overview.tsx` (202 lines, phone)
+were two implementations of one idea, and a personal vault is searched far more often
+than it is browsed. Both are replaced by one wrapping filter rail that works at every
+width and is shared with the extension popup.
+
+Every filter survives — all, the three types, verification codes, each folder, no
+folder, trash — as do new folder, rename and delete, which moved into the folder menu
+and now act on the folder being browsed rather than needing to be named twice. Folder
+management is optional in the rail: the popup passes no handlers, because it could not
+create folders before either.
+
+This could have gone the other way: a sidebar gives permanent at-a-glance counts, and
+the rail only shows them on its pills. It is called out here because it is the largest
+behavioural change in a redesign that was otherwise meant to be visual.
+
+### NEEDS-REVIEW: fonts are self-hosted rather than loaded through next/font
+
+`packages/ui/src/fonts/*.woff2`, 84 KB, committed to the repo. This fixed a real bug —
+next/font sets its variable on the web app's `<html>`, which no extension page has, and
+`var()` on an undefined variable invalidates the whole `font-family` declaration, so
+every extension surface was rendering in the browser's default face. One `@font-face`
+block now serves both bundlers.
+
+The cost is losing next/font's automatic preloading and its self-host-at-build-time
+handling; the gain is that the two surfaces genuinely cannot drift apart. Worth
+revisiting if web font loading ever shows up as a real page-speed problem.
+
+### Unverifiable here
+
+There is no browser on this VPS, so none of this has been seen rendered. The gates prove
+it compiles, lints, typechecks, passes 547 tests and boots; they cannot prove it looks
+right. Two things in particular want a human eye: the in-field button now renders a
+literal "p" in a system monospace stack (it inherits nothing — it lives in a closed
+shadow root inside someone else's page), and the extension now loads its own woff2 files
+from `chrome-extension://<id>/assets/`.

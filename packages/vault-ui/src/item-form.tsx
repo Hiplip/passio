@@ -5,7 +5,6 @@ import { useState } from "react";
 
 import { Alert, AlertDescription } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardFooter } from "@passio/ui/card";
 import { Field } from "@passio/ui/field";
 import { Label } from "@passio/ui/label";
 import {
@@ -37,8 +36,8 @@ interface ItemFormProps {
 /** A labelled break between groups of fields, so the form reads in chunks. */
 function Divider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 pt-1">
-      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+    <div className="flex items-center gap-3 pt-2">
+      <span className="text-muted-foreground text-[12.5px] font-medium">{label}</span>
       <span className="bg-border h-px flex-1" />
     </div>
   );
@@ -60,8 +59,10 @@ export function ItemForm({
         onSave();
       }}
     >
-      <Card className="overflow-hidden">
-        <CardContent className="grid gap-5">
+      {/* No card. The form is the whole screen, so a panel around it would
+          only draw a box around the page. */}
+      <div className="grid gap-5">
+        <div className="grid gap-5">
           {/* Short fields share a row on wider screens: one tall column of
               full-width inputs reads as a form dump. */}
           <div className="grid gap-5 sm:grid-cols-2">
@@ -87,13 +88,17 @@ export function ItemForm({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
-        </CardContent>
+        </div>
 
-        <CardFooter className="bg-muted/40 gap-2 border-t">
-          <Button type="submit" disabled={saving || value.title.trim().length === 0}>
+        <div className="flex flex-wrap items-center gap-2 border-t pt-5">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={saving || value.title.trim().length === 0}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
             Cancel
           </Button>
           {onDelete ? (
@@ -102,6 +107,7 @@ export function ItemForm({
             <Button
               type="button"
               variant="ghost"
+              size="lg"
               className="text-destructive hover:bg-destructive/10 ml-auto"
               onClick={onDelete}
             >
@@ -109,8 +115,8 @@ export function ItemForm({
               Delete
             </Button>
           ) : null}
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </form>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { KeyRound, Lock, Settings } from "lucide-react";
+import { Lock, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { Button } from "@passio/ui/button";
+import { Wordmark } from "@passio/ui/wordmark";
 import { VaultAdapter } from "~/components/vault-adapter";
 import { useAutoLock } from "~/hooks/use-auto-lock";
 import { useLockTimeout } from "~/hooks/use-lock-timeout";
@@ -33,17 +34,28 @@ export function VaultShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <header className="bg-background/80 sticky top-0 z-30 border-b backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-4xl items-center gap-3 px-5">
-          <Link href="/vault" className="flex items-center gap-2.5">
-            <span className="bg-primary text-primary-foreground grid size-7 place-items-center rounded-md">
-              <KeyRound className="size-3.5" />
-            </span>
-            <span className="text-sm font-semibold tracking-tight">passio</span>
+      {/*
+        A hairline, not a slab. The header used to be a translucent blurred bar
+        that read as a separate plane floating over the page; sharing the page's
+        own ground makes the whole thing one sheet, which is quieter and leaves
+        the list as the only object on screen.
+      */}
+      <header className="bg-background sticky top-0 z-30 border-b">
+        <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-5">
+          <Link
+            href="/vault"
+            className="focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-[3px]"
+          >
+            <Wordmark size="sm" />
           </Link>
 
           <div className="ml-auto flex items-center gap-1">
-            <Button variant="ghost" size="icon-sm" render={<Link href="/settings" />}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              render={<Link href="/settings" />}
+            >
               <Settings />
               <span className="sr-only">Settings</span>
             </Button>
@@ -55,7 +67,13 @@ export function VaultShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-5 py-8">
+      {/*
+        max-w-3xl, down from 4xl. The sidebar is gone, so the list has the full
+        column - and a list of two-line rows reads worse the wider it gets,
+        because the eye has to travel from a name on the left to an action on
+        the right.
+      */}
+      <main className="mx-auto max-w-3xl px-5 py-8">
         <VaultAdapter>{children}</VaultAdapter>
       </main>
     </div>

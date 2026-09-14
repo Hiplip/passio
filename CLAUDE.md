@@ -61,6 +61,41 @@ These apply when designing or planning, before any code exists.
   every new package that renders markup**: detection anchors at the CSS file, so
   without them a package's classes are purged silently. Measured: 71,008 bytes of CSS
   with them, 29,986 without.
+
+### The design system lives in `packages/ui/src/styles.css`
+
+Read the comment block at the top of that file before changing anything visual. The
+short version:
+
+- **Colour means something.** Chrome is INK (`--primary`), never a brand colour.
+  Colour marks three things and nothing else: a secret (`--cipher`), an item's
+  identity (`--mark-N-*`), and danger (`--destructive`). A primary button branded in
+  a security blue or teal is what made this look like every other password manager.
+- **`--cipher` is not `--primary`.** A password is not a call to action. Secrets, the
+  ticking TOTP code, the recovery key and the unlock readout all use `text-cipher`;
+  buttons use `primary`. Do not collapse them back together.
+- **Item marks are computed, never fetched.** `@passio/core/identity` derives a hue
+  and a monogram from an item's own title. A zero-knowledge vault must not request
+  favicons: that hands a CDN the list of every service the user holds an account
+  with. `ItemMark` reads `--mark-N-fg` / `--mark-N-bg` through an inline style,
+  because a class name built from a variable is exactly what Tailwind cannot see.
+- **Three shapes, three meanings.** A circle is an identity, a stadium is a filter
+  state, a rounded rectangle is an action.
+- Custom classes `.secret`, `.wordmark` and `.rows` are author CSS in
+  `@layer components`, so they survive purge without appearing in any source file.
+
+**Both typefaces are self-hosted** from `packages/ui/src/fonts/` via `@font-face`,
+NOT `next/font`. next/font defines its variable on the web app's `<html>`, which no
+extension page has - and `font-family: var(--undefined), ...` is invalid at
+computed-value time, so the whole declaration is dropped. Every extension surface
+was rendering in the browser default face. One `@font-face` block serves both
+bundlers; relative `url()` resolves at build time in Next and in Vite alike.
+
+**There is no vault sidebar.** `vault-sidebar.tsx` (desktop) and `vault-overview.tsx`
+(phone) were two implementations of one idea; both are replaced by
+`packages/vault-ui/src/vault-filters.tsx`, a single wrapping rail shared by the web
+app AND the extension popup. Counts come from `countFilters` in `@passio/core/filter`
+so a pill cannot mean different things in the two windows.
   The repo root holds only workspace-level config: `package.json` (scripts that
   delegate with `--filter`), `pnpm-workspace.yaml`, `vitest.config.ts`,
   `eslint.config.js`, `tsconfig.base.json`, and a `tsconfig.json` that exists solely so
@@ -74,7 +109,7 @@ These apply when designing or planning, before any code exists.
 - Crypto (trust-critical): `packages/crypto/src/*` — imports only `hash-wasm` + WebCrypto.
   Includes the Argon2id Web Worker under `src/worker/`.
 - Shared vault logic: `packages/core/src/*` — item schema, TOTP, generator, filter,
-  search, mask, decryption, clipboard, URL matching. Depends on `@passio/crypto`; never
+  search, mask, decryption, clipboard, URL matching, item identity. Depends on `@passio/crypto`; never
   the reverse.
 - Both packages are **buildless**: they publish TypeScript source, consumed via
   `transpilePackages` (Next) and natively (Vite, Vitest). A `dist/` here would silently

@@ -1,12 +1,11 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Alert, AlertDescription } from "@passio/ui/alert";
 import { Button } from "@passio/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { CipherReadout } from "@passio/ui/cipher-readout";
 import { Field } from "@passio/ui/field";
 import { useVault } from "~/hooks/use-vault";
 import { attemptUnlock } from "~/lib/auth/unlock";
@@ -54,52 +53,61 @@ export function UnlockForm({ email }: { email: string }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="bg-muted text-muted-foreground mb-1 grid size-9 place-items-center rounded-lg">
-          <Lock className="size-4" />
-        </div>
-        <CardTitle>Your vault is locked</CardTitle>
-        <CardDescription>Signed in as {email}</CardDescription>
-      </CardHeader>
+    <div className="grid gap-7">
+      <div className="grid gap-1.5">
+        <h1>Welcome back</h1>
+        <p className="text-muted-foreground">
+          Signed in as <span className="text-foreground">{email}</span>
+        </p>
+      </div>
 
-      <CardContent>
-        <form onSubmit={(e) => void submit(e)} className="grid gap-5">
-          <Field
-            label="Master password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-            required
-          />
+      <form onSubmit={(e) => void submit(e)} className="grid gap-5">
+        <Field
+          label="Master password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoFocus
+          required
+          secret
+          disabled={busy}
+        />
 
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
+        {/*
+          The button becomes the readout rather than sitting beside one: there
+          is exactly one thing happening, and two live elements would invite a
+          second click on a form that is already working.
+        */}
+        {busy ? (
+          <CipherReadout label="Deriving your key on this device…" className="py-1" />
+        ) : (
           <Button
             type="submit"
-            disabled={busy || !password || keys.isPending}
+            size="lg"
+            disabled={!password || keys.isPending}
             className="w-full"
           >
-            {busy ? "Unlocking…" : "Unlock"}
+            Unlock vault
           </Button>
+        )}
 
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground justify-self-center text-sm underline-offset-4 hover:underline"
-            onClick={() => {
-              void authClient.signOut().then(() => router.push("/login"));
-            }}
-          >
-            Sign out instead
-          </button>
-        </form>
-      </CardContent>
-    </Card>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground justify-self-center text-[13px] underline-offset-4 hover:underline"
+          onClick={() => {
+            void authClient.signOut().then(() => router.push("/login"));
+          }}
+        >
+          Sign out instead
+        </button>
+      </form>
+    </div>
   );
 }

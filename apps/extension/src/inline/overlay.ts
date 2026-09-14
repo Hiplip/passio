@@ -51,13 +51,21 @@ export function createOverlay() {
    *  the wrong size. */
   let measured = 0;
 
-  /** The passio key mark. Inline SVG rather than a letter: at 20px a glyph reads
-   *  as an affordance and a character reads as a typo in the field. */
-  const KEY_SVG =
-    `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"` +
-    ` stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
-    `<path d="M2.6 10.6a6 6 0 1 0 8.8-8.8 6 6 0 0 0-8.8 8.8Z" transform="translate(9.5 9.5) rotate(180)"/>` +
-    `<path d="m10.5 13.5-8 8"/><path d="m6.5 17.5 2 2"/></svg>`;
+  /**
+   * The passio mark, as it appears on other people's pages.
+   *
+   * The same disc every item in the vault wears and the same one in the
+   * toolbar: a filled circle carrying a "p" in the cipher face. A circle, not
+   * the rounded square every other manager puts here, and ink rather than a
+   * brand colour - it is the application identifying itself, not an
+   * advertisement.
+   *
+   * Every value is literal. This element lives in a closed shadow root inside
+   * a page we do not control, so it can inherit nothing: not our stylesheet,
+   * not our tokens, not even a font.
+   */
+  const INK = "#221f2b";
+  const IRIS = "#6355d6";
 
   function makeButton(field: HTMLInputElement): HTMLButtonElement {
     const button = document.createElement("button");
@@ -65,17 +73,19 @@ export function createOverlay() {
     button.setAttribute("aria-label", "passio suggestions");
     button.style.cssText = `
       position:fixed;width:${ICON_SIZE}px;height:${ICON_SIZE}px;padding:0;
-      border:0;border-radius:6px;cursor:pointer;display:none;z-index:${Z};
-      background:#0d9488;color:#fff;align-items:center;justify-content:center;
-      box-shadow:0 1px 2px rgb(0 0 0/.25);transition:background .12s,transform .12s
+      border:0;border-radius:50%;cursor:pointer;display:none;z-index:${Z};
+      background:${INK};color:#fff;align-items:center;justify-content:center;
+      font:600 12px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      letter-spacing:0;text-indent:0;
+      box-shadow:0 1px 3px rgb(0 0 0/.22);transition:background .12s,transform .12s
     `;
-    button.innerHTML = KEY_SVG;
+    button.textContent = "p";
     button.addEventListener("mouseenter", () => {
-      button.style.background = "#14b8a6";
-      button.style.transform = "scale(1.06)";
+      button.style.background = IRIS;
+      button.style.transform = "scale(1.08)";
     });
     button.addEventListener("mouseleave", () => {
-      button.style.background = "#0d9488";
+      button.style.background = INK;
       button.style.transform = "none";
     });
     button.addEventListener("mousedown", (e) => {

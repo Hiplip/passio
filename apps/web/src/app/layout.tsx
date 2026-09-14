@@ -1,7 +1,6 @@
 import "@passio/ui/styles.css";
 
-import { type Metadata } from "next";
-import { Archivo, JetBrains_Mono } from "next/font/google";
+import { type Metadata, type Viewport } from "next";
 
 import { Toaster } from "@passio/ui/sonner";
 import { VaultProvider } from "~/hooks/use-vault";
@@ -13,37 +12,32 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-const archivo = Archivo({
-  subsets: ["latin"],
-  variable: "--font-archivo",
-  display: "swap",
-});
-
-// Every secret renders in this face: it slashes the zero and keeps 1, l and I
-// distinct, which is what makes a recovery key safe to copy by hand.
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
+/**
+ * Both themes are declared, so the browser paints its own chrome to match
+ * rather than flashing white behind a dark page on load.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1a23" },
+  ],
+};
 
 /**
- * Applies the theme class before first paint.
+ * Both typefaces are self-hosted from @passio/ui rather than loaded through
+ * next/font.
  *
- * Inline and synchronous on purpose: doing this in an effect would show a flash
- * of the light theme to dark-mode users on every navigation.
+ * next/font defines its variable on this element, which no extension page has
+ * - so the popup, the vault window and the in-page overlay were all falling
+ * back to the browser's default face. One @font-face declaration in the shared
+ * stylesheet serves every surface, which is the only way the two can actually
+ * look like one product.
  */
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${archivo.variable} ${jetbrainsMono.variable}`}
-      suppressHydrationWarning
-    >
-      <head>
-      </head>
+    <html lang="en" suppressHydrationWarning>
       <body>
         <TRPCReactProvider>
           <VaultProvider>{children}</VaultProvider>

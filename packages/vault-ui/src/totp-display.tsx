@@ -60,7 +60,7 @@ export function TotpDisplay({ config }: { config: TotpConfig }) {
       aria-label={`One-time code ${code}, expires in ${remaining} seconds. Copy.`}
       className="bg-card hover:bg-muted/60 flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors"
     >
-      <span className="secret text-primary flex-1 text-xl">{group(code)}</span>
+      <span className="secret text-cipher flex-1 text-xl">{group(code)}</span>
 
       <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
         <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
@@ -70,7 +70,7 @@ export function TotpDisplay({ config }: { config: TotpConfig }) {
             cy="11"
             r="9"
             fill="none"
-            stroke={expiring ? "var(--destructive)" : "var(--primary)"}
+            stroke={expiring ? "var(--destructive)" : "var(--cipher)"}
             strokeWidth="2"
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -83,7 +83,7 @@ export function TotpDisplay({ config }: { config: TotpConfig }) {
       </span>
 
       {justCopied ? (
-        <Check className="text-primary size-4" />
+        <Check className="text-cipher size-4" />
       ) : (
         <Copy className="text-muted-foreground size-4" />
       )}

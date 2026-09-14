@@ -1,12 +1,12 @@
 import "@passio/ui/styles.css";
 
 import { matchItemsToUrl } from "@passio/core/match";
-import { KeyRound, Lock, SquareArrowOutUpRight } from "lucide-react";
+import { Lock, Search, SquareArrowOutUpRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { vault } from "../../src/client";
-import { ItemGlyph } from "../../src/item-glyph";
+import { ItemMark } from "@passio/vault-ui/item-mark";
 import type { ItemSummary } from "../../src/messages";
 import { popOut } from "../../src/pop-out";
 
@@ -69,7 +69,7 @@ function Panel({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={ref}
-      className="bg-popover text-popover-foreground overflow-hidden rounded-xl border shadow-2xl"
+      className="bg-popover text-popover-foreground overflow-hidden rounded-xl border shadow-[0_8px_28px_-6px_rgb(0_0_0/.22),0_2px_8px_-2px_rgb(0_0_0/.1)]"
     >
       {children}
     </div>
@@ -125,7 +125,7 @@ function App() {
   }
 
   if (state.kind === "loading") {
-    return <Notice icon={<KeyRound className="size-4" />}>Checking your vault…</Notice>;
+    return <Notice icon={<Search className="size-4" />}>Checking your vault…</Notice>;
   }
 
   if (state.kind === "locked") {
@@ -138,7 +138,7 @@ function App() {
 
   if (state.items.length === 0) {
     return (
-      <Notice icon={<KeyRound className="size-4" />}>
+      <Notice icon={<Search className="size-4" />}>
         No saved logins for {siteLabel(pageUrl)}.
       </Notice>
     );
@@ -149,15 +149,15 @@ function App() {
       {/* No header. The list is anchored to the field it fills, which is
           context enough - a title bar just makes it look like a dialog that
           landed on the page. */}
-      <ul className="max-h-[204px] overflow-y-auto py-1.5">
+      <ul className="max-h-[212px] overflow-y-auto py-1.5">
         {state.items.map((item) => (
           <li key={item.id} className="group/row relative">
             <button
               type="button"
               onClick={() => choose(item.id)}
-              className="hover:bg-accent focus-visible:bg-accent flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 pr-10 text-left transition-colors outline-none"
+              className="hover:bg-muted focus-visible:bg-muted flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 pr-9 text-left transition-colors outline-none"
             >
-              <ItemGlyph type={item.type} />
+              <ItemMark name={item.title} type={item.type} size="sm" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium">
                   {item.title}
