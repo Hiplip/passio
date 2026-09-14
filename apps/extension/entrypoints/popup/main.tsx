@@ -14,7 +14,13 @@ import { Field } from "@passio/ui/field";
 import { Input } from "@passio/ui/input";
 import { Skeleton } from "@passio/ui/skeleton";
 import { Toaster } from "@passio/ui/sonner";
-import { ExternalLink, KeyRound, Lock, MoreVertical, Search } from "lucide-react";
+import { VaultDataProvider } from "@passio/vault-ui/data";
+import { EditItem } from "@passio/vault-ui/edit-item";
+import { NavigationProvider } from "@passio/vault-ui/navigation";
+import { NewItem } from "@passio/vault-ui/new-item";
+import {
+  ArrowLeft, ExternalLink, KeyRound, Lock, MoreVertical, Plus, Search,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { toast } from "sonner";
@@ -24,31 +30,126 @@ import { vault } from "../../src/client";
 import { ItemGlyph } from "../../src/item-glyph";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
 import type { FillOutcome, FillPayload } from "../../src/inject";
+import { useHashNavigation, usePath } from "../../src/hash-router";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
+import { useExtensionVaultData } from "../../src/vault-data";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-background text-foreground min-h-[180px] w-[380px]">
+    <div className="bg-background text-foreground min-h-[180px] w-[400px]">
       {children}
       <Toaster position="bottom-center" />
     </div>
   );
 }
 
-function Header({ onLock }: { onLock?: () => void }) {
+/** Opens the current screen in a full tab. Chrome closes a popup the moment it
+ *  loses focus, so anything longer than a quick edit wants real estate that
+ *  does not vanish when you glance at the page behind it. */
+function popOut(path: string) {
+  void chrome.tabs.create({
+    url: chrome.runtime.getURL(`vault.html#${path === "/" ? "/vault" : path}`),
+  });
+}
+
+function Header({
+  onLock,
+  onBack,
+  onAdd,
+  path,
+}: {
+  onLock?: () => void;
+  onBack?: () => void;
+  onAdd?: () => void;
+  path?: string;
+}) {
   return (
-    <header className="flex h-12 items-center gap-2.5 border-b px-4">
-      <span className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md">
-        <KeyRound className="size-3" />
-      </span>
-      <span className="text-sm font-semibold tracking-tight">passio</span>
-      {onLock ? (
-        <Button variant="ghost" size="sm" onClick={onLock} className="ml-auto">
-          <Lock />
-          Lock
+    <header className="flex h-12 items-center gap-1.5 border-b px-3">
+      {onBack ? (
+        <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="Back">
+          <ArrowLeft />
         </Button>
-      ) : null}
+      ) : (
+        <>
+          <span className="bg-primary text-primary-foreground ml-1 grid size-6 place-items-center rounded-md">
+            <KeyRound className="size-3" />
+          </span>
+          <span className="text-sm font-semibold tracking-tight">passio</span>
+        </>
+      )}
+
+      <span className="ml-auto flex items-center gap-1">
+        {onAdd ? (
+          <Button variant="ghost" size="icon-sm" onClick={onAdd} aria-label="Add item">
+            <Plus />
+          </Button>
+        ) : null}
+        {path !== undefined ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => popOut(path)}
+            aria-label="Open in a tab"
+          >
+            <ExternalLink />
+          </Button>
+        ) : null}
+        {onLock ? (
+          <Button variant="ghost" size="sm" onClick={onLock}>
+            <Lock />
+            Lock
+          </Button>
+        ) : null}
+      </span>
     </header>
+  );
+}
+
+/**
+ * The editing screens, rendering the same components as the web app.
+ *
+ * Mounted ONLY on an edit route. The fill list deliberately runs on
+ * `ItemSummary` values that carry no secrets; full plaintext enters the popup
+ * here and nowhere else, and leaves again when this unmounts.
+ */
+function Editor({
+  path,
+  onLocked,
+  onBack,
+}: {
+  path: string;
+  onLocked: () => void;
+  onBack: () => void;
+}) {
+  const navigation = useHashNavigation();
+  const { data, error, reload } = useExtensionVaultData(onLocked);
+
+  const body = error ? (
+    <div className="grid gap-3 p-4">
+      <p className="text-destructive text-sm">{error}</p>
+      <Button variant="outline" onClick={reload} className="justify-self-start">
+        Try again
+      </Button>
+    </div>
+  ) : (
+    <div className="max-h-[520px] overflow-y-auto p-4">
+      {path === "/vault/new" ? (
+        <NewItem />
+      ) : (
+        <EditItem itemId={/^\/vault\/(.+)$/.exec(path)?.[1] ?? ""} />
+      )}
+    </div>
+  );
+
+  return (
+    <NavigationProvider value={navigation}>
+      <VaultDataProvider value={data}>
+        <Shell>
+          <Header onBack={onBack} path={path} />
+          {body}
+        </Shell>
+      </VaultDataProvider>
+    </NavigationProvider>
   );
 }
 
@@ -178,7 +279,7 @@ function Row({
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem className="whitespace-nowrap" onClick={onOpen}>
-            Edit in full vault
+            Edit
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -288,12 +389,8 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     }
   }
 
-  function openFullVault(itemId?: string) {
-    void chrome.tabs.create({
-      url: chrome.runtime.getURL(
-        itemId ? `vault.html#/vault/${itemId}` : "vault.html",
-      ),
-    });
+  function edit(itemId: string) {
+    window.location.hash = `/vault/${itemId}`;
   }
 
   async function changeLock(minutes: number) {
@@ -339,12 +436,16 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     canFill,
     onFill: () => void fill(i),
     onCopy: (f: FillField) => void copy(i, f),
-    onOpen: () => openFullVault(i.id),
+    onOpen: () => edit(i.id),
   });
 
   return (
     <Shell>
-      <Header onLock={() => void vault.lock().then(onLocked)} />
+      <Header
+        onLock={() => void vault.lock().then(onLocked)}
+        onAdd={() => (window.location.hash = "/vault/new")}
+        path="/"
+      />
 
       <div className="p-3">
         <div className="relative flex items-center">
@@ -400,12 +501,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
       </div>
 
       <footer className="flex items-center gap-2 border-t p-3">
-        <Button variant="outline" size="sm" onClick={() => openFullVault()}>
-          <ExternalLink />
-          Full vault
-        </Button>
-
-        <label htmlFor="lock" className="text-muted-foreground ml-auto text-xs">
+        <label htmlFor="lock" className="text-muted-foreground text-xs">
           Lock after
         </label>
         <select
@@ -428,6 +524,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 function App() {
   const [state, setState] = useState<VaultState | "loading">("loading");
   const [email, setEmail] = useState<string | null>(null);
+  const path = usePath("/");
 
   const refresh = useCallback(async () => {
     setEmail(await readEmail());
@@ -444,13 +541,29 @@ function App() {
       </Shell>
     );
   }
-  if (state === "unlocked") return <Vault onLocked={() => setState("locked")} />;
-  return (
-    <Unlock
-      knownEmail={state === "locked" ? email : null}
-      onDone={() => setState("unlocked")}
-    />
-  );
+
+  if (state !== "unlocked") {
+    return (
+      <Unlock
+        knownEmail={state === "locked" ? email : null}
+        onDone={() => setState("unlocked")}
+      />
+    );
+  }
+
+  // "/" is the fill list, which holds no secrets. Anything under /vault is an
+  // editor, and only those mount the full-plaintext provider.
+  if (path === "/vault/new" || /^\/vault\/.+$/.test(path)) {
+    return (
+      <Editor
+        path={path}
+        onLocked={() => setState("locked")}
+        onBack={() => (window.location.hash = "/")}
+      />
+    );
+  }
+
+  return <Vault onLocked={() => setState("locked")} />;
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

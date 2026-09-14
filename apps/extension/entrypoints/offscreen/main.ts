@@ -63,6 +63,9 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
   switch (req.kind) {
     case "status":
       return { ok: true, kind: "status", state: await custody.status() };
+    case "heartbeat":
+      // Only reachable from devtools; exists so the keepalive is observable.
+      return { ok: true, kind: "heartbeat", count: heartbeats };
     case "unlock":
       await custody.unlock(req.email, req.password);
       return { ok: true, kind: "unlock" };
@@ -105,6 +108,28 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
       return { ok: true, kind: "deleteFolder" };
   }
 }
+
+/**
+ * Keeps this document from being considered idle while the vault is unlocked.
+ *
+ * Chrome's reference says an offscreen document has no lifetime limit for any
+ * reason but AUDIO_PLAYBACK, and that its lifetime is independent of the
+ * service worker. An older Chrome blog post, written before the API shipped,
+ * described event-page-style teardown "when it stops performing actions". The
+ * two do not agree, and no test on a machine without a browser can settle it.
+ *
+ * A timer that does a trivial amount of work every 20 seconds makes the
+ * question moot. If the reference is right this is a no-op; if the blog post
+ * is right it is what keeps the vault key alive between uses. It runs only
+ * while unlocked, because there is nothing to preserve otherwise, and it costs
+ * a counter increment.
+ */
+let heartbeats = 0;
+setInterval(() => {
+  void custody.status().then((state) => {
+    if (state === "unlocked") heartbeats += 1;
+  });
+}, 20_000);
 
 chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
   // Only our own extension, and only messages addressed here: the background

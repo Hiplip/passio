@@ -104,7 +104,7 @@ function Route({ path }: { path: string }) {
 
 function Vault({ onLocked }: { onLocked: () => void }) {
   const navigation = useHashNavigation();
-  const path = usePath();
+  const path = usePath("/vault");
   const { data, error, reload } = useExtensionVaultData(onLocked);
 
   if (error) {

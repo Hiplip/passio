@@ -10,15 +10,26 @@ import type { LinkProps, Navigation } from "@passio/vault-ui/navigation";
  * the shared components knows the difference - that is the point of injecting
  * Navigation rather than importing a router.
  */
-export function usePath(): string {
-  const read = () => window.location.hash.slice(1) || "/vault";
+/**
+ * The current route, from the URL fragment.
+ *
+ * `fallback` differs by surface: the full page opens on the vault list, while
+ * the popup opens on its fill list at "/" and only enters "/vault/..." when
+ * someone chooses to edit. Sharing one default would send the popup straight
+ * into an editor with no item.
+ */
+export function usePath(fallback: string): string {
+  const read = useCallback(
+    () => window.location.hash.slice(1) || fallback,
+    [fallback],
+  );
   const [path, setPath] = useState(read);
 
   useEffect(() => {
     const onChange = () => setPath(read());
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
-  }, []);
+  }, [read]);
 
   return path;
 }

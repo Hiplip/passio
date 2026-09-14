@@ -38,6 +38,7 @@ const requestSchema = z.discriminatedUnion("kind", [
   }),
   // Full-vault operations. The popup never sends these; only the editor page
   // does, and only it receives plaintext items back.
+  z.object({ target: z.literal("offscreen"), via, kind: z.literal("heartbeat") }),
   z.object({ target: z.literal("offscreen"), via, kind: z.literal("itemsFull") }),
   z.object({ target: z.literal("offscreen"), via, kind: z.literal("deletedItems") }),
   z.object({ target: z.literal("offscreen"), via, kind: z.literal("folders") }),
@@ -180,6 +181,7 @@ export type Response =
   | { ok: true; kind: "items"; items: ItemSummary[]; damaged: number }
   | { ok: true; kind: "matchCount"; count: number }
   | { ok: true; kind: "fieldValue"; value: string }
+  | { ok: true; kind: "heartbeat"; count: number }
   | { ok: true; kind: "itemsFull"; items: FullItem[]; damaged: string[] }
   | { ok: true; kind: "deletedItems"; items: FullItem[]; damaged: string[] }
   | { ok: true; kind: "folders"; folders: FolderSummary[] }
