@@ -1,5 +1,11 @@
-import { performDerivation } from "@passio/crypto/worker/derive";
-import type { WrappingKey } from "@passio/crypto/types";
+/**
+ * Session storage and the sign-in exchange. **No key derivation lives here.**
+ *
+ * The service worker imports the token helpers, and a module-level import of
+ * performDerivation drags Argon2id and all of hash-wasm into the worker bundle
+ * with it - 58 kB of crypto in a context that must never derive a key.
+ * Derivation belongs to the offscreen document's Web Worker, and nowhere else.
+ */
 
 const TOKEN_KEY = "passio.session-token";
 const EMAIL_KEY = "passio.email";
@@ -94,26 +100,4 @@ export async function exchangeAuthHash(
   const token = res.headers.get("set-auth-token");
   if (!token) throw new Error("Server did not return a session token.");
   return token;
-}
-
-export interface SignInResult {
-  token: string;
-  /** Unwraps the vault key. Phase 2 discards it; the offscreen document keeps it. */
-  stretchedKey: WrappingKey;
-}
-
-/**
- * Signs in with the derived auth hash, never the master password.
- *
- * One Argon2id pass produces both outputs: `authHash` proves identity to the
- * server, `stretchedKey` unwraps the vault key locally. The server never sees
- * anything it could unwrap a vault with.
- */
-export async function signIn(
-  apiBase: string,
-  email: string,
-  masterPassword: string,
-): Promise<SignInResult> {
-  const { authHash, stretchedKey } = await performDerivation(masterPassword, email);
-  return { token: await exchangeAuthHash(apiBase, email, authHash), stretchedKey };
 }

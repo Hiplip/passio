@@ -1,25 +1,58 @@
-import { copyWithAutoClear } from "@passio/core/clipboard";
-import { matchItemsToUrl } from "@passio/core/match";
+import "@passio/ui/styles.css";
+
 import { searchSummaries } from "@passio/core/search";
+import { matchItemsToUrl } from "@passio/core/match";
+import { copyWithAutoClear } from "@passio/core/clipboard";
+import { Button } from "@passio/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@passio/ui/dropdown-menu";
+import { Field } from "@passio/ui/field";
+import { Input } from "@passio/ui/input";
+import { Skeleton } from "@passio/ui/skeleton";
+import { Toaster } from "@passio/ui/sonner";
+import { ExternalLink, KeyRound, Lock, MoreVertical, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
 
 import { readEmail, writeEmail } from "../../src/auth";
 import { vault } from "../../src/client";
+import { ItemGlyph } from "../../src/item-glyph";
 import type { FillField, ItemSummary, VaultState } from "../../src/messages";
 import type { FillOutcome, FillPayload } from "../../src/inject";
 import { LOCK_CHOICES, LOCK_MINUTES_KEY, normaliseLockMinutes } from "../../src/prefs";
-import "./styles.css";
 
-const OPEN_APP = "https://passio-hiplip.vercel.app/vault";
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-background text-foreground min-h-[180px] w-[380px]">
+      {children}
+      <Toaster position="bottom-center" />
+    </div>
+  );
+}
 
-function Unlock({
-  knownEmail,
-  onDone,
-}: {
-  knownEmail: string | null;
-  onDone: () => void;
-}) {
+function Header({ onLock }: { onLock?: () => void }) {
+  return (
+    <header className="flex h-12 items-center gap-2.5 border-b px-4">
+      <span className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md">
+        <KeyRound className="size-3" />
+      </span>
+      <span className="text-sm font-semibold tracking-tight">passio</span>
+      {onLock ? (
+        <Button variant="ghost" size="sm" onClick={onLock} className="ml-auto">
+          <Lock />
+          Lock
+        </Button>
+      ) : null}
+    </header>
+  );
+}
+
+function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () => void }) {
   const [email, setEmail] = useState(knownEmail ?? "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,66 +75,122 @@ function Unlock({
   }
 
   return (
-    <main className="pad">
-      <h1>passio</h1>
-      <form onSubmit={(e) => void submit(e)}>
-        {knownEmail ? (
-          <p className="muted small">{knownEmail}</p>
-        ) : (
-          <>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email" type="email" autoComplete="username" required
-              value={email} onChange={(e) => setEmail(e.target.value)}
-            />
-          </>
+    <Shell>
+      <Header />
+      <form onSubmit={(e) => void submit(e)} className="grid gap-4 p-4">
+        <div>
+          <h1 className="text-sm font-semibold">
+            {knownEmail ? "Welcome back" : "Sign in"}
+          </h1>
+          <p className="text-muted-foreground text-xs">
+            {knownEmail ?? "Your vault is encrypted on this device."}
+          </p>
+        </div>
+
+        {knownEmail ? null : (
+          <Field
+            label="Email"
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         )}
-        <label htmlFor="password">Master password</label>
-        <input
-          id="password" type="password" autoComplete="current-password" required
-          autoFocus value={password} onChange={(e) => setPassword(e.target.value)}
+
+        <Field
+          label="Master password"
+          type="password"
+          autoComplete="current-password"
+          required
+          autoFocus
+          secret
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={error ?? undefined}
         />
-        {error ? <p className="error">{error}</p> : null}
+
         {/* Argon2id at 64 MiB takes about a second. A silent button reads as a
             broken one. */}
-        <button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy}>
           {busy ? "Unlocking…" : "Unlock"}
-        </button>
+        </Button>
       </form>
-    </main>
+    </Shell>
   );
 }
 
 function Row({
   item,
   canFill,
-  onCopy,
   onFill,
+  onCopy,
+  onOpen,
 }: {
   item: ItemSummary;
   canFill: boolean;
-  onCopy: (f: FillField) => void;
   onFill: () => void;
+  onCopy: (field: FillField) => void;
+  onOpen: () => void;
 }) {
   return (
-    <li className="row">
-      <div className="rowMain">
-        <span className="rowTitle">{item.title}</span>
-        {item.username ? <span className="rowSub">{item.username}</span> : null}
-      </div>
-      <div className="rowActions">
-        {canFill && item.type === "login" ? (
-          <button className="chip primary" onClick={onFill}>Fill</button>
-        ) : null}
+    <li className="hover:bg-muted/40 flex items-center gap-3 px-4 py-2.5 transition-colors">
+      <ItemGlyph type={item.type} />
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{item.title}</span>
         {item.username ? (
-          <button className="chip" onClick={() => onCopy("username")}>User</button>
+          <span className="text-muted-foreground block truncate text-xs">
+            {item.username}
+          </span>
         ) : null}
-        <button className="chip" onClick={() => onCopy("password")}>Pass</button>
-        {item.hasTotp ? (
-          <button className="chip" onClick={() => onCopy("totp")}>Code</button>
-        ) : null}
-      </div>
+      </span>
+
+      {canFill && item.type === "login" ? (
+        <Button size="sm" onClick={onFill}>
+          Fill
+        </Button>
+      ) : null}
+
+      {/* One menu rather than three more buttons. The web app's rows already
+          work this way, and four equal-weight buttons per row made nothing
+          read as the primary action. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${item.title}`} />
+          }
+        >
+          <MoreVertical />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {item.username ? (
+            <DropdownMenuItem className="whitespace-nowrap" onClick={() => onCopy("username")}>
+              Copy username
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem className="whitespace-nowrap" onClick={() => onCopy("password")}>
+            Copy password
+          </DropdownMenuItem>
+          {item.hasTotp ? (
+            <DropdownMenuItem className="whitespace-nowrap" onClick={() => onCopy("totp")}>
+              Copy one-time code
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem className="whitespace-nowrap" onClick={onOpen}>
+            Edit in full vault
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground bg-muted/40 border-y px-4 py-1.5 text-[11px] font-medium tracking-wide">
+      {children}
+    </p>
   );
 }
 
@@ -110,7 +199,6 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   const [damaged, setDamaged] = useState(0);
   const [query, setQuery] = useState("");
   const [tabUrl, setTabUrl] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lockMinutes, setLockMinutes] = useState(15);
 
@@ -140,42 +228,40 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     () => (items ? searchSummaries(items, query) : []),
     [items, query],
   );
-
   const forSite = useMemo(
     () => (items && tabUrl ? matchItemsToUrl(items, tabUrl) : []),
     [items, tabUrl],
   );
 
+  const canFill = tabUrl?.startsWith("http") ?? false;
+  const showSite = forSite.length > 0 && query === "";
+  const rest = showSite
+    ? filtered.filter((i) => !forSite.some((m) => m.id === i.id))
+    : filtered;
+
   async function copy(item: ItemSummary, field: FillField) {
     try {
       const value = await vault.fieldValue(item.id, field);
-      if (!value) return setNote("Nothing to copy.");
-      setNote(
-        (await copyWithAutoClear(value))
-          ? `${field === "totp" ? "Code" : field} copied — clipboard clears in 30s.`
-          : "Your browser blocked clipboard access.",
-      );
+      if (!value) return toast.error("Nothing to copy.");
+      if (await copyWithAutoClear(value)) {
+        toast.success(`${field === "totp" ? "Code" : field} copied`, {
+          description: "Your clipboard clears in 30 seconds.",
+        });
+      } else {
+        toast.error("Could not copy", { description: "Your browser blocked access." });
+      }
     } catch (err) {
       if (err instanceof Error && /locked/i.test(err.message)) return onLocked();
-      setNote("Could not copy.");
+      toast.error("Could not copy.");
     }
   }
 
-  /**
-   * Fills the active tab.
-   *
-   * Injects the fill script first: activeTab grants access to this one tab
-   * because the popup was opened by a click, and allFrames stays false because
-   * cross-origin iframe filling is out of scope and getting it wrong is worse
-   * than not doing it.
-   */
   async function fill(item: ItemSummary) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !tab.url?.startsWith("http")) {
-      setNote("Cannot fill this kind of page.");
+      toast.error("Cannot fill this kind of page.");
       return;
     }
-
     try {
       const payload: FillPayload = {
         kind: "fill",
@@ -183,24 +269,29 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         password: await vault.fieldValue(item.id, "password"),
         totp: item.hasTotp ? await vault.fieldValue(item.id, "totp") : "",
       };
-
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: false },
         files: ["content-scripts/fill.js"],
       });
-
       const outcome: FillOutcome = await chrome.tabs.sendMessage(tab.id, payload);
       if (outcome === "filled") {
         window.close();
         return;
       }
-      // Autofill fails often; it has to fail into something useful. The copy
-      // buttons are still right there.
-      setNote("No login form on this page.");
+      // Autofill fails often; it has to fail into something useful.
+      toast.error("No login form on this page.", {
+        description: "Use the menu to copy instead.",
+      });
     } catch (err) {
       if (err instanceof Error && /locked/i.test(err.message)) return onLocked();
-      setNote("Could not fill this page.");
+      toast.error("Could not fill this page.");
     }
+  }
+
+  function openFullVault(itemId?: string) {
+    void chrome.tabs.create({
+      url: chrome.runtime.getURL(itemId ? `vault.html#/item/${itemId}` : "vault.html"),
+    });
   }
 
   async function changeLock(minutes: number) {
@@ -210,95 +301,125 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
   if (error) {
     return (
-      <main className="pad">
-        <h1>passio</h1>
-        <p className="error">{error}</p>
-        <button onClick={() => void load()}>Try again</button>
-      </main>
+      <Shell>
+        <Header onLock={() => void vault.lock().then(onLocked)} />
+        <div className="grid gap-3 p-4">
+          <p className="text-destructive text-sm">{error}</p>
+          <Button variant="outline" onClick={() => void load()}>
+            Try again
+          </Button>
+        </div>
+      </Shell>
     );
   }
 
-  if (!items) return <main className="pad muted">Decrypting…</main>;
+  if (!items) {
+    return (
+      <Shell>
+        <Header />
+        <div className="grid gap-3 p-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="size-8 rounded-lg" />
+              <div className="grid flex-1 gap-1.5">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2.5 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Shell>
+    );
+  }
 
-  const canFill = tabUrl?.startsWith("http") ?? false;
-  const showSite = forSite.length > 0 && query === "";
-  const rest = showSite
-    ? filtered.filter((i) => !forSite.some((m) => m.id === i.id))
-    : filtered;
+  const rowProps = (i: ItemSummary) => ({
+    item: i,
+    canFill,
+    onFill: () => void fill(i),
+    onCopy: (f: FillField) => void copy(i, f),
+    onOpen: () => openFullVault(i.id),
+  });
 
   return (
-    <main>
-      <div className="pad head">
-        <h1>passio</h1>
-        <button className="link" onClick={() => void vault.lock().then(onLocked)}>
-          Lock
-        </button>
-      </div>
+    <Shell>
+      <Header onLock={() => void vault.lock().then(onLocked)} />
 
-      <div className="pad tight">
-        <input
-          type="search" placeholder="Search vault" value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      <div className="p-3">
+        <div className="relative flex items-center">
+          <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your vault"
+            aria-label="Search your vault"
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {damaged > 0 ? (
-        <p className="pad tight warn">
-          {damaged} item{damaged === 1 ? "" : "s"} could not be decrypted. The
-          ciphertext is still in your vault — try the web app.
+        <p className="text-destructive px-4 pb-2 text-xs">
+          {damaged} item{damaged === 1 ? "" : "s"} could not be decrypted. Nothing is
+          lost — open the full vault to look.
         </p>
       ) : null}
 
-      {items.length === 0 ? (
-        <p className="pad tight muted">
-          No items yet. <a href={OPEN_APP} target="_blank" rel="noreferrer">Add one</a>.
-        </p>
-      ) : null}
+      <div className="max-h-[380px] overflow-y-auto">
+        {items.length === 0 ? (
+          <p className="text-muted-foreground p-4 text-sm">
+            Your vault is empty. Add your first item in the full vault.
+          </p>
+        ) : null}
 
-      {showSite ? (
-        <>
-          <p className="group">For this site</p>
-          <ul className="list">
-            {forSite.map((i) => (
-              <Row
-                key={i.id} item={i} canFill={canFill}
-                onCopy={(f) => void copy(i, f)} onFill={() => void fill(i)}
-              />
-            ))}
-          </ul>
-        </>
-      ) : null}
+        {showSite ? (
+          <>
+            <SectionLabel>For this site</SectionLabel>
+            <ul>
+              {forSite.map((i) => (
+                <Row key={i.id} {...rowProps(i)} />
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-      {rest.length > 0 ? (
-        <>
-          {showSite ? <p className="group">All items</p> : null}
-          <ul className="list">
-            {rest.map((i) => (
-              <Row
-                key={i.id} item={i} canFill={canFill}
-                onCopy={(f) => void copy(i, f)} onFill={() => void fill(i)}
-              />
-            ))}
-          </ul>
-        </>
-      ) : query !== "" ? (
-        <p className="pad tight muted">Nothing matches “{query}”.</p>
-      ) : null}
+        {rest.length > 0 ? (
+          <>
+            {showSite ? <SectionLabel>All items</SectionLabel> : null}
+            <ul>
+              {rest.map((i) => (
+                <Row key={i.id} {...rowProps(i)} />
+              ))}
+            </ul>
+          </>
+        ) : query !== "" ? (
+          <p className="text-muted-foreground p-4 text-sm">Nothing matches “{query}”.</p>
+        ) : null}
+      </div>
 
-      {note ? <p className="pad tight ok small">{note}</p> : null}
+      <footer className="flex items-center gap-2 border-t p-3">
+        <Button variant="outline" size="sm" onClick={() => openFullVault()}>
+          <ExternalLink />
+          Full vault
+        </Button>
 
-      <div className="pad foot">
-        <label htmlFor="lock" className="inline">Lock after</label>
+        <label htmlFor="lock" className="text-muted-foreground ml-auto text-xs">
+          Lock after
+        </label>
         <select
-          id="lock" value={lockMinutes}
+          id="lock"
+          value={lockMinutes}
           onChange={(e) => void changeLock(Number(e.target.value))}
+          className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
         >
           {LOCK_CHOICES.map((m) => (
-            <option key={m} value={m}>{m} min</option>
+            <option key={m} value={m}>
+              {m} min
+            </option>
           ))}
         </select>
-      </div>
-    </main>
+      </footer>
+    </Shell>
   );
 }
 
@@ -313,10 +434,15 @@ function App() {
 
   useEffect(() => void refresh(), [refresh]);
 
-  if (state === "loading") return <main className="pad muted">Checking…</main>;
-  if (state === "unlocked") {
-    return <Vault onLocked={() => setState("locked")} />;
+  if (state === "loading") {
+    return (
+      <Shell>
+        <Header />
+        <p className="text-muted-foreground p-4 text-sm">Checking…</p>
+      </Shell>
+    );
   }
+  if (state === "unlocked") return <Vault onLocked={() => setState("locked")} />;
   return (
     <Unlock
       knownEmail={state === "locked" ? email : null}

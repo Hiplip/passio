@@ -40,20 +40,44 @@ describe("offscreen document", () => {
   });
 });
 
+/**
+ * The base64 header of any WebAssembly module ("\0asm"), plus hash-wasm's own
+ * name.
+ *
+ * NOT the string "argon2": that also appears in our own prose - the offscreen
+ * document's `justification` text says "Runs Argon2id in a Web Worker" - so a
+ * test for it matches a comment and proves nothing. These markers exist only
+ * where the compiled derivation really is.
+ */
+const WASM = "AGFzbQ";
+const HASH_WASM = "hash-wasm";
+
 describe("the vault key's blast radius", () => {
-  it("keeps Argon2id in the worker asset only", () => {
-    expect(asset("worker-")).toContain("argon2");
+  it("keeps the compiled derivation in the worker asset only", () => {
+    const worker = asset("worker-");
+    expect(worker).toContain(WASM);
+    expect(worker).toContain(HASH_WASM);
   });
 
-  it("does not link derivation code into the popup", () => {
+  it("does not link derivation into the popup", () => {
     // The popup asks the offscreen document to unlock. If it can derive a key
     // itself, something imported the wrong module and the key has a second
     // possible home.
-    expect(chunk("popup-")).not.toContain("argon2");
+    const popup = chunk("popup-");
+    expect(popup).not.toContain(WASM);
+    expect(popup).not.toContain(HASH_WASM);
   });
 
-  it("does not link derivation code into the injected fill script", () => {
-    expect(read("content-scripts/fill.js")).not.toContain("argon2");
+  it("does not link derivation into the injected fill script", () => {
+    const fill = read("content-scripts/fill.js");
+    expect(fill).not.toContain(WASM);
+    expect(fill).not.toContain(HASH_WASM);
+  });
+
+  it("does not link derivation into the service worker", () => {
+    const background = read("background.js");
+    expect(background).not.toContain(WASM);
+    expect(background).not.toContain(HASH_WASM);
   });
 });
 

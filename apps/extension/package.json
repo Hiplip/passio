@@ -13,13 +13,18 @@
   "dependencies": {
     "@passio/core": "workspace:*",
     "@passio/crypto": "workspace:*",
+    "@passio/ui": "workspace:*",
+    "@passio/vault-ui": "workspace:*",
     "@trpc/client": "^11.0.0",
+    "lucide-react": "^1.44.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sonner": "^2.0.8",
     "superjson": "^2.2.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/chrome": "^0.2.9",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

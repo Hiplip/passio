@@ -13,6 +13,8 @@
  */
 @source "../../ui/src";
 @source "../../vault-ui/src";
+@source "../../../apps/extension/entrypoints";
+@source "../../../apps/extension/src";
 @source "../../../apps/web/src";
 
 @custom-variant dark (&:is(.dark *));

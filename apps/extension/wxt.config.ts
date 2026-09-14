@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import tailwind from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
 /**
@@ -15,6 +16,10 @@ const PUBLIC_KEY = /^PUBKEY=(.*)$/m.exec(
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   srcDir: ".",
+  // The extension renders @passio/ui, so it needs the same Tailwind build the
+  // web app uses. Source paths are declared with @source in the shared
+  // stylesheet, not here.
+  vite: () => ({ plugins: [tailwind()] }),
   manifest: {
     name: "passio",
     description: "Fill logins from your passio vault.",
