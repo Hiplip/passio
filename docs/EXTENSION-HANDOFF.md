@@ -150,7 +150,24 @@ draw extra review scrutiny — the narrow permission set should help.
 
 ---
 
-## 8. Editing, in the popup
+## 8. The three tabs
+
+The popup now has a bottom bar: **Vault**, **Generator**, **Settings**.
+
+- [ ] **Vault** — the fill list, with **+ New** in the header.
+- [ ] **Generator** — make a password or passphrase, tune length and character
+      classes, **Copy**. This is the same generator the web app uses, so a password
+      made here follows identical rules.
+- [ ] **Settings** — the autofill toggle, lock timeout, lock now, open in a window,
+      and sign out. Everything configurable lives here now rather than at the bottom
+      of the item list.
+
+Editors take over the whole popup with a back arrow and no tab bar, so a half-finished
+item cannot be navigated away from by mistake.
+
+---
+
+## 9. Editing, in the popup
 
 Editing happens in the popup itself now.
 
@@ -169,7 +186,7 @@ while an editor screen is open, and leaves when you go back.
 
 ---
 
-## 9. Inline suggestions (opt-in)
+## 10. Inline suggestions (opt-in)
 
 New, and **off until you turn it on** — it needs access to every page you visit, which
 the extension deliberately does not ask for at install.
@@ -197,7 +214,7 @@ confirm the toggle still reads as on — Chrome can revoke the grant independent
 
 ---
 
-## 10. The vault window
+## 11. The vault window
 
 The **↗** button opens the whole vault in a detached window — the same interface as the
 web app, running inside the extension, already unlocked.
