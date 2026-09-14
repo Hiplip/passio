@@ -3,7 +3,10 @@
 import * as React from "react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import { cn } from "cn"
-import { keepOpenOnSpuriousFocusOut } from "./extension-popup"
+import {
+  keepOpenOnSpuriousFocusOut,
+  reportSuspiciousClose,
+} from "./extension-popup"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 
 /**
@@ -17,6 +20,7 @@ function DropdownMenu({ onOpenChange, ...props }: MenuPrimitive.Root.Props) {
     <MenuPrimitive.Root
       data-slot="dropdown-menu"
       onOpenChange={(open, details) => {
+        reportSuspiciousClose(open, details.reason)
         keepOpenOnSpuriousFocusOut(open, details)
         onOpenChange?.(open, details)
       }}

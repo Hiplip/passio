@@ -247,21 +247,31 @@ but `chrome.runtime`. It follows the page's modulepreload links rather than nami
 chunk, because Rolldown hoists shared code and a named chunk can silently become an
 8 kB stub that proves nothing.
 
-#### Base UI popups close instantly inside an extension popup
+#### Base UI Select flashes open and shut inside an extension popup
 
-A known Base UI bug (mui/base-ui#3546, same shape as radix-ui/primitives#2754): on an
-extension page a spurious `focus-out` fires right after a trigger is pressed, so every
-Select and dropdown opens and shuts in the same frame.
+Base UI's Select **overlaps its trigger** by default (`alignItemWithTrigger`), so the
+selected item sits under the cursor and its text lines up with the trigger's, the way a
+native select behaves.
 
-`packages/ui/src/extension-popup.ts` cancels that one close reason, and only when
-`location.protocol === "chrome-extension:"`. Detected rather than configured, because
-the condition genuinely is "this is an extension page" - it needs no wiring through the
-components `vault-ui` shares with the web app, and web behaviour is unchanged, where
-closing on focus-out is correct.
+Inside a Chrome extension popup that turns one click into open-then-choose: the popup
+appears on mousedown with an item beneath the pointer, and the mouseup that follows
+lands on that item, selects it and closes. The dropdown visibly flashes.
+`packages/ui/src/extension-popup.ts` places it below the trigger instead, on extension
+pages only.
 
-Worth knowing when debugging: **jsdom cannot reproduce it.** A component test of the
-same markup passes happily, because the bug lives in real focus handling. If a dropdown
-misbehaves only in the extension, suspect this before suspecting the markup.
+The evidence that found it, after a wrong guess at `focus-out`: **the `⋯` DropdownMenu
+worked and the native `<select>` in Settings worked - only Select was broken.** That
+rules out focus handling, which would hit all three, and points at the one thing Select
+does differently.
+
+Two things to remember when a popup misbehaves only in the extension:
+
+- **jsdom cannot reproduce it.** A component test of identical markup passes, because
+  the bug is in real pointer and focus handling. Do not take a green component test as
+  evidence the markup is fine.
+- `reportSuspiciousClose` logs one console line when a popup closes within 250ms of
+  opening, naming the reason. Open the popup's devtools and read it rather than
+  guessing.
 
 #### Two traps that cost real time
 

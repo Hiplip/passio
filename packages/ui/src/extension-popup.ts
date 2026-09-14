@@ -1,23 +1,32 @@
 /**
  * Whether this document is an extension page rather than a web page.
  *
- * Base UI popups close on `focus-out`, and inside a Chrome extension popup a
- * spurious focus-out fires immediately after the trigger is pressed - so a
- * Select or menu opens and closes again in the same frame. It is a known Base
- * UI bug (mui/base-ui#3546) with the same shape as radix-ui/primitives#2754,
- * and it makes every dropdown in the extension unusable.
- *
- * Detected rather than configured: the condition IS "this is an extension
- * page", so reading it off the protocol needs no wiring through the shared
- * components, and the web app's behaviour is untouched - closing on focus-out
- * is correct there, and a keyboard user tabbing away should still close it.
+ * Detected rather than configured: the condition genuinely is "this is an
+ * extension page", so it needs no wiring through the components `vault-ui`
+ * shares with the web app, and web behaviour stays untouched.
  */
 export const IS_EXTENSION_PAGE =
   typeof location !== "undefined" && location.protocol === "chrome-extension:";
 
 /**
- * Suppresses only the spurious close, leaving every other reason alone: a
- * click outside, Escape and choosing an item all still close the popup.
+ * Base UI's Select overlaps its trigger by default (`alignItemWithTrigger`),
+ * putting the selected item directly under the cursor so its text lines up
+ * with the trigger's - the way a native select behaves.
+ *
+ * Inside a Chrome extension popup that turns a single click into open-then-
+ * choose: the popup appears on mousedown with an item beneath the pointer, and
+ * the mouseup that follows lands on that item, selects it and closes again.
+ * The dropdown visibly flashes and is unusable.
+ *
+ * Below-the-trigger placement puts the mouseup back on the trigger, where it
+ * does nothing. It is also the better shape for a filter dropdown regardless.
+ */
+export const ALIGN_ITEM_WITH_TRIGGER = !IS_EXTENSION_PAGE;
+
+/**
+ * Suppresses a spurious `focus-out` close, which extension pages also emit
+ * right after a trigger is pressed. Every other reason is left alone: an
+ * outside press, Escape and choosing an item all still close the popup.
  */
 export function keepOpenOnSpuriousFocusOut(
   open: boolean,
@@ -26,4 +35,31 @@ export function keepOpenOnSpuriousFocusOut(
   if (!open && IS_EXTENSION_PAGE && details.reason === "focus-out") {
     details.cancel();
   }
+}
+
+const SUSPICIOUS_MS = 250;
+let openedAt = 0;
+
+/**
+ * Reports a popup that closed almost as soon as it opened.
+ *
+ * Extension popups have a history of breaking Base UI's dismissal in ways no
+ * test on a machine without a browser can reproduce - jsdom renders the same
+ * markup happily. One console line naming the reason turns the next instance
+ * of this from an afternoon of guessing into a ten-second answer.
+ */
+export function reportSuspiciousClose(open: boolean, reason: string): void {
+  if (!IS_EXTENSION_PAGE) return;
+  if (open) {
+    openedAt = Date.now();
+    return;
+  }
+  const elapsed = Date.now() - openedAt;
+  if (openedAt !== 0 && elapsed < SUSPICIOUS_MS) {
+    console.warn(
+      `[passio] popup closed ${elapsed}ms after opening, reason: ${reason}. ` +
+        "If a dropdown is flashing, this is why.",
+    );
+  }
+  openedAt = 0;
 }

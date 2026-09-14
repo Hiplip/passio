@@ -4,7 +4,11 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
-import { keepOpenOnSpuriousFocusOut } from "./extension-popup"
+import {
+  ALIGN_ITEM_WITH_TRIGGER,
+  keepOpenOnSpuriousFocusOut,
+  reportSuspiciousClose,
+} from "./extension-popup"
 
 /**
  * Wraps Select.Root purely to suppress a spurious `focus-out` close inside
@@ -18,6 +22,7 @@ function Select<Value, Multiple extends boolean | undefined = false>({
   return (
     <SelectPrimitive.Root
       onOpenChange={(open, details) => {
+        reportSuspiciousClose(open, details.reason)
         keepOpenOnSpuriousFocusOut(open, details)
         onOpenChange?.(open, details)
       }}
@@ -81,7 +86,10 @@ function SelectContent({
   sideOffset = 4,
   align = "center",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  // Off inside an extension popup, where overlapping the trigger makes a
+  // single click open the list and immediately pick the item under the
+  // cursor. See extension-popup.ts.
+  alignItemWithTrigger = ALIGN_ITEM_WITH_TRIGGER,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
