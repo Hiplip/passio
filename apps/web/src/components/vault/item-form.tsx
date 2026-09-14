@@ -3,19 +3,19 @@
 import { Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
-import { Field } from "~/components/ui/field";
-import { Label } from "~/components/ui/label";
+import { Alert, AlertDescription } from "@passio/ui/alert";
+import { Button } from "@passio/ui/button";
+import { Card, CardContent, CardFooter } from "@passio/ui/card";
+import { Field } from "@passio/ui/field";
+import { Label } from "@passio/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
-import { Textarea } from "~/components/ui/textarea";
+} from "@passio/ui/select";
+import { Textarea } from "@passio/ui/textarea";
 import { GeneratorDialog } from "~/components/vault/generator-dialog";
 import { SecretField } from "~/components/vault/secret-field";
 import { TotpDisplay } from "~/components/vault/totp-display";

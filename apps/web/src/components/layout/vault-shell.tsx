@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import { useAutoLock } from "~/hooks/use-auto-lock";
 import { useLockTimeout } from "~/hooks/use-lock-timeout";
 import { useVault } from "~/hooks/use-vault";

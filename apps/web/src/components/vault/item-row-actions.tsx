@@ -4,14 +4,14 @@ import { Copy, ExternalLink, MoreVertical, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
+} from "@passio/ui/dropdown-menu";
 import { copyWithAutoClear } from "@passio/core/clipboard";
 import { copyActionsFor, launchUrlFor } from "@passio/core/actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";

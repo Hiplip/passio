@@ -4,7 +4,7 @@ import { Check, Copy, Printer } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 
 interface RecoveryKitProps {
   recoveryKey: string;

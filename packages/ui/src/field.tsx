@@ -1,8 +1,8 @@
 import { type InputHTMLAttributes, forwardRef, useId } from "react";
 
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { cn } from "~/lib/utils";
+import { Input } from "./input";
+import { Label } from "./label";
+import { cn } from "./cn";
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;

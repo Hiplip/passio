@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Skeleton } from "~/components/ui/skeleton";
+import { Button } from "@passio/ui/button";
+import { Input } from "@passio/ui/input";
+import { Skeleton } from "@passio/ui/skeleton";
 import { FolderDialog } from "~/components/vault/folder-dialog";
 import { ItemList } from "~/components/vault/item-list";
 import { VaultOverview } from "~/components/vault/vault-overview";

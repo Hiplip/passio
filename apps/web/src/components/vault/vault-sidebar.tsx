@@ -13,17 +13,17 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
+} from "@passio/ui/dropdown-menu";
 import type { DecryptedFolder } from "~/hooks/use-folders";
 import { viewsEqual, type VaultView } from "@passio/core/filter";
 import type { ItemType } from "@passio/core/schema";
-import { cn } from "~/lib/utils";
+import { cn } from "@passio/ui/cn";
 
 interface Entry {
   key: string;

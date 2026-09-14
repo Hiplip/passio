@@ -4,9 +4,9 @@ import { ArrowLeft, CreditCard, KeyRound, StickyNote } from "lucide-react";
 import Link from "next/link";
 
 import { ItemEditor } from "~/app/vault/item-editor";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
-import { Skeleton } from "~/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
+import { Button } from "@passio/ui/button";
+import { Skeleton } from "@passio/ui/skeleton";
 import { useVault } from "~/hooks/use-vault";
 import { useVaultItems } from "~/hooks/use-vault-items";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";

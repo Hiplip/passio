@@ -1,9 +1,9 @@
-import "~/styles/globals.css";
+import "@passio/ui/styles.css";
 
 import { type Metadata } from "next";
 import { Archivo, JetBrains_Mono } from "next/font/google";
 
-import { Toaster } from "~/components/ui/sonner";
+import { Toaster } from "@passio/ui/sonner";
 import { VaultProvider } from "~/hooks/use-vault";
 import { TRPCReactProvider } from "~/trpc/react";
 

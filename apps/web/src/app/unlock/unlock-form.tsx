@@ -4,10 +4,10 @@ import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Field } from "~/components/ui/field";
+import { Alert, AlertDescription } from "@passio/ui/alert";
+import { Button } from "@passio/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { Field } from "@passio/ui/field";
 import { useVault } from "~/hooks/use-vault";
 import { attemptUnlock } from "~/lib/auth/unlock";
 import { authClient } from "~/server/better-auth/client";

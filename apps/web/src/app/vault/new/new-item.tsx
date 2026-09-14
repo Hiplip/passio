@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ItemEditor } from "~/app/vault/item-editor";
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import {
   newCardItem,
   newLoginItem,

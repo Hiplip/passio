@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import { Field } from "~/components/ui/field";
+} from "@passio/ui/dialog";
+import { Field } from "@passio/ui/field";
 import { encryptFolderName } from "~/hooks/use-folders";
 import { useVault } from "~/hooks/use-vault";
 import { api } from "~/trpc/react";

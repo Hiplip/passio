@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import type { DecryptedFolder } from "~/hooks/use-folders";
 import type { VaultFilter } from "@passio/core/filter";
 import type { ItemType } from "@passio/core/schema";

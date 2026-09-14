@@ -4,16 +4,16 @@ import { KeyRound, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Label } from "~/components/ui/label";
+import { Button } from "@passio/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@passio/ui/card";
+import { Label } from "@passio/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
+} from "@passio/ui/select";
 import {
   describeLockTimeout,
   LOCK_TIMEOUT_CHOICES,

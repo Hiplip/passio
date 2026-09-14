@@ -3,7 +3,7 @@
 import { CreditCard, KeyRound, StickyNote } from "lucide-react";
 import Link from "next/link";
 
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { ItemRowActions } from "~/components/vault/item-row-actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import type { ItemType } from "@passio/core/schema";

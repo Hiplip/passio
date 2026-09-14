@@ -3,7 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { Button } from "~/components/ui/button";
+import { Button } from "@passio/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import { Label } from "~/components/ui/label";
-import { Slider } from "~/components/ui/slider";
-import { Switch } from "~/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
+} from "@passio/ui/dialog";
+import { Label } from "@passio/ui/label";
+import { Slider } from "@passio/ui/slider";
+import { Switch } from "@passio/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@passio/ui/tabs";
 import {
   DEFAULT_GENERATOR_OPTIONS,
   generatePassphrase,

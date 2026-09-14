@@ -2,6 +2,18 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * Tailwind's automatic source detection starts at the project root and skips
+ * node_modules - and these packages reach the app through a node_modules
+ * symlink. Without naming them explicitly, every class used ONLY inside a
+ * package is purged and those components render completely unstyled, with no
+ * build error to say so.
+ *
+ * Add a line here whenever a new package renders markup.
+ */
+@source "../../ui/src";
+@source "../../../apps/web/src";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
