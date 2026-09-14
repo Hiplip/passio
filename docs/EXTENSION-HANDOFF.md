@@ -45,11 +45,31 @@ looks like. Copy it down and open it:
 scp you@your-dev-box:/home/dev/projects/passio/docs/autofill-test.html D:\Downloads\
 ```
 
-**One setting first:** `chrome://extensions` → passio → Details → turn on **Allow access
-to file URLs**. Without it the extension cannot touch a `file://` page at all, and every
-section will look broken for the wrong reason. Turn it back off afterwards.
+**It has to be served over HTTP — `file://` cannot work**, and not because of a missing
+setting. Three deliberate rules block it: `matchItemsToUrl` refuses any non-http(s) URL
+(the same rule that stops a stored `javascript:` URI becoming launchable), the popup
+refuses to fill a non-http tab, and the inline content script is registered for
+`http://*/*` and `https://*/*` only. Relaxing any of those to suit a test would be
+backwards.
 
-Then open `file:///D:/Downloads/autofill-test.html` and work down it:
+Serve the folder and open it over HTTP:
+
+```powershell
+npx --yes http-server D:\Downloads -p 8080
+# then open http://localhost:8080/autofill-test.html
+```
+
+(`python -m http.server 8080` from that folder does the same job if you have Python
+rather than Node.)
+
+**Make one throwaway item first**, so there is something to fill with:
+
+- Title: `Autofill test`
+- Username: `test@example.com`
+- Password: anything
+- **URL: `http://localhost:8080`** — this is what makes it appear under "For this site"
+
+Then work down the page:
 
 - [ ] **1 Ordinary login** — fills both fields (the baseline; if this fails, nothing
       below means anything)
@@ -65,6 +85,10 @@ Then open `file:///D:/Downloads/autofill-test.html` and work down it:
 Sections 2, 3 and 4 are the security ones. Planting an off-screen input to harvest
 autofill is a documented attack, and guessing which box is which on a change-password
 form is how a manager overwrites the wrong password.
+
+For sections 1-5 you can also just pick any item from the popup and press **Fill** — a
+matching URL is only needed for the "For this site" group and the inline suggestion
+list. Delete the throwaway item and stop the server when you are done.
 
 ### A4 · Nothing is ever submitted for you
 
