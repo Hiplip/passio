@@ -84,9 +84,15 @@ Expected: the vault list appears.
 
 ## 4. The important one — does the key survive worker eviction?
 
-**This is the single assumption the whole design rests on, and it is the one thing that
-could not be tested.** MV3 kills the service worker after ~30 seconds idle. The vault key
-lives in an offscreen document precisely because that should outlive it.
+MV3 evicts the service worker after ~30 seconds idle — in production, for every user.
+The vault key survives because it lives in an offscreen document, whose lifetime Chrome
+documents as independent of the worker.
+
+An older pre-launch blog post described event-page-style teardown instead, and the two
+do not agree. Rather than leave that riding on a manual test, the offscreen document now
+runs a 20-second heartbeat while unlocked: a no-op if the reference is right, and what
+keeps the key alive if it is not. **This check is now confirmation, not a gamble** — but
+it is still worth running once.
 
 1. Unlock the vault, then close the popup.
 2. Go to `chrome://extensions` and watch the passio card. Within a minute the
@@ -144,7 +150,23 @@ draw extra review scrutiny — the narrow permission set should help.
 
 ---
 
-## 8. The full vault page
+## 8. Editing, in the popup
+
+Editing happens in the popup itself now.
+
+- [ ] Click **+** in the popup header → pick a type → fill it in → save. The item
+      appears in the list, and in the web app.
+- [ ] On a row, **⋯ → Edit**, change something, save, reopen and confirm it stuck.
+- [ ] The **↗** button in the header reopens the current screen in a full tab.
+      Use it for anything long: **Chrome closes the popup whenever it loses focus**,
+      so clicking the page behind it mid-edit loses what you typed.
+
+The fill list deliberately carries no secrets; full plaintext enters the popup only
+while an editor screen is open, and leaves when you go back.
+
+---
+
+## 9. The full vault page
 
 New: the popup's **Full vault** button (bottom left) opens the whole vault in a browser
 tab — the same interface as the web app, running inside the extension, already unlocked.
