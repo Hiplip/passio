@@ -17,7 +17,7 @@
 @source "../../../apps/extension/src";
 @source "../../../apps/web/src";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 /*
  * passio design tokens
@@ -36,6 +36,8 @@
  */
 
 :root {
+  color-scheme: light dark;
+
   --radius: 0.7rem;
 
   --background: oklch(0.994 0.002 95);
@@ -76,43 +78,57 @@
   --sidebar-ring: oklch(0.52 0.088 195);
 }
 
-.dark {
-  --background: oklch(0.168 0.008 250);
-  --foreground: oklch(0.945 0.004 250);
+/*
+ * Dark mode follows the operating system, in CSS.
+ *
+ * It used to be a `.dark` class applied by an inline script in the web app's
+ * layout. Extension pages cannot do that: MV3's content security policy forbids
+ * inline script, so the class was never applied and every extension surface -
+ * popup, vault window, suggestion overlay - rendered the light palette on a
+ * dark desktop.
+ *
+ * A media query needs no script, cannot flash the wrong theme before hydration,
+ * and works identically in a web page, an extension page and an iframe.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.168 0.008 250);
+    --foreground: oklch(0.945 0.004 250);
 
-  --card: oklch(0.212 0.009 250);
-  --card-foreground: oklch(0.945 0.004 250);
+    --card: oklch(0.212 0.009 250);
+    --card-foreground: oklch(0.945 0.004 250);
 
-  --popover: oklch(0.212 0.009 250);
-  --popover-foreground: oklch(0.945 0.004 250);
+    --popover: oklch(0.212 0.009 250);
+    --popover-foreground: oklch(0.945 0.004 250);
 
-  --primary: oklch(0.735 0.106 190);
-  --primary-foreground: oklch(0.19 0.03 195);
+    --primary: oklch(0.735 0.106 190);
+    --primary-foreground: oklch(0.19 0.03 195);
 
-  --secondary: oklch(0.268 0.009 250);
-  --secondary-foreground: oklch(0.945 0.004 250);
+    --secondary: oklch(0.268 0.009 250);
+    --secondary-foreground: oklch(0.945 0.004 250);
 
-  --muted: oklch(0.262 0.009 250);
-  --muted-foreground: oklch(0.685 0.011 250);
+    --muted: oklch(0.262 0.009 250);
+    --muted-foreground: oklch(0.685 0.011 250);
 
-  --accent: oklch(0.3 0.032 195);
-  --accent-foreground: oklch(0.86 0.07 190);
+    --accent: oklch(0.3 0.032 195);
+    --accent-foreground: oklch(0.86 0.07 190);
 
-  --destructive: oklch(0.68 0.175 24);
-  --destructive-foreground: oklch(0.99 0 0);
+    --destructive: oklch(0.68 0.175 24);
+    --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(1 0 0 / 11%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.735 0.106 190);
+    --border: oklch(1 0 0 / 11%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.735 0.106 190);
 
-  --sidebar: oklch(0.192 0.009 250);
-  --sidebar-foreground: oklch(0.945 0.004 250);
-  --sidebar-primary: oklch(0.735 0.106 190);
-  --sidebar-primary-foreground: oklch(0.19 0.03 195);
-  --sidebar-accent: oklch(0.3 0.032 195);
-  --sidebar-accent-foreground: oklch(0.86 0.07 190);
-  --sidebar-border: oklch(1 0 0 / 11%);
-  --sidebar-ring: oklch(0.735 0.106 190);
+    --sidebar: oklch(0.192 0.009 250);
+    --sidebar-foreground: oklch(0.945 0.004 250);
+    --sidebar-primary: oklch(0.735 0.106 190);
+    --sidebar-primary-foreground: oklch(0.19 0.03 195);
+    --sidebar-accent: oklch(0.3 0.032 195);
+    --sidebar-accent-foreground: oklch(0.86 0.07 190);
+    --sidebar-border: oklch(1 0 0 / 11%);
+    --sidebar-ring: oklch(0.735 0.106 190);
+  }
 }
 
 @theme inline {

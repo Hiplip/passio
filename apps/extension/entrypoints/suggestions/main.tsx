@@ -26,6 +26,35 @@ type State =
   | { kind: "locked" }
   | { kind: "ready"; items: ItemSummary[] };
 
+/** The site the list is for, shown so a wrong match is obvious rather than
+ *  silently filled. */
+function siteLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "this site";
+  }
+}
+
+function Panel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-popover text-popover-foreground overflow-hidden rounded-xl border shadow-xl">
+      {children}
+    </div>
+  );
+}
+
+function Notice({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Panel>
+      <div className="flex items-center gap-2.5 px-3 py-3">
+        <span className="text-muted-foreground shrink-0">{icon}</span>
+        <span className="text-muted-foreground text-xs">{children}</span>
+      </div>
+    </Panel>
+  );
+}
+
 function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const pageUrl = new URLSearchParams(window.location.search).get("u") ?? "";
@@ -49,56 +78,56 @@ function App() {
     });
   }
 
-  const frame = "bg-popover text-popover-foreground rounded-lg border shadow-lg";
-
   if (state.kind === "loading") {
-    return <div className={`${frame} text-muted-foreground p-3 text-xs`}>Loading…</div>;
+    return (
+      <Notice icon={<KeyRound className="size-3.5" />}>Looking in your vault…</Notice>
+    );
   }
 
   if (state.kind === "locked") {
     return (
-      <div className={`${frame} flex items-center gap-2 p-3`}>
-        <Lock className="text-muted-foreground size-3.5 shrink-0" />
-        <span className="text-xs">
-          passio is locked. Open it from the toolbar to unlock.
-        </span>
-      </div>
+      <Notice icon={<Lock className="size-3.5" />}>
+        passio is locked. Open it from the toolbar to unlock.
+      </Notice>
     );
   }
 
   if (state.items.length === 0) {
     return (
-      <div className={`${frame} flex items-center gap-2 p-3`}>
-        <KeyRound className="text-muted-foreground size-3.5 shrink-0" />
-        <span className="text-muted-foreground text-xs">
-          No saved logins for this site.
-        </span>
-      </div>
+      <Notice icon={<KeyRound className="size-3.5" />}>
+        No saved logins for {siteLabel(pageUrl)}.
+      </Notice>
     );
   }
 
   return (
-    <ul className={`${frame} max-h-[220px] overflow-y-auto py-1`}>
-      {state.items.map((item) => (
-        <li key={item.id}>
-          <button
-            type="button"
-            onClick={() => choose(item.id)}
-            className="hover:bg-muted/60 flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors"
-          >
-            <ItemGlyph type={item.type} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium">{item.title}</span>
-              {item.username ? (
-                <span className="text-muted-foreground block truncate text-[11px]">
-                  {item.username}
-                </span>
-              ) : null}
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <Panel>
+      <p className="text-muted-foreground bg-muted/50 border-b px-3 py-1.5 text-[11px]">
+        passio · {siteLabel(pageUrl)}
+      </p>
+
+      <ul className="max-h-[188px] overflow-y-auto py-1">
+        {state.items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => choose(item.id)}
+              className="hover:bg-accent focus-visible:bg-accent flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-colors outline-none"
+            >
+              <ItemGlyph type={item.type} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium">{item.title}</span>
+                {item.username ? (
+                  <span className="text-muted-foreground block truncate text-[11px]">
+                    {item.username}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 

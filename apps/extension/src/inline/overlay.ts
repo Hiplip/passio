@@ -3,11 +3,10 @@ import {
   ICON_SIZE,
   iconPosition,
   isDecoratable,
+  listHeight,
   listPosition,
   type Box,
 } from "./anchor";
-
-const LIST_HEIGHT = 232;
 /** Above almost everything. Sites use z-indexes in the millions; this has to
  *  win or the button is invisible on them. */
 const Z = 2147483000;
@@ -47,6 +46,18 @@ export function createOverlay() {
    *  the only one there is. */
   const buttons = new Map<HTMLInputElement, HTMLButtonElement>();
   let anchored: HTMLInputElement | null = null;
+  /** Matches for this page, so the iframe can be sized to its contents. Asked
+   *  for once per open; `matchCount` answers 0 while locked, which is the same
+   *  single-notice height. */
+  let matches = 0;
+
+  /** The passio key mark. Inline SVG rather than a letter: at 20px a glyph reads
+   *  as an affordance and a character reads as a typo in the field. */
+  const KEY_SVG =
+    `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"` +
+    ` stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+    `<path d="M2.6 10.6a6 6 0 1 0 8.8-8.8 6 6 0 0 0-8.8 8.8Z" transform="translate(9.5 9.5) rotate(180)"/>` +
+    `<path d="m10.5 13.5-8 8"/><path d="m6.5 17.5 2 2"/></svg>`;
 
   function makeButton(field: HTMLInputElement): HTMLButtonElement {
     const button = document.createElement("button");
@@ -54,11 +65,19 @@ export function createOverlay() {
     button.setAttribute("aria-label", "passio suggestions");
     button.style.cssText = `
       position:fixed;width:${ICON_SIZE}px;height:${ICON_SIZE}px;padding:0;
-      border:0;border-radius:5px;cursor:pointer;display:none;z-index:${Z};
-      background:#0f766e;color:#fff;font:600 11px system-ui,sans-serif;
-      line-height:${ICON_SIZE}px;text-align:center;box-shadow:0 1px 3px rgb(0 0 0/.3)
+      border:0;border-radius:6px;cursor:pointer;display:none;z-index:${Z};
+      background:#0d9488;color:#fff;align-items:center;justify-content:center;
+      box-shadow:0 1px 2px rgb(0 0 0/.25);transition:background .12s,transform .12s
     `;
-    button.textContent = "p";
+    button.innerHTML = KEY_SVG;
+    button.addEventListener("mouseenter", () => {
+      button.style.background = "#14b8a6";
+      button.style.transform = "scale(1.06)";
+    });
+    button.addEventListener("mouseleave", () => {
+      button.style.background = "#0d9488";
+      button.style.transform = "none";
+    });
     button.addEventListener("mousedown", (e) => {
       // mousedown, not click: the field is about to lose focus and some pages
       // tear their form down on blur.
@@ -88,17 +107,18 @@ export function createOverlay() {
       }
 
       const icon = iconPosition(rect);
-      button.style.display = "block";
+      button.style.display = "flex";
       button.style.top = `${icon.top}px`;
       button.style.left = `${icon.left}px`;
     }
 
     if (anchored?.isConnected) {
-      const list = listPosition(box(anchored), viewport(), LIST_HEIGHT);
+      const height = listHeight(matches);
+      const list = listPosition(box(anchored), viewport(), height);
       frame.style.top = `${list.top}px`;
       frame.style.left = `${list.left}px`;
       frame.style.width = `${list.width}px`;
-      frame.style.height = `${LIST_HEIGHT}px`;
+      frame.style.height = `${height}px`;
     }
   }
 
@@ -112,10 +132,29 @@ export function createOverlay() {
     );
     frame.style.display = "block";
     place();
+
+    // Resize once the count is known. Reuses the badge's existing count rather
+    // than adding a channel for the iframe to report its own height.
+    void chrome.runtime
+      .sendMessage({
+        target: "offscreen",
+        kind: "matchCount",
+        url: window.location.href,
+      })
+      .then((res: { ok: boolean; kind?: string; count?: number }) => {
+        if (anchored !== field) return;
+        matches = res.ok && res.kind === "matchCount" ? (res.count ?? 0) : 0;
+        place();
+      })
+      .catch(() => {
+        matches = 0;
+        place();
+      });
   }
 
   function hide() {
     anchored = null;
+    matches = 0;
     frame.style.display = "none";
     frame.removeAttribute("src");
   }

@@ -33,15 +33,6 @@ const jetbrainsMono = JetBrains_Mono({
  * Inline and synchronous on purpose: doing this in an effect would show a flash
  * of the light theme to dark-mode users on every navigation.
  */
-const themeScript = `
-try {
-  var m = window.matchMedia('(prefers-color-scheme: dark)');
-  var apply = function (dark) { document.documentElement.classList.toggle('dark', dark); };
-  apply(m.matches);
-  m.addEventListener('change', function (e) { apply(e.matches); });
-} catch (e) {}
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -52,7 +43,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
         <TRPCReactProvider>

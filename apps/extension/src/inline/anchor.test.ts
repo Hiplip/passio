@@ -4,6 +4,7 @@ import {
   ICON_SIZE,
   isDecoratable,
   iconPosition,
+  listHeight,
   listPosition,
   LIST_WIDTH,
   type Box,
@@ -78,5 +79,25 @@ describe("isDecoratable", () => {
   it("refuses a zero-sized field", () => {
     // The same instinct as never filling a hidden field: when unsure, do nothing.
     expect(isDecoratable({ top: 0, left: 0, width: 0, height: 0 }, viewport)).toBe(false);
+  });
+});
+
+describe("listHeight", () => {
+  it("is a single notice when nothing matches", () => {
+    // Locked, or no saved login: one line of text, not an empty sheet.
+    expect(listHeight(0)).toBeLessThan(60);
+    expect(listHeight(-1)).toBe(listHeight(0));
+  });
+
+  it("grows with the number of matches", () => {
+    expect(listHeight(2)).toBeGreaterThan(listHeight(1));
+    expect(listHeight(3)).toBeGreaterThan(listHeight(2));
+  });
+
+  it("stops growing so it cannot cover the page", () => {
+    // Past a few entries the list scrolls internally instead. A transparent
+    // iframe the height of the viewport swallows every click behind it.
+    expect(listHeight(50)).toBe(listHeight(4));
+    expect(listHeight(50)).toBeLessThan(250);
   });
 });

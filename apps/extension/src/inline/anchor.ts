@@ -18,6 +18,25 @@ const ICON_INSET = 6;
 export const LIST_WIDTH = 260;
 const LIST_GAP = 4;
 
+const ROW_HEIGHT = 44;
+const LIST_HEADER = 27;
+const LIST_PADDING = 10;
+const NOTICE_HEIGHT = 46;
+const MAX_ROWS = 4;
+
+/**
+ * How tall the suggestion iframe should be for a given number of matches.
+ *
+ * Sized to its contents rather than fixed, because the iframe is transparent:
+ * any empty space below a short list is an invisible sheet over the page that
+ * silently swallows clicks meant for whatever is underneath.
+ */
+export function listHeight(matchCount: number): number {
+  if (matchCount <= 0) return NOTICE_HEIGHT;
+  const rows = Math.min(matchCount, MAX_ROWS);
+  return LIST_HEADER + rows * ROW_HEIGHT + LIST_PADDING;
+}
+
 /**
  * Where the button sits: vertically centred at the right-hand end of the field.
  *
