@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Folder, FolderPlus, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@passio/ui/button";
 import {
@@ -37,6 +37,11 @@ interface VaultFiltersProps {
  * identity (see ItemMark), a stadium is a filter state, a rounded rectangle is
  * an action. Keeping them apart is why a dense row of controls still parses at
  * a glance.
+ *
+ * The count rides the SELECTED pill and no other. A number on every pill made
+ * the rail ragged - some labels carried one, some did not, and the ones reading
+ * zero were an invitation to open an empty list. One number, on the thing you
+ * are actually looking at, says more and costs less.
  */
 function Pill({
   label,
@@ -45,7 +50,7 @@ function Pill({
   onSelect,
 }: {
   label: string;
-  count?: number;
+  count: number;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -55,7 +60,7 @@ function Pill({
       onClick={onSelect}
       aria-pressed={active}
       className={cn(
-        "flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors outline-none",
+        "flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] whitespace-nowrap transition-colors outline-none",
         "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
         active
           ? "bg-accent text-accent-foreground font-medium"
@@ -63,11 +68,7 @@ function Pill({
       )}
     >
       {label}
-      {count !== undefined && count > 0 ? (
-        <span className={cn("secret text-[11px]", active ? "opacity-70" : "opacity-55")}>
-          {count}
-        </span>
-      ) : null}
+      {active ? <span className="secret text-[11px] opacity-70">{count}</span> : null}
     </button>
   );
 }
@@ -79,12 +80,20 @@ const TYPES: Array<{ type: ItemType; label: string }> = [
 ];
 
 /**
- * Every way of narrowing the vault, in one rail.
+ * Every way of narrowing the vault, on one line that never wraps.
  *
  * This replaced a 280-line desktop sidebar and a 200-line phone category
- * screen that did the same job twice. One rail works at both sizes because it
- * wraps, and having a single implementation means a filter can never behave
- * differently depending on the width of the window.
+ * screen that did the same job twice. One rail works at both sizes, and having
+ * a single implementation means a filter can never behave differently
+ * depending on the width of the window.
+ *
+ * The line is built from two zones on purpose. The type pills scroll inside a
+ * flexible track; the folder chooser is pinned beside it and never moves. The
+ * first version let the whole row wrap, which at popup width dropped the
+ * folder chooser onto a second line by itself, right-aligned, leaving an empty
+ * band across the middle of the panel - the control needed least taking the
+ * most room. A track that scrolls cannot do that at any width, with any number
+ * of types, in any language.
  *
  * Folders live behind a menu rather than getting a pill each: a vault can hold
  * thirty of them, and thirty pills is not a filter rail, it is a wall.
@@ -105,45 +114,51 @@ export function VaultFilters({
       ? folders.find((f) => f.id === filter.folderId)
       : undefined;
 
+  const folderActive = filter.kind === "folder" || filter.kind === "unfiled";
   const folderLabel = activeFolder
     ? activeFolder.name
     : filter.kind === "unfiled"
       ? "No folder"
       : "Folders";
 
-  const folderActive = filter.kind === "folder" || filter.kind === "unfiled";
-
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-2", className)}>
-      <Pill
-        label="All"
-        count={counts.total}
-        active={filtersEqual({ kind: "all" }, filter)}
-        onSelect={() => onFilterChange({ kind: "all" })}
-      />
-
-      {TYPES.map(({ type, label }) => (
+    <div className={cn("flex items-center gap-2", className)}>
+      {/*
+        min-w-0 is what makes the track yield instead of shoving its neighbour
+        off the line; the negative margin gives a focus ring somewhere to go
+        without the scroller clipping it.
+      */}
+      <div className="no-scrollbar -my-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">
         <Pill
-          key={type}
-          label={label}
-          count={counts.byType.get(type) ?? 0}
-          active={filtersEqual({ kind: "type", type }, filter)}
-          onSelect={() => onFilterChange({ kind: "type", type })}
+          label="All"
+          count={counts.total}
+          active={filtersEqual({ kind: "all" }, filter)}
+          onSelect={() => onFilterChange({ kind: "all" })}
         />
-      ))}
 
-      {/* Offered only when there is something to show. A row reading zero is
-          noise on a rail whose whole job is orientation. */}
-      {counts.totp > 0 ? (
-        <Pill
-          label="Codes"
-          count={counts.totp}
-          active={filtersEqual({ kind: "totp" }, filter)}
-          onSelect={() => onFilterChange({ kind: "totp" })}
-        />
-      ) : null}
+        {TYPES.map(({ type, label }) => (
+          <Pill
+            key={type}
+            label={label}
+            count={counts.byType.get(type) ?? 0}
+            active={filtersEqual({ kind: "type", type }, filter)}
+            onSelect={() => onFilterChange({ kind: "type", type })}
+          />
+        ))}
 
-      <span className="ml-auto flex items-center gap-1">
+        {/* Offered only when there is something to show. A pill reading zero is
+            noise on a rail whose whole job is orientation. */}
+        {counts.totp > 0 ? (
+          <Pill
+            label="Codes"
+            count={counts.totp}
+            active={filtersEqual({ kind: "totp" }, filter)}
+            onSelect={() => onFilterChange({ kind: "totp" })}
+          />
+        ) : null}
+      </div>
+
+      <span className="flex shrink-0 items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -151,7 +166,7 @@ export function VaultFilters({
                 type="button"
                 aria-label="Filter by folder"
                 className={cn(
-                  "flex h-7 max-w-40 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] transition-colors outline-none",
+                  "flex h-7 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-colors outline-none",
                   "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                   folderActive
                     ? "bg-accent text-accent-foreground font-medium"
@@ -160,7 +175,8 @@ export function VaultFilters({
               />
             }
           >
-            <span className="truncate">{folderLabel}</span>
+            <Folder className="size-3.5 shrink-0" />
+            <span className="max-w-24 truncate">{folderLabel}</span>
             <ChevronDown className="size-3.5 shrink-0 opacity-60" />
           </DropdownMenuTrigger>
 
@@ -200,6 +216,22 @@ export function VaultFilters({
                 {counts.unfiled}
               </span>
             </DropdownMenuItem>
+
+            {/* The way back out. Choosing a folder switches the type pills off,
+                so without this the only escape is spotting that "All" is no
+                longer selected. */}
+            {folderActive ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="gap-2 whitespace-nowrap"
+                  onClick={() => onFilterChange({ kind: "all" })}
+                >
+                  <Check className="size-3.5 shrink-0 opacity-0" />
+                  <span className="min-w-0 flex-1">Any folder</span>
+                </DropdownMenuItem>
+              </>
+            ) : null}
 
             {onNewFolder ? (
               <>

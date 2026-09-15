@@ -456,7 +456,7 @@ function InlineToggle() {
  */
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-muted-foreground px-3 pt-3 pb-1.5 text-[11.5px] font-medium">
+    <p className="text-muted-foreground px-3 pt-2.5 pb-1 text-[11.5px] font-medium">
       {children}
     </p>
   );
@@ -647,7 +647,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     <Shell tall>
       <TabHeader path="/" onAdd={() => (window.location.hash = "/vault/new")} />
 
-      <div className="grid shrink-0 gap-2.5 p-3">
+      <div className="grid shrink-0 gap-2.5 border-b p-3">
         <div className="relative flex items-center">
           <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
           <Input
@@ -685,7 +685,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
       </div>
 
       {damaged > 0 ? (
-        <p className="text-destructive shrink-0 px-3 pb-2 text-[11.5px]">
+        <p className="text-destructive shrink-0 border-b px-3 py-2 text-[11.5px]">
           {damaged} item{damaged === 1 ? "" : "s"} could not be decrypted. Nothing is
           lost — open the full vault to look.
         </p>

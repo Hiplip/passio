@@ -367,6 +367,23 @@
   .rows > * + * {
     border-top: 1px solid var(--border);
   }
+
+  /*
+   * A track that scrolls without saying so.
+   *
+   * For short horizontal runs of controls - the filter rail - where a visible
+   * scrollbar would be taller than the gap it sits in and would jump the
+   * layout on the platforms that reserve room for it. Only ever put things on
+   * one of these that are also reachable another way.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
