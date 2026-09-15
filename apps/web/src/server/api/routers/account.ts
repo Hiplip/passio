@@ -1,5 +1,6 @@
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { user } from "~/server/db/schema";
+import { env } from "~/env";
 
 export const accountRouter = createTRPCRouter({
   /**
@@ -9,6 +10,8 @@ export const accountRouter = createTRPCRouter({
    * public /api/auth/sign-up/email route this query does not sit on.
    */
   status: publicProcedure.query(async ({ ctx }) => {
+    if (env.REGISTRATION_OPEN) return { registrationOpen: true };
+
     const [existing] = await ctx.db
       .select({ id: user.id })
       .from(user)

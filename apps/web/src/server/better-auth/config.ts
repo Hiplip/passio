@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins";
 
 import { env } from "~/env";
+import { registrationAllowed } from "~/lib/registration";
 import { KDF_VERSION } from "@passio/crypto";
 import { EXTENSION_ORIGIN } from "~/server/cors";
 import { db } from "~/server/db";
@@ -90,14 +91,22 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (newUser, ctx) => {
-          // The single-account gate lives here, not in tRPC, because Better
-          // Auth also mounts a public /api/auth/sign-up/email route. A check in
+          // The registration gate lives here, not in tRPC, because Better Auth
+          // also mounts a public /api/auth/sign-up/email route. A check in
           // application code would only guard the path it sits on.
+          //
+          // Closed by default. When REGISTRATION_OPEN is not set, the first
+          // account is the only account - which is how this deployment has
+          // always behaved, and flipping a live instance open is a decision
+          // rather than a default.
           const [existing] = await db
             .select({ id: userTable.id })
             .from(userTable)
             .limit(1);
-          if (existing) return false; // abort: registration is closed
+
+          if (!registrationAllowed(env.REGISTRATION_OPEN, Boolean(existing))) {
+            return false; // abort: registration is closed
+          }
 
           const incoming = newUser as typeof newUser & {
             recoveryVerifier: string;

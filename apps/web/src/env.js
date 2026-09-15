@@ -14,6 +14,18 @@ export const env = createEnv({
     BETTER_AUTH_URL: z.string().url().optional(),
     VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
     DATABASE_URL: z.string().url(),
+    /**
+     * Whether anyone may create an account.
+     *
+     * Defaults to CLOSED. The deployment has been single-owner since it
+     * existed, and flipping a live instance open is a security-posture change
+     * rather than a feature toggle - anyone who finds the URL could then store
+     * data on it. Multi-user works; turning it on is a decision.
+     */
+    REGISTRATION_OPEN: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     NODE_ENV: z
       .enum(["development", "test", "production"]) 
       .default("development"),
@@ -37,6 +49,7 @@ export const env = createEnv({
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
     DATABASE_URL: process.env.DATABASE_URL,
+    REGISTRATION_OPEN: process.env.REGISTRATION_OPEN,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**
