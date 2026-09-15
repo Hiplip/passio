@@ -158,7 +158,7 @@ export function VaultBrowser() {
   );
 
   return (
-    <div className="grid content-start gap-5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="truncate">{title}</h1>

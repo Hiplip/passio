@@ -1,18 +1,31 @@
 "use client";
 
-import { Check, ChevronDown, Folder, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Clock,
+  CreditCard,
+  Folder,
+  FolderPlus,
+  Inbox,
+  KeyRound,
+  LayoutList,
+  Pencil,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 
-import { Button } from "@passio/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@passio/ui/dropdown-menu";
 import { cn } from "@passio/ui/cn";
 import type { DecryptedFolder } from "@passio/core/decrypt-folders";
-import { filtersEqual, type FilterCounts, type VaultFilter } from "@passio/core/filter";
+import type { FilterCounts, VaultFilter } from "@passio/core/filter";
 import type { ItemType } from "@passio/core/schema";
 
 interface VaultFiltersProps {
@@ -25,78 +38,98 @@ interface VaultFiltersProps {
   onNewFolder?: () => void;
   onRenameFolder?: (folder: DecryptedFolder) => void;
   onDeleteFolder?: (folder: DecryptedFolder) => void;
-  /** Trash is a web-app and vault-window view; the popup has no room for it. */
+  /** Trash is a web-app and vault-window view. Omitted, it is not offered. */
   trashCount?: number;
   className?: string;
 }
 
-/**
- * One filter, as a stadium pill.
- *
- * Three shapes carry three meanings across the whole interface: a circle is an
- * identity (see ItemMark), a stadium is a filter state, a rounded rectangle is
- * an action. Keeping them apart is why a dense row of controls still parses at
- * a glance.
- *
- * The count rides the SELECTED pill and no other. A number on every pill made
- * the rail ragged - some labels carried one, some did not, and the ones reading
- * zero were an invitation to open an empty list. One number, on the thing you
- * are actually looking at, says more and costs less.
- */
-function Pill({
+const TYPES: Array<{ type: ItemType; label: string; Icon: typeof KeyRound }> = [
+  { type: "login", label: "Logins", Icon: KeyRound },
+  { type: "note", label: "Notes", Icon: StickyNote },
+  { type: "card", label: "Cards", Icon: CreditCard },
+];
+
+/** What the chip says, and the icon it wears, for whatever is selected. */
+function describe(
+  filter: VaultFilter,
+  folders: DecryptedFolder[],
+  counts: FilterCounts,
+  trashCount: number,
+): { label: string; count: number; Icon: typeof KeyRound } {
+  switch (filter.kind) {
+    case "all":
+      return { label: "All items", count: counts.total, Icon: LayoutList };
+    case "type": {
+      const entry = TYPES.find((t) => t.type === filter.type) ?? TYPES[0]!;
+      return {
+        label: entry.label,
+        count: counts.byType.get(filter.type) ?? 0,
+        Icon: entry.Icon,
+      };
+    }
+    case "totp":
+      return { label: "Verification codes", count: counts.totp, Icon: Clock };
+    case "unfiled":
+      return { label: "No folder", count: counts.unfiled, Icon: Inbox };
+    case "folder": {
+      const folder = folders.find((f) => f.id === filter.folderId);
+      return {
+        label: folder?.name ?? "Folder",
+        count: counts.byFolder.get(filter.folderId) ?? 0,
+        Icon: Folder,
+      };
+    }
+    case "trash":
+      return { label: "Trash", count: trashCount, Icon: Trash2 };
+  }
+}
+
+/** One line of the menu: a tick, a name, and how many are behind it. */
+function Choice({
   label,
   count,
   active,
+  Icon,
   onSelect,
 }: {
   label: string;
-  count: number;
+  count?: number;
   active: boolean;
+  Icon: typeof KeyRound;
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      className={cn(
-        "flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] whitespace-nowrap transition-colors outline-none",
-        "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-        active
-          ? "bg-accent text-accent-foreground font-medium"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      {label}
-      {active ? <span className="secret text-[11px] opacity-70">{count}</span> : null}
-    </button>
+    <DropdownMenuItem className="gap-2.5 whitespace-nowrap" onClick={onSelect}>
+      <Check className={cn("size-3.5 shrink-0", active ? "" : "opacity-0")} />
+      <Icon className="text-muted-foreground size-3.5 shrink-0" />
+      <span className="min-w-0 flex-1 pr-4">{label}</span>
+      {count !== undefined ? (
+        <span className="secret text-muted-foreground text-[11px]">{count}</span>
+      ) : null}
+    </DropdownMenuItem>
   );
 }
 
-const TYPES: Array<{ type: ItemType; label: string }> = [
-  { type: "login", label: "Logins" },
-  { type: "note", label: "Notes" },
-  { type: "card", label: "Cards" },
-];
-
 /**
- * Every way of narrowing the vault, on one line that never wraps.
+ * What the vault is currently showing, as one control.
  *
- * This replaced a 280-line desktop sidebar and a 200-line phone category
- * screen that did the same job twice. One rail works at both sizes, and having
- * a single implementation means a filter can never behave differently
- * depending on the width of the window.
+ * This began as a rail of pills with a folder chooser pushed to the far end,
+ * and it was wrong twice over.
  *
- * The line is built from two zones on purpose. The type pills scroll inside a
- * flexible track; the folder chooser is pinned beside it and never moves. The
- * first version let the whole row wrap, which at popup width dropped the
- * folder chooser onto a second line by itself, right-aligned, leaving an empty
- * band across the middle of the panel - the control needed least taking the
- * most room. A track that scrolls cannot do that at any width, with any number
- * of types, in any language.
+ * It was wrong about space: five pills and a chooser do not fit across a 400px
+ * popup, and because an `auto` grid track sizes to max-content and overflows
+ * rather than clamping, the rail's width leaked out and dragged the search
+ * field past the edge of the window with it.
  *
- * Folders live behind a menu rather than getting a pill each: a vault can hold
- * thirty of them, and thirty pills is not a filter rail, it is a wall.
+ * It was wrong about the model, which is the part worth keeping. A VaultFilter
+ * is a tagged union: exactly one thing is selected, ever. Pills look like
+ * independent toggles, so choosing a folder silently switching the type off
+ * read as a bug rather than as the only behaviour there is. One chip naming
+ * the single active scope tells the truth, and a menu holding types and
+ * folders together shows them for what they are - alternatives, not layers.
+ *
+ * It also cannot cramp. The chip is as wide as its own label at any window
+ * size, in any language, with any number of folders.
  */
 export function VaultFilters({
   filter,
@@ -109,185 +142,149 @@ export function VaultFilters({
   trashCount,
   className,
 }: VaultFiltersProps) {
+  const current = describe(filter, folders, counts, trashCount ?? 0);
+  const { Icon } = current;
+
+  // "All items" is the resting state and should look like one. Anything
+  // narrower is a state you are in and need to be able to see you are in.
+  const narrowed = filter.kind !== "all";
+
   const activeFolder =
     filter.kind === "folder"
       ? folders.find((f) => f.id === filter.folderId)
       : undefined;
 
-  const folderActive = filter.kind === "folder" || filter.kind === "unfiled";
-  const folderLabel = activeFolder
-    ? activeFolder.name
-    : filter.kind === "unfiled"
-      ? "No folder"
-      : "Folders";
-
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {/*
-        min-w-0 is what makes the track yield instead of shoving its neighbour
-        off the line; the negative margin gives a focus ring somewhere to go
-        without the scroller clipping it.
-      */}
-      <div className="no-scrollbar -my-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">
-        <Pill
-          label="All"
-          count={counts.total}
-          active={filtersEqual({ kind: "all" }, filter)}
-          onSelect={() => onFilterChange({ kind: "all" })}
-        />
+    <div className={cn("flex min-w-0 items-center gap-2", className)}>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`Showing ${current.label}. Change what is shown.`}
+              className={cn(
+                "flex h-8 min-w-0 cursor-pointer items-center gap-2 rounded-full pr-2.5 pl-3 text-[13px] transition-colors outline-none",
+                "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                narrowed
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            />
+          }
+        >
+          <Icon className="size-3.5 shrink-0" />
+          <span className="truncate">{current.label}</span>
+          <span className="secret shrink-0 text-[11px] opacity-70">
+            {current.count}
+          </span>
+          <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+        </DropdownMenuTrigger>
 
-        {TYPES.map(({ type, label }) => (
-          <Pill
-            key={type}
-            label={label}
-            count={counts.byType.get(type) ?? 0}
-            active={filtersEqual({ kind: "type", type }, filter)}
-            onSelect={() => onFilterChange({ kind: "type", type })}
+        <DropdownMenuContent align="start" className="min-w-56">
+          <Choice
+            label="All items"
+            count={counts.total}
+            active={filter.kind === "all"}
+            Icon={LayoutList}
+            onSelect={() => onFilterChange({ kind: "all" })}
           />
-        ))}
 
-        {/* Offered only when there is something to show. A pill reading zero is
-            noise on a rail whose whole job is orientation. */}
-        {counts.totp > 0 ? (
-          <Pill
-            label="Codes"
-            count={counts.totp}
-            active={filtersEqual({ kind: "totp" }, filter)}
-            onSelect={() => onFilterChange({ kind: "totp" })}
+          {TYPES.map(({ type, label, Icon: TypeIcon }) => (
+            <Choice
+              key={type}
+              label={label}
+              count={counts.byType.get(type) ?? 0}
+              active={filter.kind === "type" && filter.type === type}
+              Icon={TypeIcon}
+              onSelect={() => onFilterChange({ kind: "type", type })}
+            />
+          ))}
+
+          {/* Offered only when there is something to show. A row reading zero
+              here is dead weight for anyone with no authenticator secrets. */}
+          {counts.totp > 0 ? (
+            <Choice
+              label="Verification codes"
+              count={counts.totp}
+              active={filter.kind === "totp"}
+              Icon={Clock}
+              onSelect={() => onFilterChange({ kind: "totp" })}
+            />
+          ) : null}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-muted-foreground text-[11.5px] font-medium">
+            Folders
+          </DropdownMenuLabel>
+
+          {folders.map((folder) => (
+            <Choice
+              key={folder.id}
+              label={folder.name}
+              count={counts.byFolder.get(folder.id) ?? 0}
+              active={filter.kind === "folder" && filter.folderId === folder.id}
+              Icon={Folder}
+              onSelect={() => onFilterChange({ kind: "folder", folderId: folder.id })}
+            />
+          ))}
+
+          <Choice
+            label="No folder"
+            count={counts.unfiled}
+            active={filter.kind === "unfiled"}
+            Icon={Inbox}
+            onSelect={() => onFilterChange({ kind: "unfiled" })}
           />
-        ) : null}
-      </div>
 
-      <span className="flex shrink-0 items-center gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button
-                type="button"
-                aria-label="Filter by folder"
-                className={cn(
-                  "flex h-7 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-colors outline-none",
-                  "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                  folderActive
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
+          {trashCount !== undefined ? (
+            <>
+              <DropdownMenuSeparator />
+              <Choice
+                label="Trash"
+                count={trashCount}
+                active={filter.kind === "trash"}
+                Icon={Trash2}
+                onSelect={() => onFilterChange({ kind: "trash" })}
               />
-            }
-          >
-            <Folder className="size-3.5 shrink-0" />
-            <span className="max-w-24 truncate">{folderLabel}</span>
-            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
-          </DropdownMenuTrigger>
+            </>
+          ) : null}
 
-          <DropdownMenuContent align="end" className="min-w-52">
-            {folders.map((folder) => {
-              const active =
-                filter.kind === "folder" && filter.folderId === folder.id;
-              return (
-                <DropdownMenuItem
-                  key={folder.id}
-                  className="gap-2 whitespace-nowrap"
-                  onClick={() => onFilterChange({ kind: "folder", folderId: folder.id })}
-                >
-                  <Check
-                    className={cn("size-3.5 shrink-0", active ? "" : "opacity-0")}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{folder.name}</span>
-                  <span className="secret text-muted-foreground text-[11px]">
-                    {counts.byFolder.get(folder.id) ?? 0}
-                  </span>
-                </DropdownMenuItem>
-              );
-            })}
+          {onNewFolder ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2.5 whitespace-nowrap"
+                onClick={onNewFolder}
+              >
+                <FolderPlus className="size-3.5 shrink-0" />
+                New folder
+              </DropdownMenuItem>
+            </>
+          ) : null}
 
-            <DropdownMenuItem
-              className="gap-2 whitespace-nowrap"
-              onClick={() => onFilterChange({ kind: "unfiled" })}
-            >
-              <Check
-                className={cn(
-                  "size-3.5 shrink-0",
-                  filter.kind === "unfiled" ? "" : "opacity-0",
-                )}
-              />
-              <span className="min-w-0 flex-1">No folder</span>
-              <span className="secret text-muted-foreground text-[11px]">
-                {counts.unfiled}
-              </span>
-            </DropdownMenuItem>
-
-            {/* The way back out. Choosing a folder switches the type pills off,
-                so without this the only escape is spotting that "All" is no
-                longer selected. */}
-            {folderActive ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="gap-2 whitespace-nowrap"
-                  onClick={() => onFilterChange({ kind: "all" })}
-                >
-                  <Check className="size-3.5 shrink-0 opacity-0" />
-                  <span className="min-w-0 flex-1">Any folder</span>
-                </DropdownMenuItem>
-              </>
-            ) : null}
-
-            {onNewFolder ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="gap-2 whitespace-nowrap"
-                  onClick={onNewFolder}
-                >
-                  <FolderPlus className="size-3.5 shrink-0" />
-                  New folder
-                </DropdownMenuItem>
-              </>
-            ) : null}
-
-            {/* Rename and delete act on the folder currently being browsed, so
-                they appear only when there is one - no naming it twice. */}
-            {activeFolder && onRenameFolder && onDeleteFolder ? (
-              <>
-                <DropdownMenuItem
-                  className="gap-2 whitespace-nowrap"
-                  onClick={() => onRenameFolder(activeFolder)}
-                >
-                  <Pencil className="size-3.5 shrink-0" />
-                  Rename “{activeFolder.name}”
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="gap-2 whitespace-nowrap"
-                  onClick={() => onDeleteFolder(activeFolder)}
-                >
-                  <Trash2 className="size-3.5 shrink-0" />
-                  Delete “{activeFolder.name}”
-                </DropdownMenuItem>
-              </>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {trashCount !== undefined ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Trash, ${trashCount} ${trashCount === 1 ? "item" : "items"}`}
-            aria-pressed={filter.kind === "trash"}
-            onClick={() => onFilterChange({ kind: "trash" })}
-            className={cn(
-              "rounded-full",
-              filter.kind === "trash"
-                ? "bg-accent text-accent-foreground hover:bg-accent"
-                : "text-muted-foreground",
-            )}
-          >
-            <Trash2 />
-          </Button>
-        ) : null}
-      </span>
+          {/* Rename and delete act on the folder currently being browsed, so
+              they appear only when there is one - no naming it twice. */}
+          {activeFolder && onRenameFolder && onDeleteFolder ? (
+            <>
+              <DropdownMenuItem
+                className="gap-2.5 whitespace-nowrap"
+                onClick={() => onRenameFolder(activeFolder)}
+              >
+                <Pencil className="size-3.5 shrink-0" />
+                Rename “{activeFolder.name}”
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2.5 whitespace-nowrap"
+                onClick={() => onDeleteFolder(activeFolder)}
+              >
+                <Trash2 className="size-3.5 shrink-0" />
+                Delete “{activeFolder.name}”
+              </DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

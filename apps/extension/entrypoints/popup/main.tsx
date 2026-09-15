@@ -353,7 +353,7 @@ function Row({
   onOpen: () => void;
 }) {
   return (
-    <li className="hover:bg-muted/50 flex items-center gap-3 px-3 py-2 transition-colors">
+    <li className="hover:bg-muted/50 flex items-center gap-3 px-3 py-2.5 transition-colors">
       <ItemMark name={item.title} type={item.type} size="sm" />
 
       <span className="min-w-0 flex-1">
@@ -647,8 +647,8 @@ function Vault({ onLocked }: { onLocked: () => void }) {
     <Shell tall>
       <TabHeader path="/" onAdd={() => (window.location.hash = "/vault/new")} />
 
-      <div className="grid shrink-0 gap-2.5 border-b p-3">
-        <div className="relative flex items-center">
+      <div className="flex w-full shrink-0 flex-col gap-2.5 border-b px-3 pt-3 pb-2.5">
+        <div className="relative flex w-full min-w-0 items-center">
           <Search className="text-muted-foreground pointer-events-none absolute left-3 size-4" />
           <Input
             type="search"
@@ -656,7 +656,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your vault"
             aria-label="Search your vault"
-            className="h-9 rounded-lg pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden"
+            className="h-10 rounded-xl pr-9 pl-9 text-[13.5px] [&::-webkit-search-cancel-button]:hidden"
           />
           {searching ? (
             <Button
