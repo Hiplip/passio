@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, KeyRound, LogOut } from "lucide-react";
+import { ArrowLeftRight, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -60,6 +60,21 @@ export function SettingsForm({ email }: { email: string }) {
           <Button variant="outline" size="sm" render={<Link href="/settings/security" />}>
             <KeyRound />
             Change
+          </Button>
+        </SettingsRow>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Health"
+        description="Weak, reused and ageing passwords, found on this device without asking anyone."
+      >
+        <SettingsRow
+          label="Vault health"
+          hint="Plus an optional check against known breaches"
+        >
+          <Button variant="outline" size="sm" render={<Link href="/settings/health" />}>
+            <ShieldCheck />
+            Open
           </Button>
         </SettingsRow>
       </SettingsGroup>

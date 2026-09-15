@@ -31,6 +31,7 @@ ROUTES=(
   "/settings:307,302"
   "/settings/security:307,302"
   "/settings/data:307,302"
+  "/settings/health:307,302"
   "/recover:200"
 )
 
