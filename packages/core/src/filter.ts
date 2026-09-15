@@ -255,3 +255,42 @@ export function applyItemScope(
     items,
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Sorting
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const SORT_ORDERS = ["name", "recent", "oldest"] as const;
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+export const SORT_LABELS: Record<SortOrder, string> = {
+  name: "Name",
+  recent: "Recently updated",
+  oldest: "Oldest first",
+};
+
+/**
+ * Orders the list, with favourites pinned above everything.
+ *
+ * Favourites first regardless of the chosen order, because that is what
+ * marking something a favourite is FOR - an order that buried a pinned item
+ * under a sort would make the star decorative.
+ *
+ * Names compare with `localeCompare` so accented titles sort where a reader
+ * expects rather than after "z".
+ */
+export function sortItems(items: DecryptedItem[], order: SortOrder): DecryptedItem[] {
+  return [...items].sort((a, b) => {
+    const favourite = Number(b.data.favourite ?? false) - Number(a.data.favourite ?? false);
+    if (favourite !== 0) return favourite;
+
+    switch (order) {
+      case "name":
+        return a.data.title.localeCompare(b.data.title, undefined, { sensitivity: "base" });
+      case "recent":
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+      case "oldest":
+        return a.updatedAt.getTime() - b.updatedAt.getTime();
+    }
+  });
+}

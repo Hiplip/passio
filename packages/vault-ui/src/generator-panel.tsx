@@ -12,8 +12,22 @@ import {
   generatePassword,
   type GeneratorOptions,
 } from "@passio/core/generator";
+import {
+  generateUsername,
+  USERNAME_LABELS,
+  USERNAME_MODES,
+  type UsernameMode,
+} from "@passio/core/username";
+import { Field } from "@passio/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@passio/ui/select";
 
-type Mode = "password" | "passphrase";
+type Mode = "password" | "passphrase" | "username";
 
 /**
  * The shadcn Slider wrapper is not generic over its value, so Base UI hands the
@@ -57,22 +71,44 @@ export function GeneratorPanel({
   const [wordCount, setWordCount] = useState(6);
   const [candidate, setCandidate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [usernameMode, setUsernameMode] = useState<UsernameMode>("words");
+  const [baseEmail, setBaseEmail] = useState("");
+
+  /**
+   * The last few values, this session only.
+   *
+   * Never persisted: a generated password you rejected is still a secret, and
+   * writing a list of them to disk would be a second copy of your vault that
+   * nothing ever locks.
+   */
+  const [history, setHistory] = useState<string[]>([]);
 
   const regenerate = useCallback(() => {
     try {
-      setCandidate(
+      const next =
         mode === "password"
           ? generatePassword(options)
-          : generatePassphrase(wordCount, "-"),
+          : mode === "passphrase"
+            ? generatePassphrase(wordCount, "-")
+            : generateUsername({ mode: usernameMode, email: baseEmail, digits: true });
+
+      setCandidate(next);
+      setError(
+        mode === "username" && next.length === 0
+          ? "Enter the address you want to tag."
+          : null,
       );
-      setError(null);
+
+      if (next.length > 0) {
+        setHistory((current) => [next, ...current.filter((v) => v !== next)].slice(0, 10));
+      }
     } catch (caught) {
       setCandidate("");
       setError(
         caught instanceof Error ? caught.message : "Could not generate a password.",
       );
     }
-  }, [mode, options, wordCount]);
+  }, [mode, options, wordCount, usernameMode, baseEmail]);
 
   useEffect(regenerate, [regenerate]);
 
@@ -92,6 +128,9 @@ export function GeneratorPanel({
           </TabsTrigger>
           <TabsTrigger value="passphrase" className="flex-1">
             Passphrase
+          </TabsTrigger>
+          <TabsTrigger value="username" className="flex-1">
+            Username
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -132,7 +171,7 @@ export function GeneratorPanel({
             ))}
           </div>
         </div>
-      ) : (
+      ) : mode === "passphrase" ? (
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <Label>Words</Label>
@@ -147,7 +186,62 @@ export function GeneratorPanel({
             }
           />
         </div>
+      ) : (
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="username-mode">Style</Label>
+            <Select
+              items={USERNAME_LABELS}
+              value={usernameMode}
+              onValueChange={(next: string | null) =>
+                setUsernameMode((next as UsernameMode | null) ?? "words")
+              }
+            >
+              <SelectTrigger id="username-mode" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USERNAME_MODES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {USERNAME_LABELS[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {usernameMode === "plus" ? (
+            <Field
+              label="Your email"
+              type="email"
+              value={baseEmail}
+              onChange={(e) => setBaseEmail(e.target.value)}
+              placeholder="you@example.com"
+              hint="Tagged so you can see which site leaked it. This one still shows your real address."
+              autoComplete="off"
+            />
+          ) : null}
+        </div>
       )}
+
+      {history.length > 1 ? (
+        <div className="grid gap-1.5">
+          <Label className="text-muted-foreground text-xs">Earlier in this session</Label>
+          <ul className="grid gap-1">
+            {history.slice(1, 5).map((value) => (
+              <li key={value}>
+                <button
+                  type="button"
+                  onClick={() => setCandidate(value)}
+                  className="secret text-muted-foreground hover:text-foreground w-full truncate text-left text-[11.5px]"
+                >
+                  {value}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {footer({ candidate, regenerate })}
     </div>

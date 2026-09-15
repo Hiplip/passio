@@ -21,6 +21,7 @@ interface ItemRowActionsProps {
   /** Present only in trash: the row offers restore instead of the usual actions. */
   onRestore?: () => void;
   onDelete?: () => void;
+  onToggleFavourite?: () => void;
 }
 
 async function copy(label: string, value: string) {
@@ -33,7 +34,12 @@ async function copy(label: string, value: string) {
   }
 }
 
-export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProps) {
+export function ItemRowActions({
+  item,
+  onRestore,
+  onDelete,
+  onToggleFavourite,
+}: ItemRowActionsProps) {
   const { Link } = useNavigation();
   // Resolved on open rather than on render, so a one-time code is always the
   // current one.
@@ -123,6 +129,12 @@ export function ItemRowActions({ item, onRestore, onDelete }: ItemRowActionsProp
             ) : null}
             {copyItems.length > 0 || url ? <DropdownMenuSeparator /> : null}
           </div>
+
+          {onToggleFavourite ? (
+            <DropdownMenuItem className="whitespace-nowrap" onClick={onToggleFavourite}>
+              {item.data.favourite ? "Remove from favourites" : "Add to favourites"}
+            </DropdownMenuItem>
+          ) : null}
 
           <DropdownMenuItem
             className="whitespace-nowrap"

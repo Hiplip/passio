@@ -13,6 +13,27 @@ const PUBLIC_KEY = /^PUBKEY=(.*)$/m.exec(
   readFileSync(new URL("./.identity", import.meta.url), "utf8"),
 )![1]!;
 
+/**
+ * Firefox: groundwork only. DO NOT SHIP A FIREFOX BUILD YET.
+ *
+ * `wxt build -b firefox` produces an artifact, and that artifact cannot work.
+ * Offscreen documents are a Chromium API; Firefox has no equivalent, so the
+ * background script's `chrome.offscreen.createDocument` is undefined there and
+ * the very FIRST unlock throws. A build that installs and then fails to open
+ * the vault is worse than no build at all.
+ *
+ * Making Firefox real means relocating custody out of the offscreen document
+ * and into the background script, which on Firefox can hold the vault key
+ * directly. That is a phase of work on the most trust-critical wiring in the
+ * project, not a config flag - and it cannot be verified on a machine with no
+ * browser.
+ *
+ * What is settled here is the manifest difference, which is small: `key` pins
+ * the extension id on Chrome and Firefox rejects the field outright, using
+ * `browser_specific_settings.gecko.id` for the same job.
+ */
+const FIREFOX_ID = "passio@philipang.com";
+
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   srcDir: ".",
@@ -20,11 +41,14 @@ export default defineConfig({
   // web app uses. Source paths are declared with @source in the shared
   // stylesheet, not here.
   vite: () => ({ plugins: [tailwind()] }),
-  manifest: {
+  manifest: ({ browser }) => ({
     name: "passio",
     description: "Fill logins from your passio vault.",
     version: "0.1.0",
-    key: PUBLIC_KEY,
+    // Chrome only: Firefox refuses to load a manifest carrying `key`.
+    ...(browser === "firefox"
+      ? { browser_specific_settings: { gecko: { id: FIREFOX_ID, strict_min_version: "128.0" } } }
+      : { key: PUBLIC_KEY }),
     permissions: [
       "offscreen", // the document that holds the vault key
       "storage", // session token + auto-lock preference
@@ -74,5 +98,5 @@ export default defineConfig({
     },
     // Deliberately absent: externally_connectable. The extension signs in on
     // its own, so no web page ever needs to message it. Spec D6.
-  },
+  }),
 });

@@ -9,6 +9,8 @@ import {
   countByType,
   countFilters,
   countItemFilters,
+  sortItems,
+  SORT_ORDERS,
   ANY,
   applyItemScope,
   applyScope,
@@ -373,5 +375,69 @@ describe("applyItemScope", () => {
   it("matches applyScope for the same vault", () => {
     const scope = { type: "login" as const, folder: ANY, trash: false };
     expect(applyItemScope(items, scope, known).map((i) => i.id)).toEqual(["1", "2", "5"]);
+  });
+});
+
+describe("sortItems", () => {
+  const at = (iso: string) => new Date(iso);
+  const entry = (
+    id: string,
+    title: string,
+    updatedAt: string,
+    favourite?: boolean,
+  ): DecryptedItem => ({
+    id,
+    data: { type: "login", title, favourite },
+    createdAt: at("2026-01-01T00:00:00Z"),
+    updatedAt: at(updatedAt),
+  });
+
+  const items = [
+    entry("1", "Zebra", "2026-03-01T00:00:00Z"),
+    entry("2", "apple", "2026-01-01T00:00:00Z"),
+    entry("3", "Mango", "2026-02-01T00:00:00Z"),
+  ];
+
+  it("sorts by name, ignoring case", () => {
+    expect(sortItems(items, "name").map((i) => i.data.title)).toEqual([
+      "apple",
+      "Mango",
+      "Zebra",
+    ]);
+  });
+
+  it("sorts by most recently updated", () => {
+    expect(sortItems(items, "recent").map((i) => i.id)).toEqual(["1", "3", "2"]);
+  });
+
+  it("sorts oldest first", () => {
+    expect(sortItems(items, "oldest").map((i) => i.id)).toEqual(["2", "3", "1"]);
+  });
+
+  it("pins favourites above everything, whatever the order", () => {
+    // A star that could be buried under a sort would be decorative.
+    const withFavourite = [...items, entry("4", "zzz last", "2020-01-01T00:00:00Z", true)];
+    for (const order of SORT_ORDERS) {
+      expect(sortItems(withFavourite, order)[0]?.id, order).toBe("4");
+    }
+  });
+
+  it("orders favourites among themselves by the chosen order", () => {
+    const both = [
+      entry("a", "Beta", "2026-01-01T00:00:00Z", true),
+      entry("b", "Alpha", "2026-02-01T00:00:00Z", true),
+    ];
+    expect(sortItems(both, "name").map((i) => i.id)).toEqual(["b", "a"]);
+    expect(sortItems(both, "recent").map((i) => i.id)).toEqual(["b", "a"]);
+  });
+
+  it("does not mutate its input", () => {
+    const original = [...items];
+    sortItems(items, "name");
+    expect(items).toEqual(original);
+  });
+
+  it("handles an empty list", () => {
+    expect(sortItems([], "name")).toEqual([]);
   });
 });

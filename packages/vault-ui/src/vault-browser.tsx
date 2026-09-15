@@ -1,12 +1,19 @@
 "use client";
 
-import { FolderPlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDownUp, FolderPlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@passio/ui/button";
 import { Input } from "@passio/ui/input";
 import { Skeleton } from "@passio/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@passio/ui/select";
 import { routes, useNavigation } from "./navigation";
 import { EmptyState } from "./empty-state";
 import { FolderDialog } from "./folder-dialog";
@@ -21,7 +28,11 @@ import {
   countItemFilters,
   isNarrowed,
   NO_FOLDER,
+  sortItems,
+  SORT_LABELS,
+  SORT_ORDERS,
   WHOLE_VAULT,
+  type SortOrder,
   type VaultScope,
 } from "@passio/core/filter";
 import { searchItems } from "@passio/core/search";
@@ -57,11 +68,13 @@ export function VaultBrowser() {
     deleteFolder: removeFolder,
     restoreItem,
     deleteItem,
+    updateItem,
   } = useVaultData();
   const { items, damaged, isLoading } = live;
 
   const [scope, setScope] = useState<VaultScope>(WHOLE_VAULT);
   const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<SortOrder>("name");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<DecryptedFolder | undefined>();
 
@@ -80,7 +93,10 @@ export function VaultBrowser() {
 
   // Both run in memory over the already-decrypted vault, so neither needs a
   // debounce and neither tells the server anything.
-  const visible = searchItems(applyItemScope(source, scope, knownFolderIds), query);
+  const visible = sortItems(
+    searchItems(applyItemScope(source, scope, knownFolderIds), query),
+    order,
+  );
 
   const counts = countItemFilters(items, knownFolderIds);
 
@@ -90,6 +106,14 @@ export function VaultBrowser() {
       toast.success("Item restored");
     } catch {
       toast.error("Could not restore that item.");
+    }
+  }
+
+  async function toggleFavourite(item: DecryptedItem) {
+    try {
+      await updateItem(item.id, { ...item.data, favourite: !item.data.favourite });
+    } catch {
+      toast.error("Could not change that.");
     }
   }
 
@@ -238,6 +262,29 @@ export function VaultBrowser() {
           className="sm:max-w-md"
         />
 
+        <Select
+          items={SORT_LABELS}
+          value={order}
+          onValueChange={(next: string | null) =>
+            setOrder((next as SortOrder | null) ?? "name")
+          }
+        >
+          <SelectTrigger
+            aria-label="Sort order"
+            className="text-muted-foreground hover:text-foreground bg-muted h-9 w-40 shrink-0 rounded-full border-0 px-3.5 text-[13px]"
+          >
+            <ArrowDownUp className="size-3.5 shrink-0 opacity-70" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_ORDERS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {SORT_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {/* Folder management sits beside the filters rather than inside them:
             picking a folder and editing one are different intentions. */}
         <span className="flex items-center gap-1">
@@ -288,6 +335,9 @@ export function VaultBrowser() {
           empty={empty}
           onRestore={inTrash ? (item) => void restore(item.id) : undefined}
           onDelete={inTrash ? undefined : (item) => void softDelete(item)}
+          onToggleFavourite={
+            inTrash ? undefined : (item) => void toggleFavourite(item)
+          }
         />
       )}
 

@@ -88,6 +88,22 @@ export function generatePassword(options: GeneratorOptions): string {
 }
 
 /**
+ * Random words from the BIP-39 English wordlist.
+ *
+ * Exposed separately from `generatePassphrase` because that function enforces a
+ * three-word MINIMUM for strength, and that rule is about passphrases. A
+ * generated username is not a secret and two words is a perfectly good handle -
+ * routing it through the passphrase guard coupled a naming convenience to a
+ * cryptographic floor it has no business obeying.
+ */
+export function randomWords(count: number): string[] {
+  return Array.from(
+    { length: Math.max(0, count) },
+    () => wordlist[randomIndex(wordlist.length)]!,
+  );
+}
+
+/**
  * A diceware-style passphrase from the BIP-39 English wordlist: 2048 audited
  * words, so 11 bits of entropy per word. Six words is 66 bits and still
  * memorable, which is the whole point of offering this alongside a random
@@ -96,8 +112,5 @@ export function generatePassword(options: GeneratorOptions): string {
 export function generatePassphrase(wordCount: number, separator: string): string {
   if (wordCount < 3) throw new Error("a passphrase needs at least 3 words");
 
-  return Array.from(
-    { length: wordCount },
-    () => wordlist[randomIndex(wordlist.length)]!,
-  ).join(separator);
+  return randomWords(wordCount).join(separator);
 }

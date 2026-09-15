@@ -1,5 +1,7 @@
 "use client";
 
+import { Star } from "lucide-react";
+
 import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { ItemMark } from "./item-mark";
 import { ItemRowActions } from "./item-row-actions";
@@ -37,6 +39,7 @@ interface ItemListProps {
   /** Present only in trash: rows offer restore instead of the usual actions. */
   onRestore?: (item: DecryptedItem) => void;
   onDelete?: (item: DecryptedItem) => void;
+  onToggleFavourite?: (item: DecryptedItem) => void;
 }
 
 /**
@@ -52,6 +55,7 @@ export function ItemList({
   empty,
   onRestore,
   onDelete,
+  onToggleFavourite,
 }: ItemListProps) {
   const { Link } = useNavigation();
 
@@ -89,7 +93,15 @@ export function ItemList({
                 <ItemMark name={item.data.title} type={item.data.type} />
 
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{item.data.title}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate font-medium">{item.data.title}</span>
+                    {item.data.favourite ? (
+                      <Star
+                        className="text-cipher size-3 shrink-0 fill-current"
+                        aria-label="Favourite"
+                      />
+                    ) : null}
+                  </span>
                   {/* Never a password: the list is the most
                       over-the-shoulder-visible surface in the app. */}
                   <span className="text-muted-foreground block truncate text-[13px]">
@@ -102,6 +114,9 @@ export function ItemList({
                 item={item}
                 onRestore={onRestore ? () => onRestore(item) : undefined}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
+                onToggleFavourite={
+                  onToggleFavourite ? () => onToggleFavourite(item) : undefined
+                }
               />
             </li>
           ))}
