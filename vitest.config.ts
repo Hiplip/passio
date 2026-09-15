@@ -32,6 +32,13 @@ export default defineConfig({
         find: /^@passio\/crypto\/(.*)$/,
         replacement: r("./packages/crypto/src") + "/$1.ts",
       },
+      // Directory modules, BEFORE the catch-all: the general rule rewrites
+      // "@passio/core/import" to ".../src/import.ts", which does not exist.
+      // First match wins, so these have to come first.
+      {
+        find: /^@passio\/core\/(import|export)$/,
+        replacement: r("./packages/core/src") + "/$1/index.ts",
+      },
       {
         find: /^@passio\/core\/(.*)$/,
         replacement: r("./packages/core/src") + "/$1.ts",

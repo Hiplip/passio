@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogOut } from "lucide-react";
+import { ArrowLeftRight, KeyRound, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -60,6 +60,21 @@ export function SettingsForm({ email }: { email: string }) {
           <Button variant="outline" size="sm" render={<Link href="/settings/security" />}>
             <KeyRound />
             Change
+          </Button>
+        </SettingsRow>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Your data"
+        description="Bringing a vault in from another manager, or taking yours out."
+      >
+        <SettingsRow
+          label="Import and export"
+          hint="Bitwarden, 1Password, LastPass, Chrome, Firefox and KeePass"
+        >
+          <Button variant="outline" size="sm" render={<Link href="/settings/data" />}>
+            <ArrowLeftRight />
+            Open
           </Button>
         </SettingsRow>
       </SettingsGroup>
