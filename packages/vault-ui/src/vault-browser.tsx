@@ -25,6 +25,7 @@ import {
   type VaultScope,
 } from "@passio/core/filter";
 import { searchItems } from "@passio/core/search";
+import { TYPE_SPECS } from "@passio/core/fields";
 
 /**
  * What to call the current view.
@@ -42,18 +43,9 @@ function describeScope(scope: VaultScope, folders: DecryptedFolder[]): string {
       : (folders.find((f) => f.id === scope.folder)?.name ?? "Folder");
   }
 
-  switch (scope.type) {
-    case "login":
-      return "Logins";
-    case "note":
-      return "Secure notes";
-    case "card":
-      return "Cards";
-    case "totp":
-      return "Verification codes";
-    default:
-      return "Vault";
-  }
+  if (scope.type === "totp") return "Verification codes";
+  if (scope.type === ANY) return "Vault";
+  return TYPE_SPECS[scope.type].plural;
 }
 
 export function VaultBrowser() {

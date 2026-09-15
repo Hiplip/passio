@@ -1,8 +1,7 @@
-import { CreditCard, StickyNote } from "lucide-react";
-
 import { markIndex, monogram } from "@passio/core/identity";
 import type { ItemType } from "@passio/core/schema";
 import { cn } from "@passio/ui/cn";
+import { TYPE_ICONS } from "./item-icons";
 
 const SIZES = {
   sm: "size-7 text-[11px]",
@@ -38,7 +37,7 @@ interface ItemMarkProps {
  */
 export function ItemMark({ name, type, size = "md", className }: ItemMarkProps) {
   const index = markIndex(name);
-  const Glyph = type === "card" ? CreditCard : StickyNote;
+  const Glyph = TYPE_ICONS[type];
 
   return (
     <span

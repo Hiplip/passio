@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { folderSchema, itemSchema, newCardItem, newLoginItem, newNoteItem } from "./schema";
+import {
+  ITEM_TYPES,
+  URI_MATCH_MODES,
+  folderSchema,
+  itemSchema,
+  newCardItem,
+  newItem,
+  newLoginItem,
+  newNoteItem,
+  urisOf,
+} from "./schema";
 
 describe("login items", () => {
   it("accepts a complete login item", () => {
@@ -36,7 +46,11 @@ describe("login items", () => {
 
 describe("the discriminated union", () => {
   it("rejects an unknown type", () => {
-    expect(itemSchema.safeParse({ type: "passport", title: "X" }).success).toBe(false);
+    // Deliberately a name that will never be a real item type. This used to say
+    // "passport", which stopped being unknown the day passports were added.
+    expect(itemSchema.safeParse({ type: "not-a-real-type", title: "X" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects a missing type", () => {
@@ -146,7 +160,9 @@ describe("the union after adding types", () => {
   });
 
   it("rejects a type outside the union", () => {
-    expect(itemSchema.safeParse({ type: "identity", title: "X" }).success).toBe(false);
+    expect(itemSchema.safeParse({ type: "definitely-not-an-item", title: "X" }).success).toBe(
+      false,
+    );
   });
 
   it("produces valid values from every constructor", () => {
@@ -191,5 +207,162 @@ describe("folders", () => {
   it("trims a folder name", () => {
     const result = folderSchema.safeParse({ name: "  Work  " });
     expect(result.success && result.data.name).toBe("Work");
+  });
+});
+
+describe("custom fields", () => {
+  it("accepts text, hidden and boolean fields", () => {
+    const item = {
+      type: "login",
+      title: "GitHub",
+      fields: [
+        { name: "Security question", value: "First pet", kind: "text" },
+        { name: "Recovery code", value: "abc123", kind: "hidden" },
+        { name: "2FA enabled", value: "true", kind: "boolean" },
+      ],
+    };
+    expect(itemSchema.safeParse(item).success).toBe(true);
+  });
+
+  it("defaults a field with no kind to text", () => {
+    const parsed = itemSchema.safeParse({
+      type: "login",
+      title: "X",
+      fields: [{ name: "n", value: "v" }],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "login") {
+      expect(parsed.data.fields?.[0]?.kind).toBe("text");
+    }
+  });
+
+  it("rejects a kind outside the three", () => {
+    expect(
+      itemSchema.safeParse({
+        type: "login",
+        title: "X",
+        fields: [{ name: "n", value: "v", kind: "password" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("allows an empty field name, because imports produce them", () => {
+    // Refusing would mean dropping data on import, which is worse than an
+    // unnamed field the user can rename.
+    expect(
+      itemSchema.safeParse({
+        type: "login",
+        title: "X",
+        fields: [{ name: "", value: "v", kind: "text" }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("is available on every item type", () => {
+    for (const type of ITEM_TYPES) {
+      const item = { ...newItem(type), fields: [{ name: "n", value: "v", kind: "text" }] };
+      expect(itemSchema.safeParse(item).success, type).toBe(true);
+    }
+  });
+});
+
+describe("uris", () => {
+  it("accepts every match mode", () => {
+    for (const match of URI_MATCH_MODES) {
+      expect(
+        itemSchema.safeParse({
+          type: "login",
+          title: "X",
+          uris: [{ uri: "https://example.com", match }],
+        }).success,
+        match,
+      ).toBe(true);
+    }
+  });
+
+  it("defaults to domain matching", () => {
+    const parsed = itemSchema.safeParse({
+      type: "login",
+      title: "X",
+      uris: [{ uri: "https://example.com" }],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "login") {
+      expect(parsed.data.uris?.[0]?.match).toBe("domain");
+    }
+  });
+
+  it("rejects an unknown match mode", () => {
+    expect(
+      itemSchema.safeParse({
+        type: "login",
+        title: "X",
+        uris: [{ uri: "https://example.com", match: "fuzzy" }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("urisOf", () => {
+  it("reads the legacy single address", () => {
+    expect(urisOf({ type: "login", title: "X", uri: "https://example.com" })).toEqual([
+      { uri: "https://example.com", match: "domain" },
+    ]);
+  });
+
+  it("combines the legacy address with the new list", () => {
+    const entries = urisOf({
+      type: "login",
+      title: "X",
+      uri: "https://legacy.com",
+      uris: [{ uri: "https://new.com", match: "domain" }],
+    });
+    expect(entries.map((e) => e.uri)).toEqual(["https://new.com", "https://legacy.com"]);
+  });
+
+  it("does not duplicate an address present in both", () => {
+    const entries = urisOf({
+      type: "login",
+      title: "X",
+      uri: "https://same.com",
+      uris: [{ uri: "https://same.com", match: "exact" }],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.match).toBe("exact");
+  });
+
+  it("ignores a blank legacy address", () => {
+    expect(urisOf({ type: "login", title: "X", uri: "   " })).toEqual([]);
+  });
+
+  it("returns nothing for a non-login", () => {
+    expect(urisOf({ type: "note", title: "X" })).toEqual([]);
+  });
+});
+
+describe("every item type", () => {
+  it("has a constructor that produces a valid item", () => {
+    for (const type of ITEM_TYPES) {
+      const parsed = itemSchema.safeParse(newItem(type));
+      expect(parsed.success, type).toBe(true);
+      if (parsed.success) expect(parsed.data.type).toBe(type);
+    }
+  });
+
+  it("carries a title", () => {
+    for (const type of ITEM_TYPES) {
+      expect(newItem(type).title.length, type).toBeGreaterThan(0);
+    }
+  });
+
+  it("accepts favourite, reprompt and notes", () => {
+    for (const type of ITEM_TYPES) {
+      const item = { ...newItem(type), favourite: true, reprompt: true, notes: "n" };
+      expect(itemSchema.safeParse(item).success, type).toBe(true);
+    }
+  });
+
+  it("is listed exactly once in ITEM_TYPES", () => {
+    expect(new Set(ITEM_TYPES).size).toBe(ITEM_TYPES.length);
   });
 });

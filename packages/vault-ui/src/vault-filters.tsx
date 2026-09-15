@@ -20,7 +20,8 @@ import {
   type TypeChoice,
   type VaultScope,
 } from "@passio/core/filter";
-import type { ItemType } from "@passio/core/schema";
+import { ITEM_TYPES, type ItemType } from "@passio/core/schema";
+import { TYPE_SPECS } from "@passio/core/fields";
 
 interface VaultFiltersProps {
   scope: VaultScope;
@@ -32,11 +33,16 @@ interface VaultFiltersProps {
   className?: string;
 }
 
-const TYPES: Array<{ value: TypeChoice; label: string }> = [
-  { value: "login", label: "Logins" },
-  { value: "note", label: "Notes" },
-  { value: "card", label: "Cards" },
-];
+/**
+ * Every type, from the shared table.
+ *
+ * Listed in full rather than filtered to what the vault holds: a menu whose
+ * entries appear and disappear as you add items is a menu you cannot learn.
+ */
+const TYPES: Array<{ value: TypeChoice; label: string }> = ITEM_TYPES.map((type) => ({
+  value: type,
+  label: TYPE_SPECS[type].plural,
+}));
 
 /**
  * A choice, with how many are behind it.
@@ -94,12 +100,12 @@ export function VaultFilters({
     return labels;
   }, [folders]);
 
+  // Base UI renders the raw value on the trigger unless it is told how to
+  // label it, so every option needs an entry here as well as in the list.
   const typeLabels: Record<string, string> = {
     [ANY]: "All types",
-    login: "Logins",
-    note: "Notes",
-    card: "Cards",
     totp: "Verification codes",
+    ...Object.fromEntries(TYPES.map(({ value, label }) => [value, label])),
   };
 
   const folderNarrowed = scope.folder !== ANY;

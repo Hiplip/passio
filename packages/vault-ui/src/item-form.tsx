@@ -17,6 +17,9 @@ import {
 import { Textarea } from "@passio/ui/textarea";
 import { GeneratorDialog } from "./generator-dialog";
 import { SecretField } from "./secret-field";
+import { CustomFields } from "./custom-fields";
+import { GenericFields } from "./generic-fields";
+import { TYPE_SPECS } from "@passio/core/fields";
 import { TotpDisplay } from "./totp-display";
 import { useVaultData } from "./data";
 import { digitsOnly, formatCardNumber, maskCardNumber } from "@passio/core/mask";
@@ -75,13 +78,34 @@ export function ItemForm({
             <FolderPicker value={value} onChange={onChange} />
           </div>
 
+          {/* Login, note and card keep hand-written editors because they do
+              real work - parsing otpauth links, masking a card as you type,
+              opening the generator. Everything else is labelled fields, and
+              GenericFields renders those from the shared table. */}
           {value.type === "login" ? (
             <LoginFields value={value} onChange={onChange} />
           ) : value.type === "note" ? (
             <NoteFields value={value} onChange={onChange} />
-          ) : (
+          ) : value.type === "card" ? (
             <CardFields value={value} onChange={onChange} />
+          ) : (
+            <>
+              <Divider label={TYPE_SPECS[value.type].label} />
+              <GenericFields value={value} onChange={onChange} />
+
+              <Divider label="Notes" />
+              <Textarea
+                aria-label="Notes"
+                rows={3}
+                value={value.notes ?? ""}
+                onChange={(e) => onChange({ ...value, notes: e.target.value })}
+                placeholder="Anything else worth keeping with this item"
+              />
+            </>
           )}
+
+          <Divider label="Custom fields" />
+          <CustomFields value={value} onChange={onChange} />
 
           {error ? (
             <Alert variant="destructive">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CreditCard, KeyRound, StickyNote } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { ItemEditor } from "./item-editor";
 import { ItemMark } from "./item-mark";
@@ -9,15 +9,10 @@ import { Button } from "@passio/ui/button";
 import { Skeleton } from "@passio/ui/skeleton";
 import { useVaultData } from "./data";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
-import type { ItemType } from "@passio/core/schema";
+import { TYPE_SPECS } from "@passio/core/fields";
 import { routes, useNavigation } from "./navigation";
 import { relativeTime } from "./relative-time";
 
-const TYPE_META: Record<ItemType, { label: string; Icon: typeof KeyRound }> = {
-  login: { label: "Login", Icon: KeyRound },
-  note: { label: "Secure note", Icon: StickyNote },
-  card: { label: "Card", Icon: CreditCard },
-};
 
 function BackToVault() {
   const { Link } = useNavigation();
@@ -42,7 +37,7 @@ function BackToVault() {
  * visibly the same object continuing rather than a new screen appearing.
  */
 function ItemHeader({ item }: { item: DecryptedItem }) {
-  const { label } = TYPE_META[item.data.type];
+  const { label } = TYPE_SPECS[item.data.type];
 
   return (
     <div className="flex items-center gap-3.5">

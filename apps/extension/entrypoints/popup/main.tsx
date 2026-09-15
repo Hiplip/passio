@@ -339,6 +339,20 @@ function Unlock({ knownEmail, onDone }: { knownEmail: string | null; onDone: () 
   );
 }
 
+/**
+ * Types the fill button is offered for.
+ *
+ * A login is the obvious one, but a server, a database and an email account all
+ * carry a username and password that belong in a sign-in form. Everything else
+ * has nothing a login form wants.
+ */
+const FILLABLE_TYPES = new Set<ItemSummary["type"]>([
+  "login",
+  "server",
+  "database",
+  "emailAccount",
+]);
+
 function Row({
   item,
   canFill,
@@ -365,7 +379,7 @@ function Row({
         ) : null}
       </span>
 
-      {canFill && item.type === "login" ? (
+      {canFill && FILLABLE_TYPES.has(item.type) ? (
         <Button size="xs" onClick={onFill}>
           Fill
         </Button>

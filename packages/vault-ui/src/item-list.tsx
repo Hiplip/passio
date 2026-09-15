@@ -4,13 +4,28 @@ import { Alert, AlertDescription, AlertTitle } from "@passio/ui/alert";
 import { ItemMark } from "./item-mark";
 import { ItemRowActions } from "./item-row-actions";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
+import { TYPE_SPECS } from "@passio/core/fields";
+import { urisOf } from "@passio/core/schema";
 import { routes, useNavigation } from "./navigation";
 
+/**
+ * The line under an item's name.
+ *
+ * Never a secret: the list is the most over-the-shoulder-visible surface in the
+ * app, so this falls back to the type's own name rather than reaching for the
+ * first field it can find.
+ */
 function subtitle(item: DecryptedItem): string {
   const data = item.data;
-  if (data.type === "login") return data.username ?? data.uri ?? "No username";
+  if (data.type === "login") {
+    return data.username ?? urisOf(data)[0]?.uri ?? "No username";
+  }
   if (data.type === "card") return data.cardholderName ?? "Card";
-  return "Secure note";
+  if (data.type === "identity") {
+    const name = [data.firstName, data.lastName].filter(Boolean).join(" ");
+    return name.length > 0 ? name : TYPE_SPECS.identity.label;
+  }
+  return TYPE_SPECS[data.type].label;
 }
 
 interface ItemListProps {

@@ -1,44 +1,25 @@
 "use client";
 
-import { ChevronRight, CreditCard, KeyRound, StickyNote } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { ItemEditor } from "./item-editor";
 import { Button } from "@passio/ui/button";
 import { routes, useNavigation } from "./navigation";
-import {
-  newCardItem,
-  newLoginItem,
-  newNoteItem,
-  type Item,
-  type ItemType,
-} from "@passio/core/schema";
+import { ITEM_TYPES, newItem, type Item, type ItemType } from "@passio/core/schema";
+import { TYPE_SPECS } from "@passio/core/fields";
+import { TYPE_ICONS } from "./item-icons";
 
-const CHOICES = [
-  {
-    type: "login" as const,
-    label: "Login",
-    describe: "A username, password and one-time codes.",
-    Icon: KeyRound,
-  },
-  {
-    type: "note" as const,
-    label: "Secure note",
-    describe: "Free text, encrypted like everything else.",
-    Icon: StickyNote,
-  },
-  {
-    type: "card" as const,
-    label: "Credit card",
-    describe: "Card number, expiry and security code.",
-    Icon: CreditCard,
-  },
-];
+/** Every type, from the shared table. Adding one is data, not a component. */
+const CHOICES = ITEM_TYPES.map((type) => ({
+  type,
+  label: TYPE_SPECS[type].label,
+  describe: TYPE_SPECS[type].describe,
+  Icon: TYPE_ICONS[type],
+}));
 
 function blank(type: ItemType): Item {
-  if (type === "note") return newNoteItem();
-  if (type === "card") return newCardItem();
-  return newLoginItem();
+  return newItem(type);
 }
 
 export function NewItem() {
@@ -88,8 +69,7 @@ export function NewItem() {
   }
 
   const choice = CHOICES.find((c) => c.type === type);
-
-  const Icon = choice?.Icon ?? KeyRound;
+  const Icon = TYPE_ICONS[type];
 
   return (
     <div className="grid gap-5">

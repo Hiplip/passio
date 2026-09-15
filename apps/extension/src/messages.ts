@@ -1,4 +1,4 @@
-import { itemSchema } from "@passio/core/schema";
+import { itemSchema, type ItemType, type UriEntry } from "@passio/core/schema";
 import { z } from "zod";
 
 /**
@@ -180,9 +180,13 @@ export type VaultState = "signed-out" | "locked" | "unlocked";
 export interface ItemSummary {
   id: string;
   title: string;
-  type: "login" | "note" | "card";
+  type: ItemType;
   username?: string;
+  /** Legacy single address, kept so old items still match. */
   uri?: string;
+  /** Addresses with explicit match modes, so the popup matches exactly as the
+   *  web app does. Carries no secret - an address is not one. */
+  uris?: UriEntry[];
   hasTotp: boolean;
   /** For the folder filter. A UUID with no meaning outside the vault, and far
    *  less revealing than the title beside it. */

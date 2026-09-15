@@ -118,6 +118,22 @@ export function createCustody(deps: CustodyDeps) {
     return vaultKey;
   }
 
+  /** The line shown under an item's name in the list. Never a secret. */
+  function summaryUsername(data: Item): string | undefined {
+    switch (data.type) {
+      case "login":
+      case "server":
+      case "database":
+        return data.username;
+      case "emailAccount":
+        return data.address ?? data.username;
+      case "identity":
+        return data.email;
+      default:
+        return undefined;
+    }
+  }
+
   async function items(): Promise<{ items: ItemSummary[]; damaged: number }> {
     const { items: decrypted, damaged } = await loadVault(requireKey());
     return {
@@ -126,8 +142,11 @@ export function createCustody(deps: CustodyDeps) {
         id,
         title: data.title,
         type: data.type,
-        username: data.type === "login" ? data.username : undefined,
+        // Several types carry a sign-in username, not just logins. None of
+        // these is a secret; the password never appears in a summary.
+        username: summaryUsername(data),
         uri: data.type === "login" ? data.uri : undefined,
+        uris: data.type === "login" ? data.uris : undefined,
         hasTotp: data.type === "login" && data.totp !== undefined,
         folderId: data.folderId,
       })),

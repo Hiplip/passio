@@ -84,3 +84,64 @@ describe("matchItemsToUrl", () => {
     ))).toEqual(["a"]);
   });
 });
+
+describe("explicit match modes", () => {
+  it("offers an item whose regex matches, with no legacy uri at all", () => {
+    const items = [
+      { id: "a", uris: [{ uri: "^https://example\\.(com|co\\.uk)/", match: "regex" as const }] },
+    ];
+    expect(matchItemsToUrl(items, "https://example.co.uk/login").map((i) => i.id)).toEqual(["a"]);
+    expect(matchItemsToUrl(items, "https://other.com/login")).toEqual([]);
+  });
+
+  it("ranks an explicit mode ahead of a domain match", () => {
+    // Someone who wrote an exact URL meant that page specifically, so it should
+    // come before a login saved for the whole domain.
+    const items = [
+      { id: "broad", uri: "https://example.com" },
+      { id: "exact", uris: [{ uri: "https://example.com/admin", match: "exact" as const }] },
+    ];
+    expect(matchItemsToUrl(items, "https://example.com/admin").map((i) => i.id)).toEqual([
+      "exact",
+      "broad",
+    ]);
+  });
+
+  it("honours never on the entry without silencing a second entry", () => {
+    const items = [
+      {
+        id: "a",
+        uris: [
+          { uri: "https://example.com", match: "never" as const },
+          { uri: "https://example.com", match: "domain" as const },
+        ],
+      },
+    ];
+    expect(matchItemsToUrl(items, "https://example.com/x").map((i) => i.id)).toEqual(["a"]);
+  });
+
+  it("offers nothing when the only entry is never", () => {
+    const items = [
+      { id: "a", uris: [{ uri: "https://example.com", match: "never" as const }] },
+    ];
+    expect(matchItemsToUrl(items, "https://example.com/x")).toEqual([]);
+  });
+
+  it("still matches an item that only has the legacy uri", () => {
+    // Existing vaults were written before `uris` existed and cannot be migrated
+    // server-side, so this path has to keep working indefinitely.
+    const items = [{ id: "old", uri: "https://example.com" }];
+    expect(matchItemsToUrl(items, "https://www.example.com/login").map((i) => i.id)).toEqual(["old"]);
+  });
+
+  it("prefers an exact host over a sibling subdomain", () => {
+    const items = [
+      { id: "root", uris: [{ uri: "https://google.com", match: "domain" as const }] },
+      { id: "mail", uris: [{ uri: "https://mail.google.com", match: "domain" as const }] },
+    ];
+    expect(matchItemsToUrl(items, "https://mail.google.com/inbox").map((i) => i.id)).toEqual([
+      "mail",
+      "root",
+    ]);
+  });
+});
