@@ -1,7 +1,7 @@
 import "@passio/ui/styles.css";
 
 import { searchSummaries } from "@passio/core/search";
-import { applySummaryFilter, countFilters, type VaultFilter } from "@passio/core/filter";
+import { applyScope, countFilters, isNarrowed, WHOLE_VAULT, type VaultScope } from "@passio/core/filter";
 import { matchItemsToUrl } from "@passio/core/match";
 import { copyWithAutoClear } from "@passio/core/clipboard";
 import { Button } from "@passio/ui/button";
@@ -448,17 +448,22 @@ function InlineToggle() {
 }
 
 /**
- * The heading above a run of rows.
+ * The heading above a run of rows, with how many are under it.
  *
  * Sentence case at reading size, on the page ground. The version this replaced
  * was a tinted, tracked-out, all-caps band between every group, which made two
  * short lists look like a settings screen.
+ *
+ * The count lives here rather than on a filter control, where it made a
+ * control that changed width as you used it. Here it counts what is actually
+ * on screen underneath it.
  */
-function GroupLabel({ children }: { children: React.ReactNode }) {
+function GroupLabel({ children, count }: { children: React.ReactNode; count: number }) {
   return (
-    <p className="text-muted-foreground px-3 pt-2.5 pb-1 text-[11.5px] font-medium">
-      {children}
-    </p>
+    <div className="text-muted-foreground flex items-baseline gap-2 px-3 pt-2.5 pb-1 text-[11.5px] font-medium">
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      <span className="secret shrink-0 opacity-80">{count}</span>
+    </div>
   );
 }
 
@@ -490,7 +495,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   const [folders, setFolders] = useState<FolderSummary[]>([]);
   const [damaged, setDamaged] = useState(0);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<VaultFilter>({ kind: "all" });
+  const [scope, setScope] = useState<VaultScope>(WHOLE_VAULT);
   const [tabUrl, setTabUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -520,7 +525,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
   );
 
   /**
-   * Search, then the filter.
+   * Search, then the scope.
    *
    * Both are the shared implementations, so "no folder" still includes an item
    * pointing at a folder that no longer exists rather than hiding it - exactly
@@ -528,15 +533,15 @@ function Vault({ onLocked }: { onLocked: () => void }) {
    */
   const filtered = useMemo(() => {
     if (!items) return [];
-    return applySummaryFilter(searchSummaries(items, query), filter, knownFolderIds);
-  }, [items, query, filter, knownFolderIds]);
+    return applyScope(searchSummaries(items, query), scope, knownFolderIds);
+  }, [items, query, scope, knownFolderIds]);
 
   const counts = useMemo(
     () => countFilters(items ?? [], knownFolderIds),
     [items, knownFolderIds],
   );
 
-  const filtering = filter.kind !== "all";
+  const filtering = isNarrowed(scope);
   const searching = query.trim().length > 0;
 
   const forSite = useMemo(
@@ -674,10 +679,10 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         {/* The same rail the web app uses. A filter cannot mean two different
             things in two windows if there is only one of it. */}
         <VaultFilters
-          filter={filter}
-          onFilterChange={(next) => {
+          scope={scope}
+          onScopeChange={(next) => {
             setQuery("");
-            setFilter(next);
+            setScope(next);
           }}
           folders={folders}
           counts={counts}
@@ -710,7 +715,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
         {showSite ? (
           <>
-            <GroupLabel>For this site</GroupLabel>
+            <GroupLabel count={forSite.length}>For this site</GroupLabel>
             <ul>
               {forSite.map((i) => (
                 <Row key={i.id} {...rowProps(i)} />
@@ -721,7 +726,9 @@ function Vault({ onLocked }: { onLocked: () => void }) {
 
         {rest.length > 0 ? (
           <>
-            {showSite ? <GroupLabel>Everything else</GroupLabel> : null}
+            <GroupLabel count={rest.length}>
+              {showSite ? "Everything else" : filtering ? "Matching items" : "All items"}
+            </GroupLabel>
             <ul>
               {rest.map((i) => (
                 <Row key={i.id} {...rowProps(i)} />
@@ -731,7 +738,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         ) : items.length > 0 && !showSite ? (
           <Nothing
             title={
-              searching ? `Nothing matches “${query.trim()}”` : "Nothing in this filter"
+              searching ? `Nothing matches “${query.trim()}”` : "Nothing in this view"
             }
             action={
               <Button
@@ -739,7 +746,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
                 size="sm"
                 onClick={() => {
                   setQuery("");
-                  setFilter({ kind: "all" });
+                  setScope(WHOLE_VAULT);
                 }}
               >
                 Show all items

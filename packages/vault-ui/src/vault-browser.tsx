@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search, X } from "lucide-react";
+import { FolderPlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,23 +15,44 @@ import { VaultFilters } from "./vault-filters";
 import type { DecryptedFolder } from "@passio/core/decrypt-folders";
 import type { DecryptedItem } from "@passio/core/decrypt-vault";
 import { useVaultData } from "./data";
-import { applyFilter, countItemFilters, type VaultFilter } from "@passio/core/filter";
+import {
+  ANY,
+  applyItemScope,
+  countItemFilters,
+  isNarrowed,
+  NO_FOLDER,
+  WHOLE_VAULT,
+  type VaultScope,
+} from "@passio/core/filter";
 import { searchItems } from "@passio/core/search";
 
-function describeFilter(filter: VaultFilter, folders: DecryptedFolder[]): string {
-  switch (filter.kind) {
-    case "all":
-      return "Vault";
-    case "type":
-      return { login: "Logins", note: "Secure notes", card: "Cards" }[filter.type];
+/**
+ * What to call the current view.
+ *
+ * Names the narrower of the two axes rather than trying to say both - "Work
+ * cards" reads well until a folder is called "Personal documents and receipts",
+ * and a heading is not the place to restate a control that is on screen.
+ */
+function describeScope(scope: VaultScope, folders: DecryptedFolder[]): string {
+  if (scope.trash) return "Trash";
+
+  if (scope.folder !== ANY) {
+    return scope.folder === NO_FOLDER
+      ? "No folder"
+      : (folders.find((f) => f.id === scope.folder)?.name ?? "Folder");
+  }
+
+  switch (scope.type) {
+    case "login":
+      return "Logins";
+    case "note":
+      return "Secure notes";
+    case "card":
+      return "Cards";
     case "totp":
       return "Verification codes";
-    case "unfiled":
-      return "No folder";
-    case "folder":
-      return folders.find((f) => f.id === filter.folderId)?.name ?? "Folder";
-    case "trash":
-      return "Trash";
+    default:
+      return "Vault";
   }
 }
 
@@ -47,7 +68,7 @@ export function VaultBrowser() {
   } = useVaultData();
   const { items, damaged, isLoading } = live;
 
-  const [filter, setFilter] = useState<VaultFilter>({ kind: "all" });
+  const [scope, setScope] = useState<VaultScope>(WHOLE_VAULT);
   const [query, setQuery] = useState("");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<DecryptedFolder | undefined>();
@@ -55,7 +76,7 @@ export function VaultBrowser() {
   const knownFolderIds = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
 
   const searching = query.trim().length > 0;
-  const inTrash = filter.kind === "trash";
+  const inTrash = scope.trash;
 
   // Damaged rows are still in the trash, so they count toward the badge. An
   // item missing from the count is the bug that made trash read 1 and then
@@ -67,7 +88,7 @@ export function VaultBrowser() {
 
   // Both run in memory over the already-decrypted vault, so neither needs a
   // debounce and neither tells the server anything.
-  const visible = searchItems(applyFilter(source, filter, knownFolderIds), query);
+  const visible = searchItems(applyItemScope(source, scope, knownFolderIds), query);
 
   const counts = countItemFilters(items, knownFolderIds);
 
@@ -104,20 +125,27 @@ export function VaultBrowser() {
 
     try {
       await removeFolder(folder.id);
-      setFilter({ kind: "all" });
+      setScope(WHOLE_VAULT);
       toast.success("Folder deleted", { description: "Its items are now unfiled." });
     } catch {
       toast.error("Could not delete that folder.");
     }
   }
 
+  /** The folder being browsed, if one is - what rename and delete act on. */
+  const activeFolder =
+    scope.folder !== ANY && scope.folder !== NO_FOLDER
+      ? folders.find((f) => f.id === scope.folder)
+      : undefined;
+
   const openFolderDialog = (existing?: DecryptedFolder) => {
     setEditingFolder(existing);
     setFolderDialogOpen(true);
   };
 
-  const title = searching ? "Results" : describeFilter(filter, folders);
-  const count = searching || filter.kind !== "all" ? visible.length : items.length;
+  const title = searching ? "Results" : describeScope(scope, folders);
+  const narrowed = isNarrowed(scope);
+  const count = searching || narrowed ? visible.length : items.length;
 
   const empty = searching ? (
     <EmptyState
@@ -147,10 +175,10 @@ export function VaultBrowser() {
     />
   ) : (
     <EmptyState
-      title="Nothing in this filter"
-      hint="Pick another filter above, or add an item here."
+      title="Nothing in this view"
+      hint="Widen the folder or type above, or add an item here."
       action={
-        <Button variant="outline" size="sm" onClick={() => setFilter({ kind: "all" })}>
+        <Button variant="outline" size="sm" onClick={() => setScope(WHOLE_VAULT)}>
           Show all items
         </Button>
       }
@@ -165,7 +193,7 @@ export function VaultBrowser() {
           <p className="text-muted-foreground text-[13px]">
             {loading
               ? "Decrypting…"
-              : searching || filter.kind !== "all"
+              : searching || narrowed
                 ? `${count} ${count === 1 ? "item" : "items"}`
                 : `${count} ${count === 1 ? "item" : "items"}, encrypted on this device`}
           </p>
@@ -205,19 +233,49 @@ export function VaultBrowser() {
         ) : null}
       </div>
 
-      <VaultFilters
-        filter={filter}
-        onFilterChange={(next) => {
-          setQuery("");
-          setFilter(next);
-        }}
-        folders={folders}
-        counts={counts}
-        trashCount={trashCount}
-        onNewFolder={() => openFolderDialog()}
-        onRenameFolder={openFolderDialog}
-        onDeleteFolder={(folder) => void deleteFolder(folder)}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <VaultFilters
+          scope={scope}
+          onScopeChange={(next) => {
+            setQuery("");
+            setScope(next);
+          }}
+          folders={folders}
+          counts={counts}
+          trashCount={trashCount}
+          className="sm:max-w-md"
+        />
+
+        {/* Folder management sits beside the filters rather than inside them:
+            picking a folder and editing one are different intentions. */}
+        <span className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openFolderDialog()}>
+            <FolderPlus />
+            New folder
+          </Button>
+          {activeFolder ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openFolderDialog(activeFolder)}
+              >
+                <Pencil />
+                Rename
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => void deleteFolder(activeFolder)}
+              >
+                <Trash2 />
+                Delete
+              </Button>
+            </>
+          ) : null}
+        </span>
+      </div>
 
       {loading ? (
         <ul className="rows border-border border-y">

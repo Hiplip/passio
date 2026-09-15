@@ -72,7 +72,41 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+const labelClass =
+  "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7"
+
+/**
+ * A heading inside a menu.
+ *
+ * A plain element, NOT Base UI's `Menu.GroupLabel`. That part calls
+ * `useMenuGroupRootContext()`, which THROWS when there is no `<Menu.Group>`
+ * above it - and a throw during render unmounts the tree, so the symptom is
+ * an entire page or popup going blank with nothing on screen to say why. It
+ * shipped once exactly that way.
+ *
+ * The name does not carry that constraint and neither does the type, so the
+ * trap is invisible until it fires. This version cannot fire. When the ARIA
+ * association actually matters, wrap the items in `DropdownMenuGroup` and use
+ * `DropdownMenuGroupLabel`, which is the Base UI part under a name that says
+ * where it has to live.
+ */
 function DropdownMenuLabel({
+  className,
+  inset,
+  ...props
+}: React.ComponentProps<"div"> & { inset?: boolean }) {
+  return (
+    <div
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      className={cn(labelClass, className)}
+      {...props}
+    />
+  )
+}
+
+/** Base UI's group label. Only valid inside `DropdownMenuGroup`. */
+function DropdownMenuGroupLabel({
   className,
   inset,
   ...props
@@ -81,12 +115,9 @@ function DropdownMenuLabel({
 }) {
   return (
     <MenuPrimitive.GroupLabel
-      data-slot="dropdown-menu-label"
+      data-slot="dropdown-menu-group-label"
       data-inset={inset}
-      className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
-        className
-      )}
+      className={cn(labelClass, className)}
       {...props}
     />
   )
@@ -275,6 +306,7 @@ export {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuLabel,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
   DropdownMenuRadioGroup,

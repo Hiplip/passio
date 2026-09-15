@@ -308,6 +308,22 @@ Two things to remember when a popup misbehaves only in the extension:
   opening, naming the reason. Open the popup's devtools and read it rather than
   guessing.
 
+#### A Base UI part can blank the whole page
+
+`Menu.GroupLabel` calls `useMenuGroupRootContext()`, which **throws** when there is no
+`<Menu.Group>` above it. A throw during render unmounts the tree, so the symptom is the
+entire popup going white or black with nothing on screen to say why - and neither the
+prop types nor the component name hint that the constraint exists. It shipped once.
+
+`DropdownMenuLabel` is therefore a plain `<div>` in this repo, not the Base UI part;
+`DropdownMenuGroupLabel` is the Base UI part, under a name that says where it must live.
+`dropdown-menu.test.ts` pins both, including that the grouped one still throws.
+
+The general lesson, and the second time it has cost time here: **in an extension popup a
+React error looks like a rendering bug, not a crash.** There is no error overlay and no
+console unless you deliberately open the popup's own devtools. If a surface goes blank
+after an interaction, open them and read the exception before changing any CSS.
+
 #### Two traps that cost real time
 
 - **`tldts` defaults to `allowPrivateDomains: false`.** With it off, `github.io` and

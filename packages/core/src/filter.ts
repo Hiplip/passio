@@ -178,3 +178,80 @@ export function countItemFilters(
 ): FilterCounts {
   return countFilters(items.map(toFilterable), knownFolderIds);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Scope: what the vault is narrowed to, on two independent axes.
+ *
+ * A VaultFilter is a tagged union - one thing at a time - which is right for
+ * the rules but wrong for the controls. Folder and type are different
+ * questions and a person expects to answer both: "my work cards" is a sensible
+ * thing to ask for, and a single union cannot express it.
+ *
+ * So a scope holds one choice per axis and composes them by applying the
+ * filters in turn. The rules themselves are untouched; this only decides how
+ * many of them run.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** No narrowing on that axis. */
+export const ANY = "any";
+/** Items belonging to no folder, or to one that has since been deleted. */
+export const NO_FOLDER = "none";
+
+export type TypeChoice = typeof ANY | ItemType | "totp";
+/** `ANY`, `NO_FOLDER`, or a folder id. Ids are UUIDs, so neither sentinel can
+ *  collide with one. */
+export type FolderChoice = string;
+
+export interface VaultScope {
+  type: TypeChoice;
+  folder: FolderChoice;
+  /** Trash swaps which list is being shown, rather than narrowing it. The two
+   *  axes still apply inside it, so a deleted card is findable the same way a
+   *  live one is. */
+  trash: boolean;
+}
+
+export const WHOLE_VAULT: VaultScope = { type: ANY, folder: ANY, trash: false };
+
+/** True when the scope hides anything at all. Drives whether the controls
+ *  should look like a state you are in. */
+export function isNarrowed(scope: VaultScope): boolean {
+  return scope.type !== ANY || scope.folder !== ANY || scope.trash;
+}
+
+/** The scope, as the filters it is built from. Empty means "show everything". */
+export function scopeFilters(scope: VaultScope): VaultFilter[] {
+  const filters: VaultFilter[] = [];
+
+  if (scope.type === "totp") filters.push({ kind: "totp" });
+  else if (scope.type !== ANY) filters.push({ kind: "type", type: scope.type });
+
+  if (scope.folder === NO_FOLDER) filters.push({ kind: "unfiled" });
+  else if (scope.folder !== ANY) filters.push({ kind: "folder", folderId: scope.folder });
+
+  return filters;
+}
+
+/** Narrows a flat summary list. */
+export function applyScope<T extends Filterable>(
+  items: T[],
+  scope: VaultScope,
+  knownFolderIds: ReadonlySet<string>,
+): T[] {
+  return scopeFilters(scope).reduce(
+    (list, filter) => applySummaryFilter(list, filter, knownFolderIds),
+    items,
+  );
+}
+
+/** The same, over already-decrypted items. */
+export function applyItemScope(
+  items: DecryptedItem[],
+  scope: VaultScope,
+  knownFolderIds: ReadonlySet<string>,
+): DecryptedItem[] {
+  return scopeFilters(scope).reduce(
+    (list, filter) => applyFilter(list, filter, knownFolderIds),
+    items,
+  );
+}

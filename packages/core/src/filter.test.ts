@@ -9,6 +9,13 @@ import {
   countByType,
   countFilters,
   countItemFilters,
+  ANY,
+  applyItemScope,
+  applyScope,
+  isNarrowed,
+  NO_FOLDER,
+  scopeFilters,
+  WHOLE_VAULT,
   countTotp,
   filtersEqual,
   type VaultFilter,
@@ -281,5 +288,90 @@ describe("countItemFilters", () => {
   it("never counts a one-time code on a non-login", () => {
     const odd = [make("x", { type: "note", title: "N", totp: { secret: "AAAA" } })];
     expect(countItemFilters(odd, known).totp).toBe(0);
+  });
+});
+
+describe("VaultScope", () => {
+  const known = new Set(["work", "home"]);
+  const summaries = [
+    { id: "a", type: "login" as const, folderId: "work", hasTotp: true },
+    { id: "b", type: "login" as const, hasTotp: false },
+    { id: "c", type: "note" as const, folderId: "work", hasTotp: false },
+    { id: "d", type: "card" as const, folderId: "gone", hasTotp: false },
+    { id: "e", type: "card" as const, folderId: "work", hasTotp: false },
+  ];
+  const ids = (r: { id: string }[]) => r.map((i) => i.id);
+
+  it("shows everything when neither axis is set", () => {
+    expect(applyScope(summaries, WHOLE_VAULT, known)).toHaveLength(5);
+    expect(scopeFilters(WHOLE_VAULT)).toEqual([]);
+  });
+
+  it("narrows on one axis at a time", () => {
+    expect(ids(applyScope(summaries, { ...WHOLE_VAULT, type: "login" }, known)))
+      .toEqual(["a", "b"]);
+    expect(ids(applyScope(summaries, { ...WHOLE_VAULT, folder: "work" }, known)))
+      .toEqual(["a", "c", "e"]);
+  });
+
+  it("composes both axes", () => {
+    // The whole point: "my work cards" is a question a single tagged union
+    // cannot ask.
+    expect(
+      ids(applyScope(summaries, { type: "card", folder: "work", trash: false }, known)),
+    ).toEqual(["e"]);
+  });
+
+  it("can compose to nothing without breaking", () => {
+    expect(
+      applyScope(summaries, { type: "note", folder: "home", trash: false }, known),
+    ).toEqual([]);
+  });
+
+  it("keeps treating a dangling folder id as unfiled", () => {
+    // "d" points at a folder that is gone; it must still be reachable.
+    expect(ids(applyScope(summaries, { ...WHOLE_VAULT, folder: NO_FOLDER }, known)))
+      .toEqual(["b", "d"]);
+  });
+
+  it("filters one-time codes as a type choice", () => {
+    expect(ids(applyScope(summaries, { ...WHOLE_VAULT, type: "totp" }, known)))
+      .toEqual(["a"]);
+  });
+
+  it("agrees with applying the same filters by hand", () => {
+    const scope = { type: "card" as const, folder: "work", trash: false };
+    const byHand = applySummaryFilter(
+      applySummaryFilter(summaries, { kind: "type", type: "card" }, known),
+      { kind: "folder", folderId: "work" },
+      known,
+    );
+    expect(applyScope(summaries, scope, known)).toEqual(byHand);
+  });
+
+  it("knows when it is hiding something", () => {
+    expect(isNarrowed(WHOLE_VAULT)).toBe(false);
+    expect(isNarrowed({ ...WHOLE_VAULT, type: "login" })).toBe(true);
+    expect(isNarrowed({ ...WHOLE_VAULT, folder: NO_FOLDER })).toBe(true);
+    expect(isNarrowed({ ...WHOLE_VAULT, trash: true })).toBe(true);
+  });
+
+  it("leaves trash out of the filters, because it swaps the source", () => {
+    expect(scopeFilters({ ...WHOLE_VAULT, trash: true })).toEqual([]);
+  });
+});
+
+describe("applyItemScope", () => {
+  it("composes both axes over decrypted items", () => {
+    expect(
+      applyItemScope(items, { type: "login", folder: HOME, trash: false }, known).map(
+        (i) => i.id,
+      ),
+    ).toEqual(["2"]);
+  });
+
+  it("matches applyScope for the same vault", () => {
+    const scope = { type: "login" as const, folder: ANY, trash: false };
+    expect(applyItemScope(items, scope, known).map((i) => i.id)).toEqual(["1", "2", "5"]);
   });
 });
