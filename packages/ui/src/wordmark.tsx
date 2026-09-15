@@ -1,21 +1,19 @@
 import { cn } from "cn"
 
+import { Mark } from "./mark"
+
 const SIZES = {
-  sm: { mark: "size-6 text-[13px]", text: "text-[13px]" },
-  md: { mark: "size-7 text-[15px]", text: "text-[15px]" },
-  lg: { mark: "size-9 text-lg", text: "text-lg" },
+  sm: { mark: "size-6", text: "text-[13px]" },
+  md: { mark: "size-7", text: "text-[15px]" },
+  lg: { mark: "size-9", text: "text-lg" },
 } as const
 
 /**
- * passio, marking itself the way it marks your items.
+ * passio, as a mark and a name.
  *
- * Every item in the vault wears a disc carrying a letter derived from its own
- * name. The product wears the same disc - inverted, ink on porcelain rather
- * than a tint, which is the one thing that says this mark is the application
- * and not something you saved.
- *
- * The letter is set in the cipher face, because that face is the one idea the
- * whole interface is built around.
+ * The dial is drawn in the foreground colour on nothing, rather than reversed
+ * out of a filled disc. A ring already reads as an object; putting it inside a
+ * second circle gave two concentric rings and a muddle at small sizes.
  */
 export function Wordmark({
   size = "md",
@@ -30,15 +28,7 @@ export function Wordmark({
 
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
-      <span
-        aria-hidden
-        className={cn(
-          "secret bg-foreground text-background grid shrink-0 place-items-center rounded-full leading-none font-medium",
-          s.mark
-        )}
-      >
-        p
-      </span>
+      <Mark className={cn("text-foreground", s.mark)} />
       {showName ? (
         <span className={cn("wordmark", s.text)}>passio</span>
       ) : (

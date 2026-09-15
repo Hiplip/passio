@@ -6,10 +6,15 @@ import { Toaster } from "@passio/ui/sonner";
 import { VaultProvider } from "~/hooks/use-vault";
 import { TRPCReactProvider } from "~/trpc/react";
 
+/**
+ * No `icons` entry: declaring one here OVERRIDES Next's file-based detection,
+ * and the files are what carry the mark. `app/icon.svg` becomes the icon link,
+ * `app/apple-icon.png` the touch icon, and `public/favicon.ico` answers the
+ * bare /favicon.ico that browsers and link unfurlers request regardless.
+ */
 export const metadata: Metadata = {
   title: "passio",
   description: "A personal password manager that cannot read your passwords.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
 /**

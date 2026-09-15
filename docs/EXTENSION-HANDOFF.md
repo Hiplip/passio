@@ -152,8 +152,8 @@ it goes idle again like any other extension.
 
 With the permission granted:
 
-- [ ] A small dark circle carrying a "p" appears at the right of username **and**
-      password fields, and turns violet on hover
+- [ ] A small dark circle carrying the passio dial appears at the right of username
+      **and** password fields, and turns violet on hover
 - [ ] Focusing a field opens the list without a click
 - [ ] The list is the **same width as the field**, aligned to its left edge
 - [ ] No scrollbar inside the list, and it does not cover the page below it
@@ -314,7 +314,7 @@ Everything below still works the same way; only where you click changed.
 | Sidebar of counts (web) | The same filter rail as the popup |
 | Category screen on a phone (web) | The same filter rail, wrapped |
 | Grey square icon per row | A coloured disc carrying the item's initial |
-| Teal key button in a form field | A dark circle carrying a "p" |
+| Teal key button in a form field | A dark circle carrying the passio dial |
 
 Two things are worth a specific look, because neither could be verified without a
 browser:

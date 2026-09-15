@@ -54,18 +54,29 @@ export function createOverlay() {
   /**
    * The passio mark, as it appears on other people's pages.
    *
-   * The same disc every item in the vault wears and the same one in the
-   * toolbar: a filled circle carrying a "p" in the cipher face. A circle, not
-   * the rounded square every other manager puts here, and ink rather than a
-   * brand colour - it is the application identifying itself, not an
-   * advertisement.
+   * The dial, reversed out of a filled disc. Filled rather than the bare ring
+   * used everywhere else, because this is the one instance that lands on a
+   * background nobody controls - an input can be white, grey, or near-black,
+   * and only a solid shape guarantees it is visible on all three.
    *
-   * Every value is literal. This element lives in a closed shadow root inside
-   * a page we do not control, so it can inherit nothing: not our stylesheet,
-   * not our tokens, not even a font.
+   * Every value is literal and the geometry is paths only. This element lives
+   * in a closed shadow root inside a page we do not control, so it inherits
+   * nothing - not our stylesheet, not our tokens, not a font - and an `id` on
+   * a mask or a clip path could collide with one belonging to the page.
    */
   const INK = "#221f2b";
   const IRIS = "#6355d6";
+
+  const DIAL = [
+    `<svg viewBox="0 0 100 100" width="13" height="13" fill="#fff" aria-hidden="true">`,
+    ...[0, 90, 180, 270].map(
+      (a) =>
+        `<path d="M78 86.49A46 46 0 0 1 22 86.49L31.74 73.8A30 30 0 0 0 68.26 73.8Z"` +
+        ` transform="rotate(${a} 50 50)"/>`,
+    ),
+    `<circle cx="50" cy="50" r="12"/>`,
+    `</svg>`,
+  ].join("");
 
   function makeButton(field: HTMLInputElement): HTMLButtonElement {
     const button = document.createElement("button");
@@ -74,12 +85,10 @@ export function createOverlay() {
     button.style.cssText = `
       position:fixed;width:${ICON_SIZE}px;height:${ICON_SIZE}px;padding:0;
       border:0;border-radius:50%;cursor:pointer;display:none;z-index:${Z};
-      background:${INK};color:#fff;align-items:center;justify-content:center;
-      font:600 12px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-      letter-spacing:0;text-indent:0;
+      background:${INK};align-items:center;justify-content:center;
       box-shadow:0 1px 3px rgb(0 0 0/.22);transition:background .12s,transform .12s
     `;
-    button.textContent = "p";
+    button.innerHTML = DIAL;
     button.addEventListener("mouseenter", () => {
       button.style.background = IRIS;
       button.style.transform = "scale(1.08)";

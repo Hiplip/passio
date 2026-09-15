@@ -468,3 +468,38 @@ right. Two things in particular want a human eye: the in-field button now render
 literal "p" in a system monospace stack (it inherits nothing — it lives in a closed
 shadow root inside someone else's page), and the extension now loads its own woff2 files
 from `chrome-extension://<id>/assets/`.
+
+---
+
+## The mark: a dial
+
+The first four candidates were abstract — a split disc, a barred disc, a geometric
+monogram, two overlapping circles — built on the reasoning that the padlock, the
+shield and the key are category clichés and should be avoided.
+
+That reasoning was wrong, and the feedback was blunt: none of them looked like a
+password manager. **A category's clichés exist because they communicate.** A stranger
+glancing at a half-barred disc has no idea it guards anything. Originality only has to
+be enough to tell you apart from the other padlocks in the toolbar; legibility has to
+work in the one second anybody ever spends looking.
+
+So the mark uses the category's grammar: a **safe dial**. Every competitor took a
+different lock — 1Password the keyhole, Bitwarden the shield, Keeper and LastPass the
+padlock — and left this one. It says strongroom rather than locker padlock, which
+suits something holding everything you own; the app already calls itself a vault in
+its own source; it is a circle, so it belongs to the disc motif the whole interface is
+built from; and it has an obvious unlock animation, because a dial turns.
+
+Drawn as four annular sectors plus a hub — paths only, no mask, no clip path, no `id`.
+That is not fussiness: the mark is injected as a raw string into a closed shadow root
+on pages we do not control, where an `id` can collide, and it is rasterized by a tool
+that handles paths far more reliably than masks.
+
+### NEEDS-REVIEW: the geometry is duplicated
+
+`packages/ui/src/mark.tsx` and `scripts/make-icons.mjs` hold the same path data. The
+script cannot import the component - it is plain Node with no JSX pipeline - and the
+component cannot import the script's output because it needs to render live in
+`currentColor`. `packages/ui/src/mark.test.ts` pins them together and fails on drift.
+Worth revisiting if the build ever grows a step that could render the component to
+SVG at build time.

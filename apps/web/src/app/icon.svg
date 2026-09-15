@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<title>passio</title>
+<circle cx="50" cy="50" r="50" fill="#221f2b"/>
+<g transform="translate(50 50) scale(0.74) translate(-50 -50)" fill="#fbfafc">
+<path d="M78 86.49A46 46 0 0 1 22 86.49L31.74 73.8A30 30 0 0 0 68.26 73.8Z" transform="rotate(0 50 50)"/><path d="M78 86.49A46 46 0 0 1 22 86.49L31.74 73.8A30 30 0 0 0 68.26 73.8Z" transform="rotate(90 50 50)"/><path d="M78 86.49A46 46 0 0 1 22 86.49L31.74 73.8A30 30 0 0 0 68.26 73.8Z" transform="rotate(180 50 50)"/><path d="M78 86.49A46 46 0 0 1 22 86.49L31.74 73.8A30 30 0 0 0 68.26 73.8Z" transform="rotate(270 50 50)"/>
+<circle cx="50" cy="50" r="12"/>
+</g>
+</svg>

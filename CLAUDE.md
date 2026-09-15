@@ -84,6 +84,19 @@ short version:
 - Custom classes `.secret`, `.wordmark` and `.rows` are author CSS in
   `@layer components`, so they survive purge without appearing in any source file.
 
+**The mark is a dial, and it exists twice.** `packages/ui/src/mark.tsx` is what
+React renders; `scripts/make-icons.mjs` rasterizes the PNGs, and cannot import the
+component because it is plain Node with no JSX pipeline. `packages/ui/src/mark.test.ts`
+fails if the two drift - without it you would change the logo and the toolbar would
+quietly keep the old one, which is not a build error anywhere. Regenerate with
+`pnpm icons`; the outputs are committed.
+
+Two things that bit while building it, both silent failures rather than errors:
+putting `fill` on an `<svg>` root means the colour is lost the moment the shapes are
+lifted into another document (the toolbar icon rendered black on black), and a
+missing extension icon is not a build error - Chrome shows a grey puzzle piece. The
+manifest test now asserts all four sizes are declared.
+
 **Both typefaces are self-hosted** from `packages/ui/src/fonts/` via `@font-face`,
 NOT `next/font`. next/font defines its variable on the web app's `<html>`, which no
 extension page has - and `font-family: var(--undefined), ...` is invalid at

@@ -23,6 +23,8 @@ interface Manifest {
   content_security_policy?: { extension_pages?: string };
   content_scripts?: unknown;
   externally_connectable?: unknown;
+  icons?: Record<string, string>;
+  action?: { default_popup?: string; default_icon?: Record<string, string> };
 }
 
 const manifest = JSON.parse(
@@ -109,5 +111,24 @@ describe("generated manifest", () => {
     // for every site it could ever run on - which is exactly the <all_urls>
     // posture this design rejected. If this fails, that decision was undone.
     expect(manifest.content_scripts).toBeUndefined();
+  });
+});
+
+describe("the toolbar icon", () => {
+  it("declares every size Chrome asks for", () => {
+    // A missing icon is not a build error - Chrome falls back to a grey puzzle
+    // piece, which shipped that way until the mark existed. Declaring the exact
+    // sizes also stops Chrome downscaling the 128 into a blurry 16.
+    expect(Object.keys(manifest.icons ?? {}).sort()).toEqual([
+      "128",
+      "16",
+      "32",
+      "48",
+    ]);
+  });
+
+  it("gives the action its own icon", () => {
+    expect(manifest.action?.default_icon).toBeDefined();
+    expect(manifest.action?.default_popup).toBe("popup.html");
   });
 });

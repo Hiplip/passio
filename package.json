@@ -13,6 +13,7 @@
     "start": "pnpm --filter @passio/web start",
     "preview": "pnpm --filter @passio/web preview",
     "build:extension": "pnpm --filter @passio/extension build",
+    "icons": "node scripts/make-icons.mjs",
     "db:generate": "pnpm --filter @passio/web db:generate",
     "db:migrate": "pnpm --filter @passio/web db:migrate",
     "db:push": "pnpm --filter @passio/web db:push",
@@ -29,6 +30,7 @@
     "eslint-plugin-drizzle": "^0.2.3",
     "globals": "^17.12.0",
     "jsdom": "^30.0.1",
+    "sharp": "^0.35.4",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.0"
