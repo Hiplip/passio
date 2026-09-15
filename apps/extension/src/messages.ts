@@ -85,6 +85,14 @@ const requestSchema = z.discriminatedUnion("kind", [
     // place to accept "whatever the caller said".
     field: z.enum(["username", "password", "totp"]),
   }),
+  z.object({
+    target: z.literal("offscreen"),
+    via,
+    // Card and identity values for one item, keyed by form role. A separate
+    // kind rather than widening `field` above, so that enum stays narrow.
+    kind: z.literal("fillValues"),
+    itemId: z.string().uuid(),
+  }),
 ]);
 
 export type Request = z.infer<typeof requestSchema>;
@@ -216,6 +224,7 @@ export type Response =
   | { ok: true; kind: "items"; items: ItemSummary[]; damaged: number }
   | { ok: true; kind: "matchCount"; count: number }
   | { ok: true; kind: "fieldValue"; value: string }
+  | { ok: true; kind: "fillValues"; values: Record<string, string> }
   | { ok: true; kind: "heartbeat"; count: number }
   | { ok: true; kind: "itemsFull"; items: FullItem[]; damaged: string[] }
   | { ok: true; kind: "deletedItems"; items: FullItem[]; damaged: string[] }

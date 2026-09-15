@@ -89,6 +89,12 @@ async function handle(req: NonNullable<ReturnType<typeof parseRequest>>): Promis
         kind: "fieldValue",
         value: await custody.fieldValue(req.itemId, req.field),
       };
+    case "fillValues":
+      return {
+        ok: true,
+        kind: "fillValues",
+        values: await custody.fillValues(req.itemId),
+      };
     case "itemsFull":
       return { ok: true, kind: "itemsFull", ...(await custody.itemsFull()) };
     case "deletedItems":

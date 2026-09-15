@@ -14,6 +14,7 @@ import {
 import { decryptVault, type EncryptedRow } from "@passio/core/decrypt-vault";
 import type { Item } from "@passio/core/schema";
 import { matchItemsToUrl } from "@passio/core/match";
+import { fillValuesFor } from "./fill-values";
 
 import type {
   FillField,
@@ -260,6 +261,20 @@ export function createCustody(deps: CustodyDeps) {
       const found = decrypted.find((i) => i.id === itemId);
       if (!found) throw new Error("That item is no longer in the vault.");
       return copyActionsFor(found.data).find((a) => a.key === field)?.value ?? "";
+    },
+
+    /**
+     * Card and identity values for one item, keyed by form role.
+     *
+     * Still only strings crossing the boundary, and only for the one item the
+     * caller named - the same contract `fieldValue` has, widened to the several
+     * fields a checkout form needs at once rather than one round trip each.
+     */
+    async fillValues(itemId: string): Promise<Record<string, string>> {
+      const { items: decrypted } = await loadVault(requireKey());
+      const found = decrypted.find((i) => i.id === itemId);
+      if (!found) throw new Error("That item is no longer in the vault.");
+      return fillValuesFor(found.data);
     },
   };
 }

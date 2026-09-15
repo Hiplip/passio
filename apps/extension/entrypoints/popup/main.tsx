@@ -351,6 +351,9 @@ const FILLABLE_TYPES = new Set<ItemSummary["type"]>([
   "server",
   "database",
   "emailAccount",
+  // Cards and identities fill checkout forms rather than sign-in forms.
+  "card",
+  "identity",
 ]);
 
 function Row({
@@ -593,11 +596,17 @@ function Vault({ onLocked }: { onLocked: () => void }) {
       return;
     }
     try {
+      // A card or an identity contributes form fields; a login contributes the
+      // three sign-in values. Asking for both would decrypt fields the page has
+      // no use for.
+      const formFilled = item.type === "card" || item.type === "identity";
+
       const payload: FillPayload = {
         kind: "fill",
-        username: item.username ? await vault.fieldValue(item.id, "username") : "",
-        password: await vault.fieldValue(item.id, "password"),
-        totp: item.hasTotp ? await vault.fieldValue(item.id, "totp") : "",
+        username: formFilled ? "" : item.username ? await vault.fieldValue(item.id, "username") : "",
+        password: formFilled ? "" : await vault.fieldValue(item.id, "password"),
+        totp: !formFilled && item.hasTotp ? await vault.fieldValue(item.id, "totp") : "",
+        fields: formFilled ? await vault.fillValues(item.id) : undefined,
       };
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: false },
@@ -609,7 +618,7 @@ function Vault({ onLocked }: { onLocked: () => void }) {
         return;
       }
       // Autofill fails often; it has to fail into something useful.
-      toast.error("No login form on this page.", {
+      toast.error("Nothing on this page to fill.", {
         description: "Use the menu to copy instead.",
       });
     } catch (err) {

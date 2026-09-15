@@ -118,4 +118,12 @@ export const vault = {
       "fieldValue",
     ).value;
   },
+
+  /** Card and identity values for one item, keyed by the form role they fill. */
+  async fillValues(itemId: string): Promise<Record<string, string>> {
+    return expectKind(
+      await send({ target: "offscreen", kind: "fillValues", itemId }),
+      "fillValues",
+    ).values;
+  },
 };
