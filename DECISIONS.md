@@ -503,3 +503,45 @@ component cannot import the script's output because it needs to render live in
 `currentColor`. `packages/ui/src/mark.test.ts` pins them together and fails on drift.
 Worth revisiting if the build ever grows a step that could render the component to
 SVG at build time.
+
+## The landing page
+
+`/` was a pure redirect until now, so an anonymous visitor landed on a login form with
+nothing anywhere explaining what passio is. It now renders a landing page; a signed-in
+request still redirects to `/vault`, and `smoke.sh` expects 200 on `/` accordingly.
+
+Built on the product's own tokens rather than a marketing palette - porcelain ground,
+ink type, iris spent only on real secrets - so the page and the thing it sells are
+visibly one object. The primary button is ink like every button in the vault.
+
+The hero's right-hand column is genuinely encrypted in the visitor's browser with a
+throwaway AES-GCM key, not mocked. The page's whole claim is that encryption happens
+on your device, and three lines of `Math.random` would have looked identical while
+making the page a lie about itself. The caption says the key is throwaway and that a
+real vault derives its key through Argon2id.
+
+### NEEDS-REVIEW: the call to action is state-aware
+
+`landingCta(registrationOpen)` in `apps/web/src/lib/landing-cta.ts`. With registration
+closed, `registrationAllowed` rejects the account at the Better Auth database hook, so
+a "Create your vault" button would walk a stranger through a form that cannot succeed.
+Closed therefore points at `/login` and says why. It flips on its own when
+`REGISTRATION_OPEN` is set - but the copy for the closed state ("private beta") is a
+positioning claim somebody should agree with.
+
+### No testimonials, deliberately
+
+passio has no users to quote. Every other claim on the page is checkable; a fabricated
+quote would be the one thing on it that is simply untrue, and it is the first thing a
+reader would test. `landing.test.tsx` asserts there is no `<blockquote>`, so the
+omission is deliberate rather than pending.
+
+### NEEDS-REVIEW: no Open Graph image
+
+Wanted one - it is seen more often than the page. Cannot be generated on this machine:
+there are no system fonts installed (`fc-list` is empty, so sharp/librsvg renders no
+text), and the only typeface files in the repo are woff2, which satori - and therefore
+`next/og` - does not read. Fixing it means adding a woff2 decompressor as a build
+dependency, or fetching a ttf at build time. OG title, description and a
+`summary_large_image` twitter card are set meanwhile, so an unfurl is text-correct and
+image-less rather than broken.

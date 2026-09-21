@@ -20,9 +20,10 @@ READY_TIMEOUT=30
 # route:expected-status. Protected routes must NOT return 200 to an anonymous
 # request - that would mean the guard is missing. Accept only a redirect.
 ROUTES=(
-  # "/" is purely a router: it redirects to /signup, /login or /vault by state,
-  # so a redirect is the healthy response, not 200.
-  "/:307,302"
+  # "/" is the landing page for anonymous visitors, and a redirect to /vault
+  # for anyone signed in. Smoke runs anonymous, so 200 is the healthy answer -
+  # a redirect here would mean the landing page stopped rendering.
+  "/:200"
   "/signup:200"
   "/login:200"
   "/unlock:307,302"
