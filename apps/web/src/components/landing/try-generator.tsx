@@ -64,15 +64,15 @@ export function TryGenerator() {
   }
 
   return (
-    <div className="border-border bg-card rounded-xl border p-4 sm:p-5">
+    <div className="border-border bg-card rounded-2xl border p-5 shadow-[0_18px_50px_-24px_oklch(0.185_0.021_285/0.35)] sm:p-7">
       <p
         aria-live="polite"
-        className="secret text-cipher min-h-[3.5rem] text-lg leading-relaxed break-all sm:text-xl"
+        className="secret text-cipher min-h-[5.5rem] text-xl leading-[1.5] break-all sm:min-h-[6rem] sm:text-[1.6rem]"
       >
         {password ?? placeholder(length)}
       </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <div
           role="group"
           aria-label="Password length"

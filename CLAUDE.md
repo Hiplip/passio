@@ -81,6 +81,12 @@ short version:
   because a class name built from a variable is exactly what Tailwind cannot see.
 - **Three shapes, three meanings.** A circle is an identity, a stadium is a filter
   state, a rounded rectangle is an action.
+- **`--pitch` is ink used as a GROUND, and it does not invert.** Unlike `--primary`,
+  which flips to porcelain in dark mode so the primary action stays the highest-contrast
+  thing on screen, `--pitch` stays dark in both themes and goes deeper than the page
+  ground in dark mode. It exists for the landing page's two dark bands: a section that
+  flipped to porcelain in dark mode would be a hole in the page rather than a landmark
+  in it. Do not use it for type or for chrome.
 - Custom classes `.secret`, `.wordmark` and `.rows` are author CSS in
   `@layer components`, so they survive purge without appearing in any source file.
 

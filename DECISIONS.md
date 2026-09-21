@@ -545,3 +545,24 @@ text), and the only typeface files in the repo are woff2, which satori - and the
 dependency, or fetching a ttf at build time. OG title, description and a
 `summary_large_image` twitter card are set meanwhile, so an unfurl is text-correct and
 image-less rather than broken.
+
+### The landing page, second pass
+
+First version read as plain and boring, and it was: five sections with identical
+rhythm - hairline rule, same-size heading, paragraph - on one flat ground, with no
+focal point and no motion anywhere. Restraint with nothing to be restrained around is
+just grey. Three changes, in order of how much each did:
+
+1. **The hero moves, once.** The right-hand column renders the readable password
+   first, holds for 550ms, then scrambles it into the real ciphertext. The product's
+   single gesture is a legible thing becoming an illegible one, and the page now
+   performs it instead of captioning it. `frameAt` is exported and tested: every frame
+   is the same length as the ciphertext, because a frame one character short reflows
+   three rows of wrapped monospace and the transition reads as a glitch.
+2. **Two grounds, not one.** `--pitch` carries the problem section and the footer. The
+   dark bands are where a skimming eye lands, and they break a long single-ground page
+   into acts.
+3. **Real scale variation.** Section headings went from 3xl to 5xl/6xl, the four facts
+   are set as large numerals in the cipher face rather than a text grid, and the dial
+   finally appears at 26rem in the footer at 5% opacity - the brand's best asset had
+   been used at 28px and nowhere else.

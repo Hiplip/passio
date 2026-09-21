@@ -161,6 +161,18 @@
   --cipher-soft: oklch(0.955 0.021 283);
 
   /*
+   * Ink used as a GROUND rather than as type.
+   *
+   * Unlike --primary, this does NOT invert with the theme: it is the one dark
+   * landmark on a long page, and a section that flipped to porcelain in dark
+   * mode would be a hole in the page rather than a landmark in it. In dark
+   * mode it goes deeper than the page ground instead, so it still reads as a
+   * distinct panel.
+   */
+  --pitch: oklch(0.185 0.021 285);
+  --pitch-foreground: oklch(0.955 0.003 285);
+
+  /*
    * Item identity — eight hues, one fixed lightness and chroma.
    *
    * Varying hue alone is what keeps a vault of forty items calm instead of a
@@ -241,6 +253,9 @@
     --cipher: oklch(0.775 0.138 283);
     --cipher-soft: oklch(0.285 0.042 283);
 
+    --pitch: oklch(0.124 0.012 285);
+    --pitch-foreground: oklch(0.955 0.003 285);
+
     --mark-0-fg: oklch(0.8 0.125 283);
     --mark-0-bg: oklch(0.3 0.052 283);
     --mark-1-fg: oklch(0.8 0.125 320);
@@ -294,6 +309,8 @@
 
   --color-cipher: var(--cipher);
   --color-cipher-soft: var(--cipher-soft);
+  --color-pitch: var(--pitch);
+  --color-pitch-foreground: var(--pitch-foreground);
 
   --radius-sm: calc(var(--radius) * 0.55);
   --radius-md: calc(var(--radius) * 0.75);
