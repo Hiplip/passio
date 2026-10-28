@@ -8,3 +8,9 @@ allowBuilds:
 onlyBuiltDependencies:
   - esbuild
   - unrs-resolver
+
+# Security floor: Next pins postcss 8.4.31 exactly, which has known advisories.
+# The selector matches only the vulnerable range, so it stops applying once
+# Next ships a patched postcss; delete it then.
+overrides:
+  "postcss@<8.5.10": ^8.5.32

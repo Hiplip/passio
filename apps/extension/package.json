@@ -15,20 +15,20 @@
     "@passio/crypto": "workspace:*",
     "@passio/ui": "workspace:*",
     "@passio/vault-ui": "workspace:*",
-    "@trpc/client": "^11.0.0",
-    "lucide-react": "^1.44.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@trpc/client": "^11.19.0",
+    "lucide-react": "^1.62.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "sonner": "^2.0.8",
-    "superjson": "^2.2.1",
-    "zod": "^3.24.2"
+    "superjson": "^2.2.6",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/chrome": "^0.2.9",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@wxt-dev/module-react": "^1.2.2",
-    "wxt": "^0.21.4"
+    "wxt": "^0.21.5"
   }
 }
